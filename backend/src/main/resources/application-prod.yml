@@ -1,0 +1,39 @@
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 20000
+      leak-detection-threshold: 60000
+
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+server:
+  tomcat:
+    threads:
+      max: 100
+      min-spare: 10
+
+logging:
+  level:
+    root: WARN
+    vn.exa: INFO
+    org.springframework.security: WARN
+    org.hibernate: WARN
+  file:
+    name: /var/log/exa/app.log
+  logback:
+    rollingpolicy:
+      max-file-size: 50MB
+      max-history: 7
+      total-size-cap: 500MB
+
+exa:
+  cors:
+    allowed-origins: ${CORS_ORIGINS}
+  storage:
+    upload-dir: /app/uploads

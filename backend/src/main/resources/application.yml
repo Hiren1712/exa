@@ -1,0 +1,115 @@
+spring:
+  application:
+    name: exa-backend
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:exa}?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&characterEncoding=UTF-8&rewriteBatchedStatements=true
+    username: ${DB_USER:exa}
+    password: ${DB_PASSWORD:exa123}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      pool-name: ExaHikariPool
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 30
+          time_zone: Asia/Ho_Chi_Minh
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 4
+          min-idle: 1
+
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+      enabled: true
+
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: Asia/Ho_Chi_Minh
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  compression:
+    enabled: true
+    mime-types: application/json,text/html,text/css,application/javascript
+    min-response-size: 1024
+  tomcat:
+    threads:
+      max: 100
+      min-spare: 10
+    max-connections: 5000
+    accept-count: 200
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# ===== EXA Custom Config =====
+exa:
+  jwt:
+    secret: ${JWT_SECRET}
+    access-expiration-ms: 86400000        # 24 giờ
+    refresh-expiration-ms: 604800000      # 7 ngày
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
+  gemini:
+    api-key: ${GEMINI_API_KEY}
+    model: gemini-1.5-flash
+    timeout-ms: 60000
+  storage:
+    upload-dir: ./uploads
+    max-file-size: 20MB
+  proctor:
+    max-tab-switches: 5
+    max-warnings: 3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    root: INFO
+    vn.exa: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

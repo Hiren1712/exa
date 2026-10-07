@@ -1,0 +1,204 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -------------------------< vn.exa:exa-backend >-------------------------
+[INFO] Building EXA Backend 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.2.5:run (default-cli) > test-compile @ exa-backend >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ exa-backend ---
+[INFO] Copying 3 resources from src\main\resources to target\classes
+[INFO] Copying 4 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ exa-backend ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ exa-backend ---
+[INFO] skip non existing resourceDirectory C:\exa\exa\backend\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.11.0:testCompile (default-testCompile) @ exa-backend ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] <<< spring-boot:3.2.5:run (default-cli) < test-compile @ exa-backend <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.2.5:run (default-cli) @ exa-backend ---
+[INFO] Attaching agents: []
+Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+14:49:44,145 |-INFO in ch.qos.logback.classic.LoggerContext[default] - This is logback-classic version 1.4.14
+14:49:44,145 |-INFO in ch.qos.logback.classic.util.ContextInitializer@4a3329b9 - Here is a list of configurators discovered as a service, by rank: 
+14:49:44,145 |-INFO in ch.qos.logback.classic.util.ContextInitializer@4a3329b9 -   org.springframework.boot.logging.logback.RootLogLevelConfigurator
+14:49:44,145 |-INFO in ch.qos.logback.classic.util.ContextInitializer@4a3329b9 - They will be invoked in order until ExecutionStatus.DO_NOT_INVOKE_NEXT_IF_ANY is returned.
+14:49:44,145 |-INFO in ch.qos.logback.classic.util.ContextInitializer@4a3329b9 - Constructed configurator of type class org.springframework.boot.logging.logback.RootLogLevelConfigurator
+14:49:44,166 |-INFO in ch.qos.logback.classic.util.ContextInitializer@4a3329b9 - org.springframework.boot.logging.logback.RootLogLevelConfigurator.configure() call lasted 0 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+14:49:44,166 |-INFO in ch.qos.logback.classic.util.ContextInitializer@4a3329b9 - Trying to configure with ch.qos.logback.classic.joran.SerializedModelConfigurator
+14:49:44,166 |-INFO in ch.qos.logback.classic.util.ContextInitializer@4a3329b9 - Constructed configurator of type class ch.qos.logback.classic.joran.SerializedModelConfigurator
+14:49:44,168 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback-test.scmo]
+14:49:44,168 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback.scmo]
+14:49:44,168 |-INFO in ch.qos.logback.classic.util.ContextInitializer@4a3329b9 - ch.qos.logback.classic.joran.SerializedModelConfigurator.configure() call lasted 2 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+14:49:44,168 |-INFO in ch.qos.logback.classic.util.ContextInitializer@4a3329b9 - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+14:49:44,168 |-INFO in ch.qos.logback.classic.util.ContextInitializer@4a3329b9 - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+14:49:44,168 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback-test.xml]
+14:49:44,168 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback.xml]
+14:49:44,168 |-INFO in ch.qos.logback.classic.util.ContextInitializer@4a3329b9 - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 0 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+14:49:44,168 |-INFO in ch.qos.logback.classic.util.ContextInitializer@4a3329b9 - Trying to configure with ch.qos.logback.classic.BasicConfigurator
+14:49:44,168 |-INFO in ch.qos.logback.classic.util.ContextInitializer@4a3329b9 - Constructed configurator of type class ch.qos.logback.classic.BasicConfigurator
+14:49:44,168 |-INFO in ch.qos.logback.classic.BasicConfigurator@3dddefd8 - Setting up default configuration.
+14:49:44,186 |-INFO in ch.qos.logback.classic.util.ContextInitializer@4a3329b9 - ch.qos.logback.classic.BasicConfigurator.configure() call lasted 18 milliseconds. ExecutionStatus=NEUTRAL
+14:49:44,532 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [CONSOLE]
+14:49:44,532 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+14:49:44,532 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+14:49:44,548 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [FILE]
+14:49:44,548 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.rolling.RollingFileAppender]
+14:49:44,549 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+14:49:44,555 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@369805307 - setting totalSizeCap to 500 MB
+14:49:44,556 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@369805307 - Archive files will be limited to [50 MB] each.
+14:49:44,557 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@369805307 - Will use gz compression
+14:49:44,559 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@369805307 - Will use the pattern ./logs/archived/exa-%d{yyyy-MM-dd}.%i.log for the active file
+14:49:44,570 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP@12bfd80d - The date pattern is 'yyyy-MM-dd' from file name pattern './logs/archived/exa-%d{yyyy-MM-dd}.%i.log.gz'.
+14:49:44,570 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP@12bfd80d - Roll-over at midnight.
+14:49:44,574 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP@12bfd80d - Setting initial period to 2026-10-07T07:49:37.807Z
+14:49:44,577 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[FILE] - Active log file name: ./logs/exa.log
+14:49:44,577 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[FILE] - File property is set to [./logs/exa.log]
+14:49:44,578 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [ERROR_FILE]
+14:49:44,578 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.rolling.RollingFileAppender]
+14:49:44,579 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+14:49:44,579 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@1100109058 - setting totalSizeCap to 200 MB
+14:49:44,579 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@1100109058 - Archive files will be limited to [20 MB] each.
+14:49:44,580 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@1100109058 - Will use gz compression
+14:49:44,580 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@1100109058 - Will use the pattern ./logs/archived/exa-error-%d{yyyy-MM-dd}.%i.log for the active file
+14:49:44,580 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP@13e3c1c7 - The date pattern is 'yyyy-MM-dd' from file name pattern './logs/archived/exa-error-%d{yyyy-MM-dd}.%i.log.gz'.
+14:49:44,580 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP@13e3c1c7 - Roll-over at midnight.
+14:49:44,580 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP@13e3c1c7 - Setting initial period to 2026-10-07T07:44:20.065Z
+14:49:44,581 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[ERROR_FILE] - Active log file name: ./logs/exa-error.log
+14:49:44,581 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[ERROR_FILE] - File property is set to [./logs/exa-error.log]
+14:49:44,581 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [ASYNC_FILE]
+14:49:44,581 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.classic.AsyncAppender]
+14:49:44,582 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [FILE] to ch.qos.logback.classic.AsyncAppender[ASYNC_FILE]
+14:49:44,582 |-INFO in ch.qos.logback.classic.AsyncAppender[ASYNC_FILE] - Attaching appender named [FILE] to AsyncAppender.
+14:49:44,583 |-INFO in ch.qos.logback.classic.AsyncAppender[ASYNC_FILE] - Setting discardingThreshold to 0
+14:49:44,583 |-WARN in ch.qos.logback.core.model.processor.AppenderModelHandler - Appender named [ASYNC_ERROR] not referenced. Skipping further processing.
+14:49:44,583 |-INFO in ch.qos.logback.classic.model.processor.RootLoggerModelHandler - Setting level of ROOT logger to INFO
+14:49:44,584 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@5316e95f - Propagating INFO level on Logger[ROOT] onto the JUL framework
+14:49:44,584 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONSOLE] to Logger[ROOT]
+14:49:44,584 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [ASYNC_FILE] to Logger[ROOT]
+14:49:44,584 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@3f053c80 - End of configuration.
+14:49:44,584 |-INFO in org.springframework.boot.logging.logback.SpringBootJoranConfigurator@6c6c5427 - Registering current configuration as safe fallback point
+
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.5)
+
+14:49:44.610 [34mINFO [0;39m [36mo.h.v.internal.util.Version[0;39m - HV000001: Hibernate Validator 8.0.1.Final
+14:49:44.643 [34mINFO [0;39m [36mvn.exa.ExaApplication[0;39m - Starting ExaApplication using Java 21.0.12.1 with PID 18308 (C:\exa\exa\backend\target\classes started by User in C:\exa\exa\backend)
+14:49:44.643 [39mDEBUG[0;39m [36mvn.exa.ExaApplication[0;39m - Running with Spring Boot v3.2.5, Spring v6.1.6
+14:49:44.643 [34mINFO [0;39m [36mvn.exa.ExaApplication[0;39m - The following 1 profile is active: "local"
+14:49:45.603 [34mINFO [0;39m [36mo.s.d.r.c.RepositoryConfigurationDelegate[0;39m - Multiple Spring Data modules found, entering strict repository configuration mode
+14:49:45.603 [34mINFO [0;39m [36mo.s.d.r.c.RepositoryConfigurationDelegate[0;39m - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+14:49:45.719 [34mINFO [0;39m [36mo.s.d.r.c.RepositoryConfigurationDelegate[0;39m - Finished Spring Data repository scanning in 106 ms. Found 7 JPA repository interfaces.
+14:49:45.719 [34mINFO [0;39m [36mo.s.d.r.c.RepositoryConfigurationDelegate[0;39m - Multiple Spring Data modules found, entering strict repository configuration mode
+14:49:45.719 [34mINFO [0;39m [36mo.s.d.r.c.RepositoryConfigurationDelegate[0;39m - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+14:49:45.738 [34mINFO [0;39m [36mo.s.d.r.c.RepositoryConfigurationExtensionSupport[0;39m - Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.exa.auth.UserRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+14:49:45.738 [34mINFO [0;39m [36mo.s.d.r.c.RepositoryConfigurationExtensionSupport[0;39m - Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.exa.classroom.ClassroomRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+14:49:45.738 [34mINFO [0;39m [36mo.s.d.r.c.RepositoryConfigurationExtensionSupport[0;39m - Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.exa.exam.ExamRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+14:49:45.738 [34mINFO [0;39m [36mo.s.d.r.c.RepositoryConfigurationExtensionSupport[0;39m - Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.exa.importjob.ImportJobRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+14:49:45.738 [34mINFO [0;39m [36mo.s.d.r.c.RepositoryConfigurationExtensionSupport[0;39m - Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.exa.question.QuestionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+14:49:45.738 [34mINFO [0;39m [36mo.s.d.r.c.RepositoryConfigurationExtensionSupport[0;39m - Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.exa.submission.ProctorEventRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+14:49:45.738 [34mINFO [0;39m [36mo.s.d.r.c.RepositoryConfigurationExtensionSupport[0;39m - Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.exa.submission.SubmissionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+14:49:45.738 [34mINFO [0;39m [36mo.s.d.r.c.RepositoryConfigurationDelegate[0;39m - Finished Spring Data repository scanning in 5 ms. Found 0 Redis repository interfaces.
+14:49:46.329 [34mINFO [0;39m [36mo.s.b.w.e.t.TomcatWebServer[0;39m - Tomcat initialized with port 8080 (http)
+14:49:46.329 [34mINFO [0;39m [36mo.a.c.http11.Http11NioProtocol[0;39m - Initializing ProtocolHandler ["http-nio-8080"]
+14:49:46.329 [34mINFO [0;39m [36mo.a.c.core.StandardService[0;39m - Starting service [Tomcat]
+14:49:46.329 [34mINFO [0;39m [36mo.a.c.core.StandardEngine[0;39m - Starting Servlet engine: [Apache Tomcat/10.1.20]
+14:49:46.377 [34mINFO [0;39m [36mo.a.c.c.C.[.[localhost].[/api][0;39m - Initializing Spring embedded WebApplicationContext
+14:49:46.377 [34mINFO [0;39m [36mo.s.b.w.s.c.ServletWebServerApplicationContext[0;39m - Root WebApplicationContext: initialization completed in 1685 ms
+Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+14:49:46.524 [39mDEBUG[0;39m [36mvn.exa.common.JwtAuthFilter[0;39m - Filter 'jwtAuthFilter' configured for use
+14:49:46.583 [34mINFO [0;39m [36mc.z.hikari.HikariDataSource[0;39m - ExaHikariPool - Starting...
+14:49:46.704 [34mINFO [0;39m [36mc.z.hikari.pool.HikariPool[0;39m - ExaHikariPool - Added connection com.mysql.cj.jdbc.ConnectionImpl@4c164f81
+14:49:46.707 [34mINFO [0;39m [36mc.z.hikari.HikariDataSource[0;39m - ExaHikariPool - Start completed.
+14:49:46.766 [34mINFO [0;39m [36mo.f.c.i.license.VersionPrinter[0;39m - Flyway Community Edition 9.22.3 by Redgate
+14:49:46.766 [34mINFO [0;39m [36mo.f.c.i.license.VersionPrinter[0;39m - See release notes here: https://rd.gt/416ObMi
+14:49:46.766 [34mINFO [0;39m [36mo.f.c.i.license.VersionPrinter[0;39m - 
+14:49:46.779 [34mINFO [0;39m [36mo.flywaydb.core.FlywayExecutor[0;39m - Database: jdbc:mysql://localhost:3306/exa (MySQL 8.3)
+14:49:46.795 [31mWARN [0;39m [36mo.f.c.i.database.base.Database[0;39m - Flyway upgrade recommended: MySQL 8.3 is newer than this version of Flyway and support has not been tested. The latest supported version of MySQL is 8.0.
+14:49:46.819 [34mINFO [0;39m [36mo.f.c.i.command.DbValidate[0;39m - Successfully validated 3 migrations (execution time 00:00.017s)
+14:49:46.833 [34mINFO [0;39m [36mo.f.c.i.command.DbMigrate[0;39m - Current version of schema `exa`: 3
+14:49:46.834 [34mINFO [0;39m [36mo.f.c.i.command.DbMigrate[0;39m - Schema `exa` is up to date. No migration necessary.
+14:49:46.894 [34mINFO [0;39m [36mo.h.j.internal.util.LogHelper[0;39m - HHH000204: Processing PersistenceUnitInfo [name: default]
+14:49:46.931 [34mINFO [0;39m [36morg.hibernate.Version[0;39m - HHH000412: Hibernate ORM core version 6.4.4.Final
+14:49:46.940 [34mINFO [0;39m [36mo.h.c.i.RegionFactoryInitiator[0;39m - HHH000026: Second-level cache disabled
+14:49:47.073 [34mINFO [0;39m [36mo.s.o.j.p.SpringPersistenceUnitInfo[0;39m - No LoadTimeWeaver setup: ignoring JPA class transformer
+14:49:47.121 [31mWARN [0;39m [36morg.hibernate.orm.deprecation[0;39m - HHH90000025: MySQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+14:49:47.896 [34mINFO [0;39m [36mo.h.e.t.j.p.i.JtaPlatformInitiator[0;39m - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+14:49:47.925 [1;31mERROR[0;39m [36mo.s.o.j.LocalContainerEntityManagerFactoryBean[0;39m - Failed to initialize JPA EntityManagerFactory: [PersistenceUnit: default] Unable to build Hibernate SessionFactory; nested exception is org.hibernate.tool.schema.spi.SchemaManagementException: Schema-validation: missing column [created_at] in table [proctor_events]
+14:49:47.925 [31mWARN [0;39m [36mo.s.b.w.s.c.AnnotationConfigServletWebServerApplicationContext[0;39m - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: [PersistenceUnit: default] Unable to build Hibernate SessionFactory; nested exception is org.hibernate.tool.schema.spi.SchemaManagementException: Schema-validation: missing column [created_at] in table [proctor_events]
+14:49:47.925 [34mINFO [0;39m [36mc.z.hikari.HikariDataSource[0;39m - ExaHikariPool - Shutdown initiated...
+14:49:47.929 [34mINFO [0;39m [36mc.z.hikari.HikariDataSource[0;39m - ExaHikariPool - Shutdown completed.
+14:49:47.931 [34mINFO [0;39m [36mo.a.c.core.StandardService[0;39m - Stopping service [Tomcat]
+14:49:47.942 [34mINFO [0;39m [36mo.s.b.a.l.ConditionEvaluationReportLogger[0;39m - 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+14:49:47.953 [1;31mERROR[0;39m [36mo.s.boot.SpringApplication[0;39m - Application run failed
+org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: [PersistenceUnit: default] Unable to build Hibernate SessionFactory; nested exception is org.hibernate.tool.schema.spi.SchemaManagementException: Schema-validation: missing column [created_at] in table [proctor_events]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1786)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:600)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:522)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:326)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:324)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:200)
+	at org.springframework.context.support.AbstractApplicationContext.getBean(AbstractApplicationContext.java:1234)
+	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:952)
+	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:624)
+	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:754)
+	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:456)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:334)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1354)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1343)
+	at vn.exa.ExaApplication.main(ExaApplication.java:16)
+Caused by: jakarta.persistence.PersistenceException: [PersistenceUnit: default] Unable to build Hibernate SessionFactory; nested exception is org.hibernate.tool.schema.spi.SchemaManagementException: Schema-validation: missing column [created_at] in table [proctor_events]
+	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.buildNativeEntityManagerFactory(AbstractEntityManagerFactoryBean.java:421)
+	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.afterPropertiesSet(AbstractEntityManagerFactoryBean.java:396)
+	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.afterPropertiesSet(LocalContainerEntityManagerFactoryBean.java:366)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1833)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1782)
+	... 16 common frames omitted
+Caused by: org.hibernate.tool.schema.spi.SchemaManagementException: Schema-validation: missing column [created_at] in table [proctor_events]
+	at org.hibernate.tool.schema.internal.AbstractSchemaValidator.validateTable(AbstractSchemaValidator.java:145)
+	at org.hibernate.tool.schema.internal.GroupedSchemaValidatorImpl.validateTables(GroupedSchemaValidatorImpl.java:46)
+	at org.hibernate.tool.schema.internal.AbstractSchemaValidator.performValidation(AbstractSchemaValidator.java:97)
+	at org.hibernate.tool.schema.internal.AbstractSchemaValidator.doValidation(AbstractSchemaValidator.java:75)
+	at org.hibernate.tool.schema.spi.SchemaManagementToolCoordinator.performDatabaseAction(SchemaManagementToolCoordinator.java:295)
+	at org.hibernate.tool.schema.spi.SchemaManagementToolCoordinator.lambda$process$5(SchemaManagementToolCoordinator.java:145)
+	at java.base/java.util.HashMap.forEach(HashMap.java:1429)
+	at org.hibernate.tool.schema.spi.SchemaManagementToolCoordinator.process(SchemaManagementToolCoordinator.java:142)
+	at org.hibernate.boot.internal.SessionFactoryObserverForSchemaExport.sessionFactoryCreated(SessionFactoryObserverForSchemaExport.java:37)
+	at org.hibernate.internal.SessionFactoryObserverChain.sessionFactoryCreated(SessionFactoryObserverChain.java:35)
+	at org.hibernate.internal.SessionFactoryImpl.<init>(SessionFactoryImpl.java:315)
+	at org.hibernate.boot.internal.SessionFactoryBuilderImpl.build(SessionFactoryBuilderImpl.java:450)
+	at org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl.build(EntityManagerFactoryBuilderImpl.java:1507)
+	at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:75)
+	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390)
+	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.buildNativeEntityManagerFactory(AbstractEntityManagerFactoryBean.java:409)
+	... 20 common frames omitted
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  5.763 s
+[INFO] Finished at: 2026-10-07T14:49:47+07:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.2.5:run (default-cli) on project exa-backend: Process terminated with exit code: 1 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

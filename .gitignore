@@ -1,0 +1,51 @@
+# ===== JAVA / MAVEN =====
+backend/target/
+*.class
+*.jar
+*.war
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/timing.properties
+
+# ===== NODE / FRONTEND =====
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+*.local
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.iml
+*.iws
+.settings/
+.project
+.classpath
+
+# ===== ENV / SECRETS =====
+.env
+.env.local
+.env.*.local
+application-local.yml
+application-local.properties
+frontend/.env.local
+frontend/.env.production.local
+
+# ===== LOGS =====
+*.log
+logs/
+backend/logs/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== UPLOADS =====
+uploads/
+backend/uploads/
+
+# ===== CERTS =====
+*.pem
+*.key
+certbot/
