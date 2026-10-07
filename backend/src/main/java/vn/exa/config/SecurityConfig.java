@@ -45,7 +45,7 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
-                        .requestMatchers("/v1/auth/login", "/v1/auth/register").permitAll()
+                        .requestMatchers("/v1/auth/login", "/v1/auth/register", "/v1/auth/refresh").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/uploads/**", "/files/**").permitAll()
@@ -77,10 +77,15 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .filter(origin -> !origin.isEmpty())
-                .toList());
+
+        // Dùng setAllowedOriginPatterns để hỗ trợ wildcard "*"
+        config.setAllowedOriginPatterns(
+                Arrays.stream(allowedOrigins.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList()
+        );
+
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
@@ -97,10 +102,6 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder(10);
     }
 
-    /**
-     * Cấu hình AuthenticationManager với DaoAuthenticationProvider
-     * để Spring Security dùng CustomUserDetailsService để load user.
-     */
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration config,
