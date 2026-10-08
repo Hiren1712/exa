@@ -129,7 +129,10 @@ public class AuthService {
                 throw BusinessException.conflict("Tài khoản này đã bị xóa, vui lòng liên hệ quản trị viên");
             }
             if (req.getRole() == null) {
-                throw BusinessException.badRequest("Hãy chọn Đăng ký và chọn vai trò để tạo tài khoản Google mới");
+                throw new BusinessException(
+                        "GOOGLE_ROLE_REQUIRED",
+                        "Chọn vai trò để hoàn tất đăng ký Google",
+                        HttpStatus.BAD_REQUEST);
             }
 
             String fullName = token.getName();

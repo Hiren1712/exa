@@ -118,6 +118,37 @@ class AuthServiceGoogleLoginTest {
     }
 
     @Test
+    void googleLoginReturnsRoleRequiredCodeForNewAccountWithoutRole() throws Exception {
+        FirebaseAuth firebaseAuth = mock(FirebaseAuth.class);
+        FirebaseToken token = mock(FirebaseToken.class);
+        UserRepository userRepository = mock(UserRepository.class);
+        when(firebaseAuth.verifyIdToken("firebase-id-token")).thenReturn(token);
+        when(token.getEmail()).thenReturn("student@example.com");
+        when(token.getClaims()).thenReturn(Map.of(
+                "email_verified", true,
+                "firebase", Map.of("sign_in_provider", "google.com")));
+        when(userRepository.findByEmailAndDeletedAtIsNull("student@example.com"))
+                .thenReturn(Optional.empty());
+        when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.empty());
+
+        StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
+        beanFactory.addBean("firebaseAuth", firebaseAuth);
+        AuthService service = new AuthService(
+                userRepository,
+                null,
+                null,
+                null,
+                beanFactory.getBeanProvider(FirebaseAuth.class));
+        GoogleLoginRequest request = new GoogleLoginRequest();
+        request.setIdToken("firebase-id-token");
+
+        assertThatThrownBy(() -> service.googleLogin(request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).getCode())
+                        .isEqualTo("GOOGLE_ROLE_REQUIRED"));
+    }
+
+    @Test
     void googleLoginDoesNotAllowAdminProvisioning() {
         AuthService service = new AuthService(
                 null,

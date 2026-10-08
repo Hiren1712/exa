@@ -1,4 +1,5 @@
 import { FormEvent, useState } from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/Toast';
@@ -18,6 +19,7 @@ export default function Login() {
   const [role, setRole] = useState<'TEACHER' | 'STUDENT'>('TEACHER');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [pendingGoogleToken, setPendingGoogleToken] = useState<string | null>(null);
 
   const { login, register, googleLogin } = useAuth();
   const { toast } = useToast();
@@ -44,15 +46,27 @@ export default function Login() {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
+    let idToken = pendingGoogleToken;
     try {
-      const idToken = await signInWithGoogle();
+      idToken ??= await signInWithGoogle();
       const user = await googleLogin({
         idToken,
         ...(mode === 'register' ? { role } : {}),
       });
+      setPendingGoogleToken(null);
       toast('Đăng nhập thành công', `Xin chào ${user.fullName}`, 'success');
       navigate('/');
     } catch (err) {
+      if (
+        axios.isAxiosError<{ code?: string }>(err)
+        && err.response?.data.code === 'GOOGLE_ROLE_REQUIRED'
+        && idToken
+      ) {
+        setPendingGoogleToken(idToken);
+        setMode('register');
+        return;
+      }
+      setPendingGoogleToken(null);
       const code = typeof err === 'object' && err !== null && 'code' in err
         ? String(err.code)
         : '';
@@ -99,7 +113,10 @@ export default function Login() {
           {/* Tabs */}
           <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
             <button
-              onClick={() => setMode('login')}
+              onClick={() => {
+                setMode('login');
+                setPendingGoogleToken(null);
+              }}
               disabled={loading}
               className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
                 mode === 'login'
@@ -110,7 +127,10 @@ export default function Login() {
               Đăng nhập
             </button>
             <button
-              onClick={() => setMode('register')}
+              onClick={() => {
+                setMode('register');
+                setPendingGoogleToken(null);
+              }}
               disabled={loading}
               className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
                 mode === 'register'
@@ -123,7 +143,13 @@ export default function Login() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'register' && (
+            {pendingGoogleToken && (
+              <p role="status" className="text-sm text-center text-slate-600 dark:text-slate-300">
+                Tài khoản Google chưa có hồ sơ EXA. Chọn vai trò để hoàn tất đăng ký.
+              </p>
+            )}
+
+            {mode === 'register' && !pendingGoogleToken && (
               <Input
                 label="Họ tên"
                 placeholder="Nguyễn Văn A"
@@ -133,36 +159,40 @@ export default function Login() {
               />
             )}
 
-            <Input
-              label="Email"
-              type="email"
-              placeholder="you@example.com"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+            {!pendingGoogleToken && (
+              <>
+                <Input
+                  label="Email"
+                  type="email"
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
 
-            <Input
-              label="Mật khẩu"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="••••••"
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              rightElement={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((visible) => !visible)}
-                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                  aria-pressed={showPassword}
-                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                >
-                  <Icon name={showPassword ? 'eyeOff' : 'eye'} size={18} />
-                </button>
-              }
-            />
+                <Input
+                  label="Mật khẩu"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••"
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  rightElement={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                      aria-pressed={showPassword}
+                      className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      <Icon name={showPassword ? 'eyeOff' : 'eye'} size={18} />
+                    </button>
+                  }
+                />
+              </>
+            )}
 
             {mode === 'register' && (
               <div>
@@ -191,28 +221,32 @@ export default function Login() {
               </div>
             )}
 
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              block
-              loading={loading}
-              icon={<Icon name="login" size={16} />}
-            >
-              {mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
-            </Button>
+            {!pendingGoogleToken && (
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                block
+                loading={loading}
+                icon={<Icon name="login" size={16} />}
+              >
+                {mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
+              </Button>
+            )}
           </form>
 
-          <div className="relative my-5">
-            <div className="absolute inset-0 flex items-center" aria-hidden="true">
-              <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+          {!pendingGoogleToken && (
+            <div className="relative my-5">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-white dark:bg-slate-900 px-3 text-xs text-slate-400">
+                  hoặc tiếp tục với
+                </span>
+              </div>
             </div>
-            <div className="relative flex justify-center">
-              <span className="bg-white dark:bg-slate-900 px-3 text-xs text-slate-400">
-                hoặc tiếp tục với
-              </span>
-            </div>
-          </div>
+          )}
           <Button
             type="button"
             block
@@ -220,9 +254,9 @@ export default function Login() {
             loading={loading}
             icon={<Icon name="google" size={18} />}
             onClick={handleGoogleLogin}
-            aria-label="Đăng nhập bằng Google"
+            aria-label={pendingGoogleToken ? 'Hoàn tất đăng ký Google' : 'Đăng nhập bằng Google'}
           >
-            Google
+            {pendingGoogleToken ? 'Hoàn tất đăng ký Google' : 'Google'}
           </Button>
           {!firebaseConfigured && (
             <p className="mt-3 text-center text-xs text-slate-400">
