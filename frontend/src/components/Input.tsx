@@ -6,10 +6,11 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string;
   helper?: string;
   icon?: React.ReactNode;
+  rightElement?: React.ReactNode;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, helper, icon, className, ...rest }, ref) => {
+  ({ label, error, helper, icon, rightElement, className, ...rest }, ref) => {
     return (
       <div className="w-full">
         {label && (
@@ -23,6 +24,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               {icon}
             </div>
           )}
+          {rightElement && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              {rightElement}
+            </div>
+          )}
           <input
             ref={ref}
             className={cn(
@@ -30,6 +36,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               'focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all',
               'disabled:bg-slate-50 disabled:cursor-not-allowed',
               icon && 'pl-10',
+              rightElement && 'pr-12',
               error && 'border-red-500 focus:border-red-500 focus:ring-red-500/10',
               className,
             )}

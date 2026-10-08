@@ -3,7 +3,6 @@ package vn.exa.importjob;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -11,11 +10,9 @@ import vn.exa.common.BusinessException;
 import vn.exa.question.Question;
 import vn.exa.question.QuestionRepository;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,12 +22,10 @@ import java.util.UUID;
 public class ImportService {
 
     private final ImportJobRepository importJobRepo;
-    private final DocumentParser documentParser;
-    private final GeminiParser geminiParser;
+    private final ImportProcessingService importProcessingService;
     private final QuestionRepository questionRepo;
     private final ObjectMapper objectMapper;
 
-    @Transactional
     public Long uploadAndProcess(MultipartFile file, Long userId, String subjectHint) {
         validateFile(file);
 
@@ -47,61 +42,13 @@ public class ImportService {
                     .build();
 
             job = importJobRepo.save(job);
-            processSync(job.getId(), subjectHint);
+            importProcessingService.processAsync(job.getId(), subjectHint);
             return job.getId();
         } catch (BusinessException be) {
             throw be;
-        } catch (Exception e) {
-            log.error("Upload failed", e);
-            throw BusinessException.badRequest("Upload thất bại: " + e.getMessage());
-        }
-    }
-
-    @Transactional
-    public void processSync(Long jobId, String subjectHint) {
-        ImportJob job = importJobRepo.findById(jobId)
-                .orElseThrow(() -> BusinessException.notFound("Job không tồn tại"));
-
-        try {
-            job.setStatus(ImportJob.Status.EXTRACTING);
-            job.setStartedAt(LocalDateTime.now());
-            importJobRepo.save(job);
-
-            Path path = Paths.get(job.getStoragePath());
-            if (!Files.exists(path)) {
-                fail(job, "Không tìm thấy file");
-                return;
-            }
-
-            MultipartFile multipartFile = new MockMultipartFile(
-                    job.getOriginalName(),
-                    Files.readAllBytes(path)
-            );
-
-            String text = documentParser.extractText(multipartFile);
-            if (text == null || text.isBlank()) {
-                fail(job, "Không đọc được nội dung file");
-                return;
-            }
-
-            job.setExtractedText(text);
-            job.setStatus(ImportJob.Status.PARSING);
-            importJobRepo.save(job);
-
-            GeminiParser.ParseResult result = geminiParser.parse(text, subjectHint);
-
-            job.setParsedResult(objectMapper.writeValueAsString(result.questions()));
-            job.setTotalFound(result.questions().size());
-            job.setAiModel("gemini-1.5-flash");
-            job.setAiTokensUsed(result.tokensUsed());
-            job.setStatus(ImportJob.Status.REVIEW);
-            job.setFinishedAt(LocalDateTime.now());
-            importJobRepo.save(job);
-
-            log.info("Import job {} parsed {} questions", jobId, result.questions().size());
-        } catch (Exception e) {
-            log.error("Import job {} failed", jobId, e);
-            fail(job, e.getMessage());
+        } catch (Exception error) {
+            log.error("Upload failed for user {}", userId, error);
+            throw BusinessException.badRequest("Upload thất bại. Vui lòng thử lại.");
         }
     }
 
@@ -171,7 +118,7 @@ public class ImportService {
         if (file.getSize() > maxSize) throw BusinessException.badRequest("File quá lớn (tối đa 20MB)");
         String ext = getExtension(file.getOriginalFilename()).toLowerCase();
         if (!List.of("docx", "pdf", "xlsx", "xls").contains(ext)) {
-            throw BusinessException.badRequest("Định dạng không hỗ trợ. Chỉ nhận docx, pdf, xlsx");
+            throw BusinessException.badRequest("Định dạng không hỗ trợ. Chỉ nhận docx, pdf, xlsx hoặc xls");
         }
     }
 
@@ -182,13 +129,6 @@ public class ImportService {
         Path target = uploadDir.resolve(filename);
         file.transferTo(target.toFile());
         return target.toString();
-    }
-
-    private void fail(ImportJob job, String message) {
-        job.setStatus(ImportJob.Status.FAILED);
-        job.setErrorMessage(message);
-        job.setFinishedAt(LocalDateTime.now());
-        importJobRepo.save(job);
     }
 
     private List<ParsedQuestion> parseJsonArray(String json) {
@@ -236,27 +176,4 @@ public class ImportService {
         return i >= 0 ? name.substring(i + 1) : "";
     }
 
-    /**
-     * Mock MultipartFile để DocumentParser đọc từ file đã lưu.
-     */
-    private static class MockMultipartFile implements MultipartFile {
-        private final String name;
-        private final byte[] content;
-        public MockMultipartFile(String name, byte[] content) {
-            this.name = name;
-            this.content = content;
-        }
-        @Override public String getName() { return name; }
-        @Override public String getOriginalFilename() { return name; }
-        @Override public String getContentType() { return null; }
-        @Override public boolean isEmpty() { return content.length == 0; }
-        @Override public long getSize() { return content.length; }
-        @Override public byte[] getBytes() { return content; }
-        @Override public java.io.InputStream getInputStream() {
-            return new java.io.ByteArrayInputStream(content);
-        }
-        @Override public void transferTo(File dest) throws java.io.IOException {
-            Files.write(dest.toPath(), content);
-        }
-    }
 }

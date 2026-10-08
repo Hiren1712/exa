@@ -32,6 +32,11 @@ export interface RegisterRequest {
   dateOfBirth?: string;
 }
 
+export interface GoogleLoginRequest {
+  idToken: string;
+  role?: 'TEACHER' | 'STUDENT';
+}
+
 export const authApi = {
   login: async (data: LoginRequest): Promise<AuthResponse> => {
     const res = await apiClient.post<ApiResponse<AuthResponse>>('/v1/auth/login', data);
@@ -40,6 +45,11 @@ export const authApi = {
 
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
     const res = await apiClient.post<ApiResponse<AuthResponse>>('/v1/auth/register', data);
+    return res.data.data;
+  },
+
+  googleLogin: async (data: GoogleLoginRequest): Promise<AuthResponse> => {
+    const res = await apiClient.post<ApiResponse<AuthResponse>>('/v1/auth/google', data);
     return res.data.data;
   },
 

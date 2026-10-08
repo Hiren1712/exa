@@ -30,8 +30,8 @@ export default function Grading() {
 
   const saveGrade = async (item: GradingItem) => {
     const score = Number(scores[item.submissionId]);
-    if (!Number.isFinite(score) || score < 0 || score > 10) {
-      toast('Điểm không hợp lệ', 'Điểm cuối cùng phải nằm trong khoảng 0 đến 10.', 'warn');
+    if (!Number.isFinite(score) || score < 0 || score > item.totalPoints) {
+      toast('Điểm không hợp lệ', `Điểm cuối cùng phải nằm trong khoảng 0 đến ${item.totalPoints}.`, 'warn');
       return;
     }
     setSavingId(item.submissionId);
@@ -80,11 +80,11 @@ export default function Grading() {
           </div>
           <div className="grid sm:grid-cols-[180px_1fr] gap-3">
             <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-              Điểm cuối cùng (0–10)
+              Điểm cuối cùng (0–{item.totalPoints})
               <input
                 type="number"
                 min="0"
-                max="10"
+                max={item.totalPoints}
                 step="0.25"
                 value={scores[item.submissionId] ?? ''}
                 onChange={(event) => setScores((current) => ({ ...current, [item.submissionId]: event.target.value }))}

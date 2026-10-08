@@ -23,6 +23,7 @@ export interface SubmissionAnswer {
 export interface SubmissionReview {
   examTitle: string;
   totalScore: number | null;
+  totalPoints: number;
   durationSec: number | null;
   answersRevealed: boolean;
   needsManualGrading: boolean;
@@ -43,6 +44,7 @@ export interface GradingItem {
   submissionId: number;
   examId: number;
   examTitle: string;
+  totalPoints: number;
   studentId: number;
   submittedAt: string;
   currentScore: number | null;

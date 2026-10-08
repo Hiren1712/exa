@@ -1,5 +1,8 @@
 package vn.exa.auth;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.FirebaseToken;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -8,7 +11,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.http.HttpStatus;
 import vn.exa.auth.dto.AuthResponse;
+import vn.exa.auth.dto.GoogleLoginRequest;
 import vn.exa.auth.dto.LoginRequest;
 import vn.exa.auth.dto.RegisterRequest;
 import vn.exa.common.BusinessException;
@@ -26,6 +32,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final ObjectProvider<FirebaseAuth> firebaseAuthProvider;
 
     @Transactional
     public AuthResponse register(RegisterRequest req) {
@@ -76,6 +83,80 @@ public class AuthService {
         userRepository.save(user);
 
         log.info("User logged in: {} ({})", user.getEmail(), user.getRole());
+        return buildAuthResponse(user);
+    }
+
+    @Transactional
+    public AuthResponse googleLogin(GoogleLoginRequest req) {
+        if (req.getRole() == User.Role.ADMIN) {
+            throw BusinessException.forbidden("Không thể đăng ký tài khoản ADMIN");
+        }
+
+        FirebaseAuth firebaseAuth = firebaseAuthProvider.getIfAvailable();
+        if (firebaseAuth == null) {
+            throw new BusinessException(
+                    "GOOGLE_AUTH_NOT_CONFIGURED",
+                    "Đăng nhập Google chưa được cấu hình trên máy chủ",
+                    HttpStatus.SERVICE_UNAVAILABLE);
+        }
+
+        final FirebaseToken token;
+        try {
+            token = firebaseAuth.verifyIdToken(req.getIdToken());
+        } catch (FirebaseAuthException ex) {
+            log.warn("Firebase ID token verification failed: {}", ex.getAuthErrorCode());
+            throw BusinessException.unauthorized("Phiên đăng nhập Google không hợp lệ hoặc đã hết hạn");
+        }
+
+        if (!Boolean.TRUE.equals(token.getClaims().get("email_verified"))
+                || token.getEmail() == null || token.getEmail().isBlank()) {
+            throw BusinessException.unauthorized("Tài khoản Google chưa xác minh địa chỉ email");
+        }
+        Object firebaseClaim = token.getClaims().get("firebase");
+        if (!(firebaseClaim instanceof java.util.Map<?, ?> firebaseClaims)
+                || !"google.com".equals(firebaseClaims.get("sign_in_provider"))) {
+            throw BusinessException.unauthorized("Vui lòng xác thực bằng Google");
+        }
+
+        String email = token.getEmail().trim().toLowerCase(java.util.Locale.ROOT);
+        if (email.length() > 191) {
+            throw BusinessException.badRequest("Email Google vượt quá giới hạn cho phép");
+        }
+
+        User user = userRepository.findByEmailAndDeletedAtIsNull(email).orElse(null);
+        if (user == null) {
+            if (userRepository.findByEmail(email).isPresent()) {
+                throw BusinessException.conflict("Tài khoản này đã bị xóa, vui lòng liên hệ quản trị viên");
+            }
+            if (req.getRole() == null) {
+                throw BusinessException.badRequest("Hãy chọn Đăng ký và chọn vai trò để tạo tài khoản Google mới");
+            }
+
+            String fullName = token.getName();
+            if (fullName == null || fullName.isBlank()) {
+                fullName = email.substring(0, email.indexOf('@'));
+            }
+            user = User.builder()
+                    .email(email)
+                    .passwordHash(passwordEncoder.encode(java.util.UUID.randomUUID().toString()))
+                    .fullName(fullName.substring(0, Math.min(fullName.length(), 120)))
+                    .avatarUrl(token.getPicture())
+                    .role(req.getRole())
+                    .plan(User.Plan.FREE)
+                    .active(true)
+                    .emailVerified(true)
+                    .build();
+        } else if (user.getRole() == User.Role.ADMIN) {
+            throw BusinessException.forbidden("Tài khoản quản trị không thể đăng nhập bằng Google");
+        }
+
+        if (Boolean.FALSE.equals(user.getActive())) {
+            throw BusinessException.forbidden("Tài khoản đã bị khóa");
+        }
+        user.setEmailVerified(true);
+        user.setLastLoginAt(LocalDateTime.now());
+        user = userRepository.save(user);
+        log.info("User authenticated with Google: {} ({})", user.getId(), user.getRole());
         return buildAuthResponse(user);
     }
 

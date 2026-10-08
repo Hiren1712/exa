@@ -46,6 +46,7 @@ export default function ExamRoom() {
       handleSubmit(true);
     },
   });
+  const resetTimer = timer.reset;
 
   const proctor = useProctor({
     enabled: exam?.proctorEnabled ?? false,
@@ -83,14 +84,14 @@ export default function ExamRoom() {
         });
         setOptionOrder(orderByQuestion);
         setExam({ ...data, questions: shuffledQuestions });
-        timer.reset(data.durationMin * 60);
+        resetTimer(data.durationMin * 60);
       })
       .catch((err) => {
         toast('Lỗi', extractError(err), 'error');
         navigate('/');
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, navigate, resetTimer, toast]);
 
   const handleStart = async () => {
     if (!exam || !id) return;
@@ -99,7 +100,7 @@ export default function ExamRoom() {
       if (exam.lockScreen || exam.proctorEnabled) {
         try {
           await proctor.requestFullscreen();
-        } catch (error) {
+        } catch {
           if (exam.lockScreen) {
             toast('Cần bật toàn màn hình', 'Trình duyệt không cho phép vào bài thi khi chưa bật toàn màn hình.', 'error');
             return;
@@ -125,8 +126,7 @@ export default function ExamRoom() {
       const currentAnswers: Record<number, string> = {};
       exam.questions?.forEach((question, index) => {
         const questionId = question.id ?? index + 1;
-        const answer = answersRef.current[questionId];
-        if (answer) currentAnswers[questionId] = answer;
+        currentAnswers[questionId] = answersRef.current[questionId] ?? '';
       });
       void submissionApi.saveAnswers(submissionId, currentAnswers)
         .then(() => setAutoSaveErrorShown(false))
@@ -152,7 +152,7 @@ export default function ExamRoom() {
     setSubmitting(true);
     try {
       const result = await submissionApi.submit(submissionId, answers);
-      toast('Nộp bài thành công', `Điểm: ${result.totalScore}/10`, 'success');
+      toast('Nộp bài thành công', `Điểm: ${result.totalScore}/${exam.totalPoints || 10}`, 'success');
       proctor.exitFullscreen();
       navigate(`/exam/${id}/result?submissionId=${submissionId}`);
     } catch (err) {

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
-import { authApi, AuthResponse, LoginRequest, RegisterRequest, UserInfo } from '../api/auth';
+import { authApi, AuthResponse, GoogleLoginRequest, LoginRequest, RegisterRequest, UserInfo } from '../api/auth';
 import { useAuthStore } from '../store/auth';
 
 type Theme = 'light' | 'dark';
@@ -10,6 +10,7 @@ interface AuthContextValue {
   theme: Theme;
   login: (data: LoginRequest) => Promise<UserInfo>;
   register: (data: RegisterRequest) => Promise<UserInfo>;
+  googleLogin: (data: GoogleLoginRequest) => Promise<UserInfo>;
   logout: () => void;
   toggleTheme: () => void;
   updateUser: (user: UserInfo) => void;
@@ -40,11 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         setUser(JSON.parse(cachedUser));
       } catch {
-        localStorage.clear();
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        setUser(null);
       }
     }
     setLoading(false);
-  }, []);
+  }, [setUser]);
 
   // Apply theme
   useEffect(() => {
@@ -59,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('user', JSON.stringify(res.user));
     setUser(res.user);
     return res.user;
-  }, []);
+  }, [setUser]);
 
   const register = useCallback(async (data: RegisterRequest) => {
     const res: AuthResponse = await authApi.register(data);
@@ -68,14 +72,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('user', JSON.stringify(res.user));
     setUser(res.user);
     return res.user;
-  }, []);
+  }, [setUser]);
+
+  const googleLogin = useCallback(async (data: GoogleLoginRequest) => {
+    const res: AuthResponse = await authApi.googleLogin(data);
+    localStorage.setItem('accessToken', res.accessToken);
+    localStorage.setItem('refreshToken', res.refreshToken);
+    localStorage.setItem('user', JSON.stringify(res.user));
+    setUser(res.user);
+    return res.user;
+  }, [setUser]);
 
   const logout = useCallback(() => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     setUser(null);
-  }, []);
+  }, [setUser]);
 
   const updateUser = useCallback((updatedUser: UserInfo) => {
     localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -87,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, theme, login, register, logout, toggleTheme, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, theme, login, register, googleLogin, logout, toggleTheme, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -66,7 +66,12 @@ export default function Reports() {
     }
   };
 
-  const distribution = report?.distribution.map((count, index) => ({ score: `${index}–${index + 1}`, count })) || [];
+  const distribution = report?.distribution.map((count, index) => {
+    const bucketWidth = (report.totalPoints || 10) / report.distribution.length;
+    const start = (index * bucketWidth).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
+    const end = ((index + 1) * bucketWidth).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
+    return { score: `${start}–${end}`, count };
+  }) || [];
 
   return (
     <div className="space-y-6">

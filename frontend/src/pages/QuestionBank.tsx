@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
@@ -38,7 +38,7 @@ export default function QuestionBank() {
   const [editing, setEditing] = useState<Question | null>(null);
   const [form, setForm] = useState<Question>(emptyQuestion);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const result = await questionApi.list(filter);
@@ -50,11 +50,11 @@ export default function QuestionBank() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, toast]);
 
   useEffect(() => {
     void load();
-  }, [filter]);
+  }, [load]);
 
   const beginCreate = () => {
     setEditing(null);

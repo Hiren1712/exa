@@ -1,0 +1,12 @@
+.git
+.env
+.env.*
+**/.env
+**/.env.*
+**/node_modules
+**/target
+**/dist
+**/uploads
+**/logs
+**/*.log
+certbot

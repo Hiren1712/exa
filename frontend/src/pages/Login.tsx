@@ -6,18 +6,20 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Icon } from '../components/Icon';
 import { extractError } from '../api/client';
+import { firebaseConfigured, signInWithGoogle } from '../lib/firebase';
 
 type Mode = 'login' | 'register';
 
 export default function Login() {
   const [mode, setMode] = useState<Mode>('login');
-  const [email, setEmail] = useState('teacher@exa.vn');
-  const [password, setPassword] = useState('password');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<'TEACHER' | 'STUDENT'>('TEACHER');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const { login, register } = useAuth();
+  const { login, register, googleLogin } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -35,6 +37,33 @@ export default function Login() {
       navigate('/');
     } catch (err) {
       toast('Lỗi', extractError(err), 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      const idToken = await signInWithGoogle();
+      const user = await googleLogin({
+        idToken,
+        ...(mode === 'register' ? { role } : {}),
+      });
+      toast('Đăng nhập thành công', `Xin chào ${user.fullName}`, 'success');
+      navigate('/');
+    } catch (err) {
+      const code = typeof err === 'object' && err !== null && 'code' in err
+        ? String(err.code)
+        : '';
+      const messages: Record<string, string> = {
+        'auth/popup-closed-by-user': 'Bạn đã đóng cửa sổ đăng nhập Google',
+        'auth/unauthorized-domain': 'Tên miền này chưa được cho phép trong Firebase Authentication',
+        'auth/popup-blocked': 'Trình duyệt đã chặn cửa sổ Google. Hãy cho phép popup rồi thử lại',
+        'auth/network-request-failed': 'Không thể kết nối dịch vụ Google. Vui lòng thử lại',
+      };
+      const message = messages[code] ?? (err instanceof Error ? err.message : extractError(err));
+      toast('Lỗi đăng nhập Google', message, 'error');
     } finally {
       setLoading(false);
     }
@@ -71,6 +100,7 @@ export default function Login() {
           <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
             <button
               onClick={() => setMode('login')}
+              disabled={loading}
               className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
                 mode === 'login'
                   ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
@@ -81,6 +111,7 @@ export default function Login() {
             </button>
             <button
               onClick={() => setMode('register')}
+              disabled={loading}
               className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
                 mode === 'register'
                   ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
@@ -105,7 +136,8 @@ export default function Login() {
             <Input
               label="Email"
               type="email"
-              placeholder="you@exa.vn"
+              placeholder="you@example.com"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -113,11 +145,23 @@ export default function Login() {
 
             <Input
               label="Mật khẩu"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               placeholder="••••••"
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              rightElement={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  aria-pressed={showPassword}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  <Icon name={showPassword ? 'eyeOff' : 'eye'} size={18} />
+                </button>
+              }
             />
 
             {mode === 'register' && (
@@ -137,7 +181,10 @@ export default function Login() {
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
                       }`}
                     >
-                      {r === 'TEACHER' ? '👩‍🏫 Giáo viên' : '🎓 Học sinh'}
+                      <span className="inline-flex items-center justify-center gap-2">
+                        <Icon name={r === 'TEACHER' ? 'user' : 'graduationCap'} size={16} />
+                        {r === 'TEACHER' ? 'Giáo viên' : 'Học sinh'}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -150,40 +197,39 @@ export default function Login() {
               size="lg"
               block
               loading={loading}
-              icon={<Icon name="logout" size={16} />}
+              icon={<Icon name="login" size={16} />}
             >
               {mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
             </Button>
           </form>
 
-          {/* Demo accounts */}
-          {mode === 'login' && (
-            <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
-              <p className="text-xs text-slate-400 text-center mb-3">Tài khoản demo</p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <button
-                  onClick={() => {
-                    setEmail('teacher@exa.vn');
-                    setPassword('password');
-                  }}
-                  className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left"
-                >
-                  <div className="font-semibold">👩‍🏫 Giáo viên</div>
-                  <div className="text-[10px] text-slate-400">teacher@exa.vn</div>
-                </button>
-                <button
-                  onClick={() => {
-                    setEmail('student@exa.vn');
-                    setPassword('password');
-                  }}
-                  className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left"
-                >
-                  <div className="font-semibold">🎓 Học sinh</div>
-                  <div className="text-[10px] text-slate-400">student@exa.vn</div>
-                </button>
-              </div>
+          <div className="relative my-5">
+            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+              <div className="w-full border-t border-slate-200 dark:border-slate-700" />
             </div>
+            <div className="relative flex justify-center">
+              <span className="bg-white dark:bg-slate-900 px-3 text-xs text-slate-400">
+                hoặc tiếp tục với
+              </span>
+            </div>
+          </div>
+          <Button
+            type="button"
+            block
+            disabled={!firebaseConfigured}
+            loading={loading}
+            icon={<Icon name="google" size={18} />}
+            onClick={handleGoogleLogin}
+            aria-label="Đăng nhập bằng Google"
+          >
+            Google
+          </Button>
+          {!firebaseConfigured && (
+            <p className="mt-3 text-center text-xs text-slate-400">
+              Đăng nhập Google chưa được cấu hình.
+            </p>
           )}
+
         </div>
 
         <p className="text-center text-xs text-slate-400 mt-6">

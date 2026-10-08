@@ -54,8 +54,16 @@ public class ReportController {
         List<Submission> graded = submissions.stream()
                 .filter(submission -> submission.getSubmittedAt() != null && submission.getTotalScore() != null)
                 .toList();
+        Map<Long, BigDecimal> totalPointsByExam = exams.stream().collect(Collectors.toMap(
+                Exam::getId,
+                exam -> exam.getTotalPoints() == null || exam.getTotalPoints().signum() <= 0
+                        ? BigDecimal.TEN : exam.getTotalPoints()));
         BigDecimal average = graded.isEmpty() ? null
-                : graded.stream().map(Submission::getTotalScore).reduce(BigDecimal.ZERO, BigDecimal::add)
+                : graded.stream()
+                        .map(submission -> submission.getTotalScore().multiply(BigDecimal.TEN)
+                                .divide(totalPointsByExam.getOrDefault(submission.getExamId(), BigDecimal.TEN),
+                                        2, RoundingMode.HALF_UP))
+                        .reduce(BigDecimal.ZERO, BigDecimal::add)
                         .divide(BigDecimal.valueOf(graded.size()), 2, RoundingMode.HALF_UP);
         return ResponseEntity.ok(ApiResponse.ok(new TeacherSummary(exams.size(),
                 submissions.stream().filter(submission -> submission.getSubmittedAt() != null).count(),
@@ -67,6 +75,10 @@ public class ReportController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> examReport(
             @PathVariable Long examId, @org.springframework.security.core.annotation.AuthenticationPrincipal CurrentUser user) {
         verifyOwnership(examId, user);
+        Exam exam = examRepository.findByIdAndDeletedAtIsNull(examId)
+                .orElseThrow(() -> BusinessException.notFound("Đề thi không tồn tại"));
+        BigDecimal totalPoints = exam.getTotalPoints() == null || exam.getTotalPoints().signum() <= 0
+                ? BigDecimal.TEN : exam.getTotalPoints();
         List<Submission> subs = submissionRepository.findByExamIdOrderBySubmittedAtDesc(examId);
         List<Submission> graded = subs.stream()
                 .filter(s -> s.getTotalScore() != null)
@@ -74,7 +86,7 @@ public class ReportController {
 
         BigDecimal avg = BigDecimal.ZERO;
         BigDecimal max = BigDecimal.ZERO;
-        BigDecimal min = BigDecimal.TEN;
+        BigDecimal min = totalPoints;
         int passCount = 0;
         int[] distribution = new int[10];
 
@@ -83,8 +95,11 @@ public class ReportController {
             avg = avg.add(score);
             if (score.compareTo(max) > 0) max = score;
             if (score.compareTo(min) < 0) min = score;
-            if (score.compareTo(new BigDecimal("5")) >= 0) passCount++;
-            int bucket = Math.min(9, score.intValue());
+            if (score.compareTo(totalPoints.divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP)) >= 0) {
+                passCount++;
+            }
+            int bucket = score.multiply(BigDecimal.TEN).divide(totalPoints, 0, RoundingMode.DOWN).intValue();
+            bucket = Math.max(0, Math.min(9, bucket));
             distribution[bucket]++;
         }
 
@@ -110,6 +125,7 @@ public class ReportController {
 
         Map<String, Object> report = new HashMap<>();
         report.put("examId", examId);
+        report.put("totalPoints", totalPoints);
         report.put("totalSubmissions", subs.stream().filter(s -> s.getSubmittedAt() != null).count());
         report.put("gradedSubmissions", graded.size());
         report.put("averageScore", avg);

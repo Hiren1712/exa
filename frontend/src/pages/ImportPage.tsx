@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { DragEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
@@ -14,10 +15,32 @@ export default function ImportPage() {
   const [grade, setGrade] = useState(12);
   const [unit, setUnit] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const chooseFile = (candidate?: File) => {
+    if (!candidate) return;
+    const extension = candidate.name.split('.').pop()?.toLowerCase();
+    if (!extension || !['docx', 'pdf', 'xlsx', 'xls'].includes(extension)) {
+      toast('Định dạng không hỗ trợ', 'Chỉ nhận file DOCX, PDF, XLSX hoặc XLS.', 'warn');
+      return;
+    }
+    if (candidate.size > 20 * 1024 * 1024) {
+      toast('File quá lớn', 'Dung lượng file tối đa là 20MB.', 'warn');
+      return;
+    }
+    setFile(candidate);
+  };
+
+  const handleDrop = (event: DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    setDragging(false);
+    chooseFile(event.dataTransfer.files[0]);
+  };
 
   const handleUpload = async () => {
     if (!file) {
@@ -76,12 +99,15 @@ export default function ImportPage() {
       toast('Chưa chọn câu nào', '', 'warn');
       return;
     }
+    setSaving(true);
     try {
       const count = await importApi.saveToBank(preview.jobId, questions, subject, grade, unit);
       toast('Đã lưu', `${count} câu hỏi vào ngân hàng`, 'success');
       navigate('/questions');
     } catch (err) {
       toast('Lỗi', extractError(err), 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -123,12 +149,24 @@ export default function ImportPage() {
             </div>
           </div>
 
-          <label className="block border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-12 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50/50 transition-all">
+          <label
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={handleDrop}
+            className={`block border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all ${
+              dragging
+                ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/30'
+                : 'border-slate-300 dark:border-slate-700 hover:border-blue-500 hover:bg-blue-50/50'
+            }`}
+          >
             <input
               type="file"
               accept=".docx,.pdf,.xlsx,.xls"
               className="hidden"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              onChange={(event) => chooseFile(event.target.files?.[0])}
             />
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-500 text-white flex items-center justify-center mx-auto mb-4 shadow-xl">
               <Icon name="upload" size={28} />
@@ -137,7 +175,7 @@ export default function ImportPage() {
               {file ? file.name : 'Kéo thả file vào đây hoặc bấm để chọn'}
             </div>
             <div className="text-xs text-slate-500">
-              Hỗ trợ: .docx, .pdf, .xlsx — Tối đa 20MB
+              Hỗ trợ: .docx, .pdf, .xlsx, .xls — Tối đa 20MB
             </div>
           </label>
 
@@ -151,6 +189,15 @@ export default function ImportPage() {
           >
             {uploading ? 'AI đang xử lý...' : 'Bắt đầu import bằng AI'}
           </Button>
+          {uploading && (
+            <div
+              role="progressbar"
+              aria-label="Đang phân tích tài liệu"
+              className="h-1.5 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950"
+            >
+              <div className="h-full w-1/3 animate-pulse rounded-full bg-blue-600" />
+            </div>
+          )}
         </div>
       )}
 
@@ -175,6 +222,8 @@ export default function ImportPage() {
               </Button>
               <Button
                 variant="primary"
+                loading={saving}
+                disabled={selected.size === 0}
                 onClick={handleSave}
                 icon={<Icon name="save" size={16} />}
               >

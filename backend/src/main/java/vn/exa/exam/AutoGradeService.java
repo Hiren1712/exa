@@ -20,16 +20,16 @@ public class AutoGradeService {
      *
      * @param questions danh sách câu hỏi của đề
      * @param answers   map: questionId → đáp án học sinh chọn (A/B/C/D hoặc nội dung)
-     * @return điểm khách quan tổng (thang 10); câu tự luận chờ giáo viên chấm
+     * @param pointsByQuestion điểm tối đa đã phân bổ cho từng câu hỏi
+     * @return điểm khách quan theo thang điểm của đề; câu tự luận chờ giáo viên chấm
      */
-    public BigDecimal grade(List<Question> questions, Map<Long, String> answers) {
+    public BigDecimal grade(List<Question> questions, Map<Long, String> answers,
+                            Map<Long, BigDecimal> pointsByQuestion) {
         if (questions == null || questions.isEmpty()) {
             return BigDecimal.ZERO;
         }
 
-        int totalQuestions = questions.size();
-        double pointsPerQuestion = 10.0 / totalQuestions;
-        double totalEarned = 0;
+        BigDecimal totalEarned = BigDecimal.ZERO;
 
         for (Question q : questions) {
             String studentAnswer = answers.get(q.getId());
@@ -37,31 +37,29 @@ public class AutoGradeService {
                 continue; // Không trả lời → 0 điểm
             }
 
+            boolean correct = false;
             switch (q.getType()) {
                 case MCQ, TRUE_FALSE -> {
-                    // So sánh đáp án trắc nghiệm
-                    if (q.getCorrectAnswer() != null
-                            && q.getCorrectAnswer().equalsIgnoreCase(studentAnswer.trim())) {
-                        totalEarned += pointsPerQuestion;
-                    }
+                    correct = q.getCorrectAnswer() != null
+                            && q.getCorrectAnswer().equalsIgnoreCase(studentAnswer.trim());
                 }
                 case SHORT_ANSWER -> {
-                    // So sánh đáp án ngắn (không phân biệt hoa thường)
-                    if (q.getAnswerText() != null
-                            && normalize(q.getAnswerText()).equals(normalize(studentAnswer))) {
-                        totalEarned += pointsPerQuestion;
-                    }
+                    correct = q.getAnswerText() != null
+                            && normalize(q.getAnswerText()).equals(normalize(studentAnswer));
                 }
                 case ESSAY -> {
                     // Essay responses are intentionally left for manual grading.
                 }
             }
+            if (correct) {
+                totalEarned = totalEarned.add(
+                        pointsByQuestion.getOrDefault(q.getId(), BigDecimal.ZERO));
+            }
         }
 
-        BigDecimal score = BigDecimal.valueOf(totalEarned)
-                .setScale(1, RoundingMode.HALF_UP);
+        BigDecimal score = totalEarned.setScale(2, RoundingMode.HALF_UP);
 
-        log.debug("Auto graded: {}/{} questions, score = {}", answers.size(), totalQuestions, score);
+        log.debug("Auto graded: {}/{} questions, score = {}", answers.size(), questions.size(), score);
         return score;
     }
 

@@ -43,9 +43,12 @@ export function truncate(text: string, max = 80): string {
 }
 
 // Debounce
-export function debounce<T extends (...args: any[]) => void>(fn: T, ms = 300) {
+export function debounce<Args extends unknown[]>(
+  fn: (...args: Args) => void,
+  ms = 300,
+): (...args: Args) => void {
   let timer: ReturnType<typeof setTimeout> | null = null;
-  return (...args: Parameters<T>) => {
+  return (...args: Args) => {
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => fn(...args), ms);
   };

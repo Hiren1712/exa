@@ -84,7 +84,7 @@ export default function Dashboard() {
   const stats = isTeacher
     ? [
         { icon: 'file', label: 'Đề thi', value: exams.length, color: 'from-blue-500 to-indigo-500' },
-        { icon: 'activity', label: 'Chuỗi học tập', value: `${studyStreak} ngày`, color: 'from-purple-500 to-pink-500' },
+      { icon: 'building', label: 'Lớp học', value: classrooms.length, color: 'from-purple-500 to-pink-500' },
         { icon: 'check', label: 'Bài nộp', value: teacherSubmissionCount, color: 'from-emerald-500 to-teal-500' },
         { icon: 'trophy', label: 'Điểm TB', value: teacherAverage, color: 'from-amber-500 to-orange-500' },
       ]
@@ -92,7 +92,7 @@ export default function Dashboard() {
         { icon: 'trophy', label: 'Điểm trung bình', value: averageScore, color: 'from-amber-500 to-orange-500' },
         { icon: 'check', label: 'Bài đã làm', value: submittedExamIds.size, color: 'from-emerald-500 to-teal-500' },
         { icon: 'clock', label: 'Bài đang chờ', value: exams.filter((exam) => !submittedExamIds.has(exam.id)).length, color: 'from-blue-500 to-indigo-500' },
-        { icon: 'building', label: 'Lớp học', value: classrooms.length, color: 'from-purple-500 to-pink-500' },
+        { icon: 'activity', label: 'Chuỗi học tập', value: `${studyStreak} ngày`, color: 'from-purple-500 to-pink-500' },
       ];
 
   return (

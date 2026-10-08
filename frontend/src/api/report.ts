@@ -2,6 +2,7 @@ import { apiClient, ApiResponse } from './client';
 
 export interface ExamReport {
   examId: number;
+  totalPoints: number;
   totalSubmissions: number;
   averageScore: number;
   maxScore: number;

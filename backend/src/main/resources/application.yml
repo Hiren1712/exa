@@ -72,6 +72,9 @@ exa:
     secret: ${JWT_SECRET}
     access-expiration-ms: 86400000        # 24 giờ
     refresh-expiration-ms: 604800000      # 7 ngày
+  firebase:
+    project-id: ${FIREBASE_PROJECT_ID:}
+    service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:}
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
   gemini:

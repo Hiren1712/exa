@@ -44,7 +44,8 @@ export default function ExamResult() {
   }
 
   const score = review.totalScore ?? 0;
-  const pct = Math.max(0, Math.min(100, (score / 10) * 100));
+  const totalPoints = review.totalPoints || 10;
+  const pct = Math.max(0, Math.min(100, (score / totalPoints) * 100));
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -66,7 +67,7 @@ export default function ExamResult() {
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 text-center">
           <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center mx-auto mb-2"><Icon name="check" size={20} /></div>
-          <div className="text-2xl font-extrabold text-slate-900 dark:text-white">{review.totalScore ?? '—'} / 10</div>
+          <div className="text-2xl font-extrabold text-slate-900 dark:text-white">{review.totalScore ?? '—'} / {totalPoints}</div>
           <div className="text-xs text-slate-500">Điểm số</div>
         </div>
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 text-center">

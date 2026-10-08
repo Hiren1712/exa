@@ -11,6 +11,8 @@ export function useExamTimer({ durationMin, onExpire, autoStart = true }: UseExa
   const [running, setRunning] = useState(autoStart);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onExpireRef = useRef(onExpire);
+  const durationRef = useRef(durationMin);
+  durationRef.current = durationMin;
 
   useEffect(() => {
     onExpireRef.current = onExpire;
@@ -40,10 +42,10 @@ export function useExamTimer({ durationMin, onExpire, autoStart = true }: UseExa
   const pause = useCallback(() => setRunning(false), []);
   const reset = useCallback(
     (seconds?: number) => {
-      setRemaining(seconds ?? durationMin * 60);
+      setRemaining(seconds ?? durationRef.current * 60);
       setRunning(false);
     },
-    [durationMin],
+    [],
   );
 
   const formatTime = useCallback((s: number) => {

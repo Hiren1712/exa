@@ -6,11 +6,11 @@ FROM maven:3.9-eclipse-temurin-21-alpine AS builder
 WORKDIR /build
 
 # Copy pom.xml trước để cache dependencies
-COPY pom.xml .
+COPY backend/pom.xml .
 RUN mvn -B dependency:go-offline -DskipTests
 
 # Copy source và build
-COPY src ./src
+COPY backend/src ./src
 RUN mvn -B clean package -DskipTests
 
 # ============================================================
@@ -43,7 +43,7 @@ EXPOSE 8080
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8080/api/actuator/health || exit 1
+    CMD curl -f "http://localhost:${PORT:-8080}/api/actuator/health" || exit 1
 
 # JVM tuning cho VPS 2GB
 ENTRYPOINT ["java", \

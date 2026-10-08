@@ -10,6 +10,7 @@ import vn.exa.common.BusinessException;
 import vn.exa.exam.AutoGradeService;
 import vn.exa.exam.Exam;
 import vn.exa.exam.ExamRepository;
+import vn.exa.exam.ExamQuestion;
 import vn.exa.exam.ExamQuestionRepository;
 import vn.exa.classroom.ClassroomMember;
 import vn.exa.classroom.ClassroomMemberRepository;
@@ -92,8 +93,10 @@ public class SubmissionService {
             throw BusinessException.badRequest("Bài đã được nộp rồi");
         }
 
-        List<Long> examQuestionIds = examQuestionRepository.findByExamIdOrderByOrderIndexAsc(sub.getExamId())
-                .stream().map(link -> link.getQuestionId()).toList();
+        List<ExamQuestion> examQuestions = examQuestionRepository
+                .findByExamIdOrderByOrderIndexAsc(sub.getExamId());
+        List<Long> examQuestionIds = examQuestions.stream()
+                .map(ExamQuestion::getQuestionId).toList();
         if (answers == null) {
             throw BusinessException.badRequest("Danh sách câu trả lời không hợp lệ");
         }
@@ -106,7 +109,9 @@ public class SubmissionService {
             throw new IllegalStateException("Không thể lưu đáp án bài thi", e);
         }
         List<Question> questions = questionRepository.findAllById(examQuestionIds);
-        BigDecimal score = autoGradeService.grade(questions, answers);
+        Map<Long, BigDecimal> pointsByQuestion = examQuestions.stream().collect(
+                java.util.stream.Collectors.toMap(ExamQuestion::getQuestionId, ExamQuestion::getPoints));
+        BigDecimal score = autoGradeService.grade(questions, answers, pointsByQuestion);
         boolean hasEssay = questions.stream().anyMatch(question -> question.getType() == Question.Type.ESSAY);
         sub.setTotalScore(hasEssay ? null : score);
 
@@ -197,7 +202,10 @@ public class SubmissionService {
                 }).toList();
         boolean needsManualGrading = submission.getStatus() == Submission.Status.SUBMITTED
                 && questions.stream().anyMatch(question -> question.type().equals(Question.Type.ESSAY.name()));
-        return new SubmissionReview(exam.getTitle(), submission.getTotalScore(), submission.getDurationSec(),
+        BigDecimal totalPoints = exam.getTotalPoints() == null || exam.getTotalPoints().signum() <= 0
+                ? BigDecimal.TEN : exam.getTotalPoints();
+        return new SubmissionReview(exam.getTitle(), submission.getTotalScore(), totalPoints,
+                submission.getDurationSec(),
                 revealAnswers, needsManualGrading, submission.getTeacherFeedback(), questions);
     }
 
@@ -240,7 +248,11 @@ public class SubmissionService {
                                                 answers.get(String.valueOf(question.id())),
                                                 null, null, null))
                                         .toList();
+                                BigDecimal totalPoints = exam.getTotalPoints() == null
+                                        || exam.getTotalPoints().signum() <= 0
+                                        ? BigDecimal.TEN : exam.getTotalPoints();
                                 return new GradingItem(submission.getId(), exam.getId(), exam.getTitle(),
+                                        totalPoints,
                                         submission.getStudentId(), submission.getSubmittedAt(),
                                         submission.getTotalScore(), responses);
                             });
@@ -265,6 +277,10 @@ public class SubmissionService {
         }
         if (submission.getStatus() != Submission.Status.SUBMITTED) {
             throw BusinessException.badRequest("Bài thi không còn ở trạng thái chờ chấm");
+        }
+        BigDecimal maxScore = exam.getTotalPoints() == null ? BigDecimal.TEN : exam.getTotalPoints();
+        if (score == null || score.compareTo(BigDecimal.ZERO) < 0 || score.compareTo(maxScore) > 0) {
+            throw BusinessException.badRequest("Điểm phải nằm trong khoảng 0 đến " + maxScore);
         }
         submission.setTotalScore(score);
         submission.setTeacherFeedback(feedback);
@@ -325,11 +341,13 @@ public class SubmissionService {
         return getProctorSummary(submissionId);
     }
 
-    public record SubmissionReview(String examTitle, BigDecimal totalScore, Integer durationSec,
+    public record SubmissionReview(String examTitle, BigDecimal totalScore, BigDecimal totalPoints,
+                                   Integer durationSec,
                                    boolean answersRevealed, boolean needsManualGrading,
                                    String teacherFeedback, List<ReviewQuestion> questions) {}
 
-    public record GradingItem(Long submissionId, Long examId, String examTitle, Long studentId,
+    public record GradingItem(Long submissionId, Long examId, String examTitle, BigDecimal totalPoints,
+                              Long studentId,
                               LocalDateTime submittedAt, BigDecimal currentScore,
                               List<ReviewQuestion> essayResponses) {}
 

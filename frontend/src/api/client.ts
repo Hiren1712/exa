@@ -49,6 +49,15 @@ export interface ApiResponse<T> {
 export function extractError(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as ApiResponse<unknown> | undefined;
+    if (!error.response && error.code === 'ERR_NETWORK') {
+      return 'Không thể kết nối máy chủ. Kiểm tra địa chỉ API, trạng thái backend và cấu hình CORS.';
+    }
+    if (error.response?.status === 405) {
+      return 'Máy chủ từ chối phương thức đăng nhập (HTTP 405). Nếu đang dùng Cloudflare Pages, hãy đặt VITE_API_URL thành URL backend có hậu tố /api rồi build và deploy lại.';
+    }
+    if (error.response?.status === 404) {
+      return 'Không tìm thấy API đăng nhập. Kiểm tra VITE_API_URL có trỏ đến backend và bao gồm đường dẫn /api.';
+    }
     return data?.message || error.message || 'Lỗi không xác định';
   }
   return 'Lỗi không xác định';

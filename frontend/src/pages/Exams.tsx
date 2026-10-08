@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
@@ -21,7 +21,7 @@ export default function Exams() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const loadExams = async () => {
+  const loadExams = useCallback(async () => {
     setLoading(true);
     try {
       const data = await examApi.list();
@@ -31,11 +31,11 @@ export default function Exams() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
-    loadExams();
-  }, []);
+    void loadExams();
+  }, [loadExams]);
 
   const handleDelete = async (id: number, title: string) => {
     if (!confirm(`Xóa đề thi "${title}"?`)) return;

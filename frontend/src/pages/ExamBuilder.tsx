@@ -144,7 +144,7 @@ export default function ExamBuilder() {
     return () => window.clearInterval(timer);
   }, [persistDraft]);
 
-  const loadQuestions = async () => {
+  const loadQuestions = useCallback(async () => {
     setPickerLoading(true);
     try {
       const result = await questionApi.list({ ...pickerFilter, subject: pickerFilter.subject || form.subject });
@@ -154,11 +154,11 @@ export default function ExamBuilder() {
     } finally {
       setPickerLoading(false);
     }
-  };
+  }, [pickerFilter, form.subject, toast]);
 
   useEffect(() => {
     if (pickerOpen) void loadQuestions();
-  }, [pickerOpen, pickerFilter]);
+  }, [pickerOpen, loadQuestions]);
 
   const toggleQuestion = (question: Question) => {
     if (!question.id) return;

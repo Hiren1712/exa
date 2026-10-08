@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import vn.exa.auth.dto.AuthResponse;
+import vn.exa.auth.dto.GoogleLoginRequest;
 import vn.exa.auth.dto.LoginRequest;
 import vn.exa.auth.dto.RegisterRequest;
 import vn.exa.common.ApiResponse;
@@ -37,6 +38,14 @@ public class AuthController {
             @Valid @RequestBody LoginRequest req) {
         AuthResponse response = authService.login(req);
         return ResponseEntity.ok(ApiResponse.ok(response, "Đăng nhập thành công"));
+    }
+
+    @PostMapping("/google")
+    @Operation(summary = "Đăng nhập bằng Google")
+    public ResponseEntity<ApiResponse<AuthResponse>> googleLogin(
+            @Valid @RequestBody GoogleLoginRequest req) {
+        AuthResponse response = authService.googleLogin(req);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Đăng nhập Google thành công"));
     }
 
     @GetMapping("/me")

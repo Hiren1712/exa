@@ -4,6 +4,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import vn.exa.common.BusinessException;
 import vn.exa.question.QuestionRepository;
@@ -233,18 +240,31 @@ public class ExamService {
     // ===== DTO =====
     @lombok.Data
     public static class ExamRequest {
+        @NotBlank
+        @Size(max = 200)
         private String title;
+        @Size(max = 4000)
         private String description;
+        @NotBlank
+        @Size(max = 60)
         private String subject;
         private Long classroomId;
+        @Min(1)
+        @Max(600)
         private Integer durationMin;
+        @DecimalMin("1.0")
+        @DecimalMax("100.0")
         private BigDecimal totalPoints;
         private Boolean shuffleQuestions;
         private Boolean shuffleOptions;
         private Boolean proctorEnabled;
         private Boolean lockScreen;
+        @Min(1)
+        @Max(20)
         private Integer maxAttempts;
+        @Size(max = 128)
         private String password;
+        @Pattern(regexp = "AFTER_SUBMIT|AFTER_CLOSE|NEVER")
         private String showAnswerAfter;
         private List<Long> questionIds;
     }
