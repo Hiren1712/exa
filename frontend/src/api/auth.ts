@@ -5,6 +5,7 @@ export interface UserInfo {
   email: string;
   fullName: string;
   avatarUrl?: string;
+  coverImageUrl?: string;
   phone?: string;
   role: 'ADMIN' | 'TEACHER' | 'STUDENT';
   plan: 'FREE' | 'PRO' | 'ENTERPRISE';

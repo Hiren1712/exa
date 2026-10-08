@@ -45,9 +45,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
         setUser(null);
+        setLoading(false);
+        return;
       }
     }
-    setLoading(false);
+
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+    authApi.me()
+      .then((freshUser) => {
+        if (!active) return;
+        localStorage.setItem('user', JSON.stringify(freshUser));
+        setUser(freshUser);
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          console.error('Không thể đồng bộ hồ sơ từ máy chủ:', error instanceof Error ? error.message : error);
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [setUser]);
 
   // Apply theme

@@ -170,12 +170,11 @@ public class AuthService {
 
     @Transactional
     public AuthResponse.UserInfo updateProfile(
-            Long userId, String fullName, String phone, LocalDate dateOfBirth, String avatarUrl) {
+            Long userId, String fullName, String phone, LocalDate dateOfBirth) {
         User user = getById(userId);
         user.setFullName(fullName.trim());
         user.setPhone(phone == null || phone.isBlank() ? null : phone.trim());
         user.setDateOfBirth(dateOfBirth);
-        if (avatarUrl != null) user.setAvatarUrl(avatarUrl);
         return toUserInfo(userRepository.save(user));
     }
 
@@ -222,12 +221,13 @@ public class AuthService {
                 .build();
     }
 
-    private AuthResponse.UserInfo toUserInfo(User user) {
+    public AuthResponse.UserInfo toUserInfo(User user) {
         return AuthResponse.UserInfo.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .avatarUrl(user.getAvatarUrl())
+                .coverImageUrl(user.getCoverImageUrl())
                 .phone(user.getPhone())
                 .role(user.getRole().name())
                 .plan(user.getPlan().name())

@@ -54,19 +54,7 @@ public class AuthController {
             @AuthenticationPrincipal CurrentUser currentUser) {
 
         User user = authService.getById(currentUser.getId());
-
-        AuthResponse.UserInfo info = AuthResponse.UserInfo.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .fullName(user.getFullName())
-                .avatarUrl(user.getAvatarUrl())
-                .phone(user.getPhone())
-                .role(user.getRole().name())
-                .plan(user.getPlan().name())
-                .dateOfBirth(user.getDateOfBirth() == null ? null : user.getDateOfBirth().toString())
-                .build();
-
-        return ResponseEntity.ok(ApiResponse.ok(info));
+        return ResponseEntity.ok(ApiResponse.ok(authService.toUserInfo(user)));
     }
 
     @PostMapping("/refresh")

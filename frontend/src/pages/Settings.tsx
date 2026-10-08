@@ -1,15 +1,17 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { useToast } from '../components/Toast';
-import { userApi } from '../api/user';
+import { profileImageUrl, userApi } from '../api/user';
 import { extractError } from '../api/client';
 
 export default function Settings() {
   const { user, theme, toggleTheme, logout, updateUser } = useAuth();
   const { toast } = useToast();
+  const avatarInput = useRef<HTMLInputElement>(null);
+  const coverInput = useRef<HTMLInputElement>(null);
   const [fullName, setFullName] = useState(user?.fullName || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [dateOfBirth, setDateOfBirth] = useState(user?.dateOfBirth || '');
@@ -18,6 +20,7 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
+  const [savingImage, setSavingImage] = useState<'avatar' | 'cover' | null>(null);
 
   useEffect(() => {
     setFullName(user?.fullName || '');
@@ -40,6 +43,46 @@ export default function Settings() {
       toast('Không lưu được thông tin', extractError(err), 'error');
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const uploadImage = async (type: 'avatar' | 'cover', event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    const maxBytes = type === 'avatar' ? 3 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (!['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(file.type)) {
+      toast('Định dạng ảnh chưa hỗ trợ', 'Chọn ảnh PNG, JPEG, GIF hoặc WebP', 'warn');
+      return;
+    }
+    if (file.size > maxBytes) {
+      toast('Ảnh quá lớn', `Ảnh ${type === 'avatar' ? 'đại diện' : 'bìa'} tối đa ${maxBytes / (1024 * 1024)} MB`, 'warn');
+      return;
+    }
+
+    setSavingImage(type);
+    try {
+      const updated = await userApi.uploadProfileImage(type, file);
+      updateUser(updated);
+      toast('Đã lưu ảnh', `${type === 'avatar' ? 'Ảnh đại diện' : 'Ảnh bìa'} đã được đồng bộ với tài khoản`, 'success');
+    } catch (err) {
+      toast('Không lưu được ảnh', extractError(err), 'error');
+    } finally {
+      setSavingImage(null);
+    }
+  };
+
+  const removeImage = async (type: 'avatar' | 'cover') => {
+    setSavingImage(type);
+    try {
+      const updated = await userApi.deleteProfileImage(type);
+      updateUser(updated);
+      toast('Đã xóa ảnh', `${type === 'avatar' ? 'Ảnh đại diện' : 'Ảnh bìa'} đã được xóa khỏi hồ sơ`, 'success');
+    } catch (err) {
+      toast('Không xóa được ảnh', extractError(err), 'error');
+    } finally {
+      setSavingImage(null);
     }
   };
 
@@ -74,14 +117,94 @@ export default function Settings() {
         <p className="text-sm text-slate-500 mt-0.5">Quản lý hồ sơ, bảo mật và tùy chọn giao diện</p>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 text-center">
-          <div className="w-24 h-24 rounded-full mx-auto mb-4 bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-3xl font-bold shadow-xl">
-            {user?.fullName?.trim().charAt(0).toUpperCase() || <Icon name="user" size={32} />}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div
+          className="relative h-36 sm:h-48 bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 bg-cover bg-center"
+          style={user?.coverImageUrl ? { backgroundImage: `url("${profileImageUrl(user.coverImageUrl)}")` } : undefined}
+        >
+          {user?.coverImageUrl && <div className="absolute inset-0 bg-slate-950/10" />}
+          <div className="absolute right-4 top-4 flex gap-2">
+            <button
+              type="button"
+              disabled={savingImage !== null}
+              onClick={() => coverInput.current?.click()}
+              className="flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow transition hover:bg-white disabled:opacity-60"
+            >
+              <Icon name="camera" size={16} />
+              {savingImage === 'cover' ? 'Đang lưu...' : 'Đổi ảnh bìa'}
+            </button>
+            {user?.coverImageUrl && (
+              <button
+                type="button"
+                disabled={savingImage !== null}
+                aria-label="Xóa ảnh bìa"
+                onClick={() => void removeImage('cover')}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-slate-600 shadow transition hover:text-red-500 disabled:opacity-60"
+              >
+                <Icon name="trash" size={16} />
+              </button>
+            )}
           </div>
-          <h2 className="font-bold text-slate-900 dark:text-white">{user?.fullName}</h2>
-          <p className="text-xs text-slate-500 mt-1">{user?.email}</p>
-          <div className="flex flex-wrap justify-center gap-2 mt-3">
+        </div>
+        <div className="flex flex-wrap items-center gap-4 px-5 pb-5">
+          <div className="relative -mt-11 h-24 w-24 shrink-0 overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-blue-500 to-indigo-600 text-3xl font-bold text-white shadow-lg dark:border-slate-900">
+            <div className="flex h-full w-full items-center justify-center">
+              {user?.fullName?.trim().charAt(0).toUpperCase() || <Icon name="user" size={32} />}
+            </div>
+            {user?.avatarUrl && (
+              <img
+                src={profileImageUrl(user.avatarUrl)}
+                alt={`Ảnh đại diện của ${user.fullName}`}
+                className="absolute inset-0 h-full w-full object-cover"
+                onError={(event) => { event.currentTarget.style.display = 'none'; }}
+              />
+            )}
+            <button
+              type="button"
+              disabled={savingImage !== null}
+              onClick={() => avatarInput.current?.click()}
+              aria-label="Đổi ảnh đại diện"
+              className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-white shadow dark:border-slate-900"
+            >
+              <Icon name="camera" size={14} />
+            </button>
+          </div>
+          <div className="min-w-0 flex-1 pt-2">
+            <h2 className="truncate text-lg font-bold text-slate-900 dark:text-white">{user?.fullName}</h2>
+            <p className="truncate text-sm text-slate-500">{user?.email}</p>
+          </div>
+          {user?.avatarUrl && (
+            <button
+              type="button"
+              disabled={savingImage !== null}
+              onClick={() => void removeImage('avatar')}
+              className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 disabled:opacity-60"
+            >
+              Xóa ảnh đại diện
+            </button>
+          )}
+        </div>
+        <input
+          ref={avatarInput}
+          type="file"
+          accept="image/png,image/jpeg,image/gif,image/webp"
+          className="hidden"
+          onChange={(event) => void uploadImage('avatar', event)}
+        />
+        <input
+          ref={coverInput}
+          type="file"
+          accept="image/png,image/jpeg,image/gif,image/webp"
+          className="hidden"
+          onChange={(event) => void uploadImage('cover', event)}
+        />
+      </section>
+
+      <div className="grid lg:grid-cols-3 gap-6">
+        <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
+          <h2 className="font-bold text-slate-900 dark:text-white">Tài khoản EXA</h2>
+          <p className="mt-1 text-xs text-slate-500">Thông tin được lưu và đồng bộ trên tài khoản của bạn</p>
+          <div className="flex flex-wrap gap-2 mt-4">
             <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 font-semibold">
               {user?.role === 'TEACHER' ? 'Giáo viên' : user?.role === 'STUDENT' ? 'Học sinh' : 'Quản trị viên'}
             </span>

@@ -5,9 +5,12 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import vn.exa.auth.dto.AuthResponse;
 import vn.exa.common.ApiResponse;
 import vn.exa.common.CurrentUser;
@@ -20,14 +23,53 @@ import java.time.LocalDate;
 public class UserController {
 
     private final AuthService authService;
+    private final ProfileMediaService profileMediaService;
 
     @PutMapping
     public ResponseEntity<ApiResponse<AuthResponse.UserInfo>> updateProfile(
             @Valid @RequestBody UpdateProfileRequest req,
             @AuthenticationPrincipal CurrentUser user) {
         AuthResponse.UserInfo updated = authService.updateProfile(
-                user.getId(), req.getFullName(), req.getPhone(), req.getDateOfBirth(), req.getAvatarUrl());
+                user.getId(), req.getFullName(), req.getPhone(), req.getDateOfBirth());
         return ResponseEntity.ok(ApiResponse.ok(updated, "Đã cập nhật thông tin cá nhân"));
+    }
+
+    @PutMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<AuthResponse.UserInfo>> updateAvatar(
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal CurrentUser user) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                profileMediaService.update(user.getId(), ProfileMediaService.ImageType.AVATAR, file),
+                "Đã cập nhật ảnh đại diện"
+        ));
+    }
+
+    @DeleteMapping("/avatar")
+    public ResponseEntity<ApiResponse<AuthResponse.UserInfo>> deleteAvatar(
+            @AuthenticationPrincipal CurrentUser user) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                profileMediaService.delete(user.getId(), ProfileMediaService.ImageType.AVATAR),
+                "Đã xóa ảnh đại diện"
+        ));
+    }
+
+    @PutMapping(value = "/cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<AuthResponse.UserInfo>> updateCover(
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal CurrentUser user) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                profileMediaService.update(user.getId(), ProfileMediaService.ImageType.COVER, file),
+                "Đã cập nhật ảnh bìa"
+        ));
+    }
+
+    @DeleteMapping("/cover")
+    public ResponseEntity<ApiResponse<AuthResponse.UserInfo>> deleteCover(
+            @AuthenticationPrincipal CurrentUser user) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                profileMediaService.delete(user.getId(), ProfileMediaService.ImageType.COVER),
+                "Đã xóa ảnh bìa"
+        ));
     }
 
     @PutMapping("/password")
@@ -49,8 +91,6 @@ public class UserController {
 
         private LocalDate dateOfBirth;
 
-        @Size(max = 500)
-        private String avatarUrl;
     }
 
     @Data

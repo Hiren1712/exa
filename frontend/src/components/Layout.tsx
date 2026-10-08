@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
+import { profileImageUrl } from '../api/user';
 
 interface NavItem {
   to: string;
@@ -146,8 +147,16 @@ export function Layout() {
             <Icon name="logout" size={18} />
           </button>
 
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-md">
-            {user?.fullName?.charAt(0)?.toUpperCase() || '?'}
+          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-md">
+            {user?.avatarUrl && (
+              <img
+                src={profileImageUrl(user.avatarUrl)}
+                alt={`Ảnh đại diện của ${user.fullName}`}
+                className="absolute inset-0 w-full h-full object-cover"
+                onError={(event) => { event.currentTarget.style.display = 'none'; }}
+              />
+            )}
+            <span>{user?.fullName?.charAt(0)?.toUpperCase() || '?'}</span>
           </div>
         </header>
 
