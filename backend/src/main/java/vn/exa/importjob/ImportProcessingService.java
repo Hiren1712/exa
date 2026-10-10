@@ -3,9 +3,11 @@ package vn.exa.importjob;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import vn.exa.common.BusinessException;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,10 +24,16 @@ public class ImportProcessingService {
     private final GeminiParser geminiParser;
     private final ObjectMapper objectMapper;
 
+    @Value("${exa.gemini.model:gemini-2.5-flash}")
+    private String aiModel;
+
     @Async("importTaskExecutor")
     public void processAsync(Long jobId, String subjectHint) {
-        ImportJob job = importJobRepository.findById(jobId)
-                .orElseThrow(() -> new IllegalStateException("Import job disappeared before processing"));
+        ImportJob job = importJobRepository.findById(jobId).orElse(null);
+        if (job == null) {
+            log.error("Import job {} disappeared before processing", jobId);
+            return;
+        }
         try {
             job.setStatus(ImportJob.Status.EXTRACTING);
             job.setStartedAt(LocalDateTime.now());
@@ -37,9 +45,17 @@ public class ImportProcessingService {
                 return;
             }
 
+            byte[] fileBytes = Files.readAllBytes(path);
             MultipartFile multipartFile = new StoredMultipartFile(
-                    job.getOriginalName(), Files.readAllBytes(path));
+                    job.getOriginalName(), fileBytes);
             String text = documentParser.extractText(multipartFile);
+            if ((text == null || text.isBlank()) && "pdf".equals(job.getFileType())) {
+                job.setStatus(ImportJob.Status.PARSING);
+                importJobRepository.save(job);
+                GeminiParser.ParseResult result = geminiParser.parsePdf(fileBytes, subjectHint);
+                saveResult(job, result);
+                return;
+            }
             if (text == null || text.isBlank()) {
                 fail(job, "Không đọc được nội dung file");
                 return;
@@ -50,18 +66,25 @@ public class ImportProcessingService {
             importJobRepository.save(job);
 
             GeminiParser.ParseResult result = geminiParser.parse(text, subjectHint);
-            job.setParsedResult(objectMapper.writeValueAsString(result.questions()));
-            job.setTotalFound(result.questions().size());
-            job.setAiModel("gemini-1.5-flash");
-            job.setAiTokensUsed(result.tokensUsed());
-            job.setStatus(ImportJob.Status.REVIEW);
-            job.setFinishedAt(LocalDateTime.now());
-            importJobRepository.save(job);
-            log.info("Import job {} parsed {} questions", jobId, result.questions().size());
+            saveResult(job, result);
+        } catch (BusinessException error) {
+            log.warn("Import job {} could not be processed: {}", jobId, error.getMessage());
+            fail(job, error.getMessage());
         } catch (Exception error) {
             log.error("Import job {} failed", jobId, error);
-            fail(job, "Không thể phân tích nội dung tệp");
+            fail(job, "Không thể phân tích nội dung tệp. Hãy kiểm tra định dạng rồi thử lại.");
         }
+    }
+
+    private void saveResult(ImportJob job, GeminiParser.ParseResult result) throws Exception {
+        job.setParsedResult(objectMapper.writeValueAsString(result.questions()));
+        job.setTotalFound(result.questions().size());
+        job.setAiModel(aiModel);
+        job.setAiTokensUsed(result.tokensUsed());
+        job.setStatus(ImportJob.Status.REVIEW);
+        job.setFinishedAt(LocalDateTime.now());
+        importJobRepository.save(job);
+        log.info("Import job {} parsed {} questions", job.getId(), result.questions().size());
     }
 
     private void fail(ImportJob job, String message) {

@@ -70,6 +70,13 @@ public class Question {
     @Builder.Default
     private Boolean aiGenerated = false;
 
+    @Column(name = "import_job_id")
+    private Long importJobId;
+
+    @Column(name = "import_reviewed", nullable = false)
+    @Builder.Default
+    private Boolean importReviewed = true;
+
     @Column(name = "usage_count")
     @Builder.Default
     private Integer usageCount = 0;

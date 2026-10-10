@@ -8,10 +8,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import vn.exa.common.BusinessException;
 
 import java.time.Duration;
 import java.math.BigDecimal;
+import java.util.Base64;
 import java.util.*;
 
 @Component
@@ -25,23 +27,25 @@ public class GeminiParser {
     @Value("${exa.gemini.api-key:}")
     private String apiKey;
 
-    @Value("${exa.gemini.model:gemini-1.5-flash}")
+    @Value("${exa.gemini.model:gemini-2.5-flash}")
     private String model;
 
     @Value("${exa.gemini.timeout-ms:60000}")
     private long timeoutMs;
 
     private static final String GEMINI_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s";
+            "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent";
+    private static final int MAX_INLINE_PDF_SIZE = 15 * 1024 * 1024;
+
+    public void validateConfiguration() {
+        requireConfiguredApiKey();
+    }
 
     /**
      * Parse text → danh sách câu hỏi có cấu trúc.
      */
     public ParseResult parse(String rawText, String subjectHint) {
-        if (apiKey == null || apiKey.isBlank() || apiKey.equals("your_gemini_api_key_here")) {
-            log.warn("Gemini API key not configured — using mock parser");
-            return mockParse(rawText);
-        }
+        requireConfiguredApiKey();
 
         List<String> chunks = chunkText(rawText, 6000);
         List<ParsedQuestion> all = new ArrayList<>();
@@ -58,6 +62,46 @@ public class GeminiParser {
         return new ParseResult(deduped, totalTokens);
     }
 
+    public ParseResult parsePdf(byte[] pdfBytes, String subjectHint) {
+        requireConfiguredApiKey();
+        if (pdfBytes == null || pdfBytes.length == 0) {
+            throw BusinessException.badRequest("Tệp PDF trống");
+        }
+        if (pdfBytes.length > MAX_INLINE_PDF_SIZE) {
+            throw BusinessException.badRequest("PDF scan để OCR trực tiếp phải nhỏ hơn 15MB");
+        }
+
+        String subjectLine = subjectHint == null || subjectHint.isBlank()
+                ? "" : "\nMôn học gợi ý: " + subjectHint;
+        String prompt = """
+                Đọc toàn bộ tài liệu PDF, bao gồm cả nội dung trong ảnh scan, bảng và công thức.
+                Trích xuất tất cả câu hỏi cùng đáp án được đánh dấu (nếu có). Trả về duy nhất
+                JSON array theo schema:
+                [{"number":1,"type":"MCQ","content":"...","options":["...","..."],
+                "correctAnswer":"A","answerText":null,"difficulty":"RECOGNITION","explanation":null}].
+                type chỉ được là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY.
+                difficulty chỉ được là RECOGNITION, COMPREHENSION, APPLICATION hoặc HIGH_APPLICATION.
+                Không tự đoán đáp án đúng nếu tài liệu không cung cấp; khi đó dùng null.
+                Giữ nguyên công thức bằng LaTeX. Nếu không có câu hỏi, trả về [].
+                Không trả markdown hay văn bản ngoài JSON.
+                %s
+                """.formatted(subjectLine);
+
+        Map<String, Object> pdfPart = Map.of("inline_data", Map.of(
+                "mime_type", "application/pdf",
+                "data", Base64.getEncoder().encodeToString(pdfBytes)));
+        Map<String, Object> body = Map.of(
+                "contents", List.of(Map.of("parts", List.of(
+                        Map.of("text", prompt),
+                        pdfPart))),
+                "generationConfig", Map.of(
+                        "temperature", 0.1,
+                        "maxOutputTokens", 16384,
+                        "responseMimeType", "application/json"));
+
+        return parseResponse(callGemini(body));
+    }
+
     public List<ParsedQuestion> generateQuestions(String subject, Integer grade, String topic,
                                                   Integer count, String difficulty) {
         requireConfiguredApiKey();
@@ -70,9 +114,11 @@ public class GeminiParser {
                 """.formatted(count, subject, grade, topic, difficulty, difficulty);
         try {
             return parseAiResponse(extractResponseText(callGemini(prompt)));
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to generate questions with Gemini", e);
-            throw BusinessException.badRequest("AI không tạo được câu hỏi hợp lệ: " + e.getMessage());
+            throw BusinessException.badRequest("AI không tạo được câu hỏi hợp lệ. Vui lòng thử lại.");
         }
     }
 
@@ -91,9 +137,11 @@ public class GeminiParser {
             BigDecimal score = new BigDecimal(result.path("score").asText());
             score = score.max(BigDecimal.ZERO).min(maxScore);
             return new EssayGrade(score, result.path("feedback").asText(""));
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to grade essay with Gemini", e);
-            throw BusinessException.badRequest("AI không chấm được câu trả lời: " + e.getMessage());
+            throw BusinessException.badRequest("AI không chấm được câu trả lời. Vui lòng thử lại.");
         }
     }
 
@@ -104,27 +152,43 @@ public class GeminiParser {
     }
 
     private String extractResponseText(String responseBody) throws Exception {
-        JsonNode root = objectMapper.readTree(responseBody);
+        return extractResponseText(objectMapper.readTree(responseBody));
+    }
+
+    private String extractResponseText(JsonNode root) {
         JsonNode candidates = root.path("candidates");
         if (!candidates.isArray() || candidates.isEmpty()) {
             throw new IllegalStateException("AI không trả về nội dung");
         }
-        return candidates.get(0).path("content").path("parts").get(0).path("text").asText();
+        for (JsonNode part : candidates.get(0).path("content").path("parts")) {
+            if (part.hasNonNull("text")) return part.path("text").asText();
+        }
+        throw new IllegalStateException("AI không trả về nội dung văn bản");
     }
 
     private ParseResult parseChunk(String chunk, String subjectHint) {
         String prompt = buildPrompt(chunk, subjectHint);
-        String responseBody = callGemini(prompt);
+        Map<String, Object> body = Map.of(
+                "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
+                "generationConfig", Map.of(
+                        "temperature", 0.1,
+                        "maxOutputTokens", 16384,
+                        "responseMimeType", "application/json"));
+        return parseResponse(callGemini(body));
+    }
 
+    private ParseResult parseResponse(String responseBody) {
         try {
             JsonNode root = objectMapper.readTree(responseBody);
-            String aiText = extractResponseText(responseBody);
+            String aiText = extractResponseText(root);
             int tokens = root.path("usageMetadata").path("totalTokenCount").asInt(0);
             List<ParsedQuestion> questions = parseAiResponse(aiText);
             return new ParseResult(questions, tokens);
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to parse Gemini response", e);
-            throw BusinessException.badRequest("AI parse thất bại: " + e.getMessage());
+            throw BusinessException.badRequest("AI trả về dữ liệu không hợp lệ. Vui lòng thử lại.");
         }
     }
 
@@ -165,25 +229,36 @@ public class GeminiParser {
                 "generationConfig", Map.of(
                         "temperature", 0.1,
                         "maxOutputTokens", 8192,
-                        "responseMimeType", "application/json"
-                )
-        );
+                        "responseMimeType", "application/json"));
+        return callGemini(body);
+    }
 
-        String url = String.format(GEMINI_URL, model, apiKey);
+    private String callGemini(Map<String, Object> body) {
+        String url = String.format(GEMINI_URL, model);
 
         try {
             return webClientBuilder.build()
                     .post()
                     .uri(url)
+                    .header("x-goog-api-key", apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(body)
                     .retrieve()
                     .bodyToMono(String.class)
                     .timeout(Duration.ofMillis(timeoutMs))
                     .block();
+        } catch (WebClientResponseException e) {
+            log.warn("Gemini API returned HTTP {}", e.getStatusCode().value());
+            if (e.getStatusCode().value() == 401 || e.getStatusCode().value() == 403) {
+                throw BusinessException.badRequest("Gemini từ chối API key. Hãy kiểm tra GEMINI_API_KEY.");
+            }
+            if (e.getStatusCode().value() == 429) {
+                throw BusinessException.badRequest("Gemini đang quá tải hoặc đã hết hạn mức. Vui lòng thử lại sau.");
+            }
+            throw BusinessException.badRequest("Gemini gặp lỗi khi phân tích tài liệu. Vui lòng thử lại sau.");
         } catch (Exception e) {
-            log.error("Gemini API call failed", e);
-            throw BusinessException.badRequest("Không gọi được AI: " + e.getMessage());
+            log.error("Gemini API call failed: {}", e.getClass().getSimpleName());
+            throw BusinessException.badRequest("Không kết nối được Gemini. Vui lòng thử lại sau.");
         }
     }
 
@@ -196,68 +271,57 @@ public class GeminiParser {
         JsonNode arr = objectMapper.readTree(cleaned.trim());
         List<ParsedQuestion> result = new ArrayList<>();
 
-        if (!arr.isArray()) return result;
+        if (!arr.isArray()) {
+            throw new IllegalArgumentException("Gemini response must be a JSON array");
+        }
 
         for (JsonNode node : arr) {
             ParsedQuestion q = new ParsedQuestion();
             q.setNumber(node.path("number").asInt(0));
-            q.setType(node.path("type").asText("MCQ"));
+            q.setType(normalizeQuestionType(node.path("type").asText("MCQ")));
             q.setContent(node.path("content").asText(""));
 
             List<String> options = new ArrayList<>();
-            node.path("options").forEach(o -> options.add(o.asText()));
+            node.path("options").forEach(o -> options.add(
+                    o.asText().replaceFirst("^\\s*[A-Da-d][.)、:]\\s*", "").trim()));
             q.setOptions(options);
 
-            q.setCorrectAnswer(node.path("correctAnswer").isNull()
-                    ? null : node.path("correctAnswer").asText());
-            q.setAnswerText(node.path("answerText").isNull()
-                    ? null : node.path("answerText").asText());
-            q.setDifficulty(node.path("difficulty").asText("RECOGNITION"));
-            q.setExplanation(node.path("explanation").isNull()
-                    ? null : node.path("explanation").asText());
+            q.setCorrectAnswer(normalizeCorrectAnswer(node.path("correctAnswer").asText(null)));
+            q.setAnswerText(node.path("answerText").asText(null));
+            q.setDifficulty(normalizeDifficulty(node.path("difficulty").asText("RECOGNITION")));
+            q.setExplanation(node.path("explanation").asText(null));
 
             if (!q.getContent().isBlank()) result.add(q);
         }
         return result;
     }
 
-    /**
-     * Mock parser — dùng khi chưa có Gemini API key.
-     */
-    private ParseResult mockParse(String rawText) {
-        log.info("Using mock parser — file length: {}", rawText.length());
-        List<ParsedQuestion> result = new ArrayList<>();
-
-        String[] lines = rawText.split("\n");
-        int count = 0;
-        for (String line : lines) {
-            String trimmed = line.trim();
-            if (trimmed.matches("^(Câu|Question)\\s+\\d+.*") && trimmed.length() > 10) {
-                count++;
-                ParsedQuestion q = new ParsedQuestion();
-                q.setNumber(count);
-                q.setType("MCQ");
-                q.setContent(trimmed);
-                q.setOptions(Arrays.asList("A. Đáp án A", "B. Đáp án B", "C. Đáp án C", "D. Đáp án D"));
-                q.setCorrectAnswer("A");
-                q.setDifficulty("RECOGNITION");
-                q.setExplanation("[MOCK] Đây là câu hỏi tạm vì chưa cấu hình Gemini API key");
-                result.add(q);
-            }
+    private String normalizeCorrectAnswer(String answer) {
+        if (answer == null || answer.isBlank()) return null;
+        String normalized = answer.trim().toUpperCase(Locale.ROOT);
+        if (normalized.matches("^[A-D](?:[.)、:]\\s*.*)?$")) {
+            return normalized.substring(0, 1);
         }
+        return answer.trim();
+    }
 
-        if (result.isEmpty()) {
-            ParsedQuestion q = new ParsedQuestion();
-            q.setNumber(1);
-            q.setType("ESSAY");
-            q.setContent("[MOCK] Không tìm thấy câu hỏi. File có " + rawText.length() + " ký tự.");
-            q.setOptions(List.of());
-            q.setDifficulty("RECOGNITION");
-            q.setExplanation("[MOCK] Cần cấu hình GEMINI_API_KEY để parse thật");
-            result.add(q);
-        }
+    private String normalizeQuestionType(String type) {
+        if (type == null || type.isBlank()) return "MCQ";
+        return switch (type.trim().toUpperCase(Locale.ROOT)) {
+            case "TRUE_FALSE", "TRUE/FALSE", "TRUE-FALSE", "TRUEFALSE" -> "TRUE_FALSE";
+            case "SHORT_ANSWER", "SHORT ANSWER", "SHORT-ANSWER" -> "SHORT_ANSWER";
+            case "ESSAY" -> "ESSAY";
+            default -> "MCQ";
+        };
+    }
 
-        return new ParseResult(result, 0);
+    private String normalizeDifficulty(String difficulty) {
+        if (difficulty == null || difficulty.isBlank()) return "RECOGNITION";
+        String normalized = difficulty.trim().toUpperCase(Locale.ROOT).replace(' ', '_');
+        return switch (normalized) {
+            case "COMPREHENSION", "APPLICATION", "HIGH_APPLICATION" -> normalized;
+            default -> "RECOGNITION";
+        };
     }
 
     private List<String> chunkText(String text, int maxChars) {

@@ -3,6 +3,7 @@ package vn.exa.importjob;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -23,11 +25,16 @@ public class ImportService {
 
     private final ImportJobRepository importJobRepo;
     private final ImportProcessingService importProcessingService;
+    private final GeminiParser geminiParser;
     private final QuestionRepository questionRepo;
     private final ObjectMapper objectMapper;
 
+    @Value("${exa.storage.upload-dir:./uploads}")
+    private String uploadDir;
+
     public Long uploadAndProcess(MultipartFile file, Long userId, String subjectHint) {
         validateFile(file);
+        geminiParser.validateConfiguration();
 
         try {
             String storagePath = saveFile(file, userId);
@@ -79,11 +86,34 @@ public class ImportService {
         if (selected == null || selected.isEmpty() || subject == null || subject.isBlank()) {
             throw BusinessException.badRequest("Cần chọn câu hỏi và môn học trước khi lưu");
         }
+        if (subject.length() > 60 || (grade != null && (grade < 1 || grade > 12))
+                || (unit != null && unit.length() > 120)) {
+            throw BusinessException.badRequest("Môn học, khối lớp hoặc chuyên đề không hợp lệ");
+        }
 
         int saved = 0;
         for (ParsedQuestion pq : selected) {
-            if (pq.getContent() == null || pq.getContent().isBlank()) {
+            if (pq == null || pq.getContent() == null || pq.getContent().isBlank()) {
                 throw BusinessException.badRequest("Nội dung câu hỏi không được để trống");
+            }
+            Question.Type type = mapType(pq.getType());
+            if (type == Question.Type.MCQ && (pq.getOptions() == null || pq.getOptions().size() < 2)) {
+                throw BusinessException.badRequest("Câu trắc nghiệm cần ít nhất 2 phương án");
+            }
+            if (pq.getOptions() != null && pq.getOptions().stream().anyMatch(option -> option == null || option.isBlank())) {
+                throw BusinessException.badRequest("Phương án trả lời không được để trống");
+            }
+            String correctAnswer = pq.getCorrectAnswer();
+            if (correctAnswer != null) {
+                correctAnswer = correctAnswer.trim().toUpperCase(Locale.ROOT);
+                if (correctAnswer.isEmpty()) correctAnswer = null;
+            }
+            if (correctAnswer != null) {
+                int answerIndex = correctAnswer.charAt(0) - 'A';
+                if (!correctAnswer.matches("^[A-D]$")
+                        || (pq.getOptions() != null && answerIndex >= pq.getOptions().size())) {
+                    throw BusinessException.badRequest("Đáp án đúng phải khớp với các phương án đã nhập");
+                }
             }
             Question q = Question.builder()
                     .ownerId(userId)
@@ -91,14 +121,16 @@ public class ImportService {
                     .grade(grade)
                     .unit(unit)
                     .difficulty(mapDifficulty(pq.getDifficulty()))
-                    .type(mapType(pq.getType()))
+                    .type(type)
                     .content(pq.getContent())
-                    .contentHtml(pq.getContent())
                     .options(toJson(pq.getOptions()))
-                    .correctAnswer(pq.getCorrectAnswer())
+                    .correctAnswer(correctAnswer)
                     .answerText(pq.getAnswerText())
                     .explanation(pq.getExplanation())
                     .aiGenerated(true)
+                    .importJobId(jobId)
+                    .importReviewed(true)
+                    .source("AI import")
                     .build();
             questionRepo.save(q);
             saved++;
@@ -113,6 +145,7 @@ public class ImportService {
     }
 
     private void validateFile(MultipartFile file) {
+        if (file == null) throw BusinessException.badRequest("Vui lòng chọn tệp để import");
         if (file.isEmpty()) throw BusinessException.badRequest("File trống");
         long maxSize = 20L * 1024 * 1024;
         if (file.getSize() > maxSize) throw BusinessException.badRequest("File quá lớn (tối đa 20MB)");
@@ -123,10 +156,10 @@ public class ImportService {
     }
 
     private String saveFile(MultipartFile file, Long userId) throws Exception {
-        Path uploadDir = Paths.get("./uploads/imports/" + userId);
-        Files.createDirectories(uploadDir);
+        Path userUploadDir = Paths.get(uploadDir).resolve("imports").resolve(String.valueOf(userId));
+        Files.createDirectories(userUploadDir);
         String filename = UUID.randomUUID() + "." + getExtension(file.getOriginalFilename()).toLowerCase();
-        Path target = uploadDir.resolve(filename);
+        Path target = userUploadDir.resolve(filename);
         file.transferTo(target.toFile());
         return target.toString();
     }
@@ -142,23 +175,21 @@ public class ImportService {
     }
 
     private Question.Difficulty mapDifficulty(String aiValue) {
-        if (aiValue == null) return Question.Difficulty.RECOGNITION;
-        return switch (aiValue) {
-            case "COMPREHENSION" -> Question.Difficulty.COMPREHENSION;
-            case "APPLICATION" -> Question.Difficulty.APPLICATION;
-            case "HIGH_APPLICATION" -> Question.Difficulty.HIGH_APPLICATION;
-            default -> Question.Difficulty.RECOGNITION;
-        };
+        if (aiValue == null || aiValue.isBlank()) return Question.Difficulty.RECOGNITION;
+        try {
+            return Question.Difficulty.valueOf(aiValue.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException error) {
+            throw BusinessException.badRequest("Độ khó của câu hỏi không hợp lệ");
+        }
     }
 
     private Question.Type mapType(String aiValue) {
-        if (aiValue == null) return Question.Type.MCQ;
-        return switch (aiValue) {
-            case "TRUE_FALSE" -> Question.Type.TRUE_FALSE;
-            case "SHORT_ANSWER" -> Question.Type.SHORT_ANSWER;
-            case "ESSAY" -> Question.Type.ESSAY;
-            default -> Question.Type.MCQ;
-        };
+        if (aiValue == null || aiValue.isBlank()) return Question.Type.MCQ;
+        try {
+            return Question.Type.valueOf(aiValue.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException error) {
+            throw BusinessException.badRequest("Loại câu hỏi không hợp lệ");
+        }
     }
 
     private String toJson(List<String> list) {
@@ -166,7 +197,7 @@ public class ImportService {
         try {
             return objectMapper.writeValueAsString(list);
         } catch (Exception e) {
-            return null;
+            throw new IllegalStateException("Không thể lưu danh sách đáp án", e);
         }
     }
 

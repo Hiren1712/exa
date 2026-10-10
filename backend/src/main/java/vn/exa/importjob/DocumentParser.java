@@ -67,9 +67,9 @@ public class DocumentParser {
             PDFTextStripper stripper = new PDFTextStripper();
             stripper.setSortByPosition(true);
             String text = stripper.getText(doc);
-            if (text.trim().length() < 50) {
+            if (text.isBlank()) {
                 log.warn("PDF appears to be scanned image — needs OCR");
-                throw BusinessException.badRequest("PDF là ảnh scan, cần OCR (chưa hỗ trợ)");
+                return "";
             }
             return text;
         }

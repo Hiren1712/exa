@@ -5,9 +5,19 @@ import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
 import { Select } from '../components/Input';
 import { useToast } from '../components/Toast';
-import { importApi, ImportPreview } from '../api/import';
+import { importApi } from '../api/import';
+import type { ImportPreview, ParsedQuestion } from '../api/import';
 import { extractError } from '../api/client';
 import { SUBJECTS, DIFFICULTY_LABELS } from '../lib/utils';
+
+const IMPORT_WAIT_MS = 120_000;
+const IMPORT_POLL_INTERVAL_MS = 1_500;
+const QUESTION_TYPES: Record<string, string> = {
+  MCQ: 'Trắc nghiệm',
+  TRUE_FALSE: 'Đúng / Sai',
+  SHORT_ANSWER: 'Trả lời ngắn',
+  ESSAY: 'Tự luận',
+};
 
 export default function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -15,6 +25,7 @@ export default function ImportPage() {
   const [grade, setGrade] = useState(12);
   const [unit, setUnit] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
@@ -34,12 +45,29 @@ export default function ImportPage() {
       return;
     }
     setFile(candidate);
+    setPreview(null);
+    setSelected(new Set());
   };
 
   const handleDrop = (event: DragEvent<HTMLLabelElement>) => {
     event.preventDefault();
     setDragging(false);
     chooseFile(event.dataTransfer.files[0]);
+  };
+
+  const waitForJob = async (jobId: number) => {
+    const deadline = Date.now() + IMPORT_WAIT_MS;
+    let latest = await importApi.getPreview(jobId);
+    setPreview(latest);
+    while (latest.status !== 'REVIEW' && latest.status !== 'FAILED' && Date.now() < deadline) {
+      await new Promise((resolve) => window.setTimeout(resolve, IMPORT_POLL_INTERVAL_MS));
+      latest = await importApi.getPreview(jobId);
+      setPreview(latest);
+    }
+    if (latest.status === 'REVIEW') {
+      setSelected(new Set(latest.questions.map((_, idx) => idx)));
+    }
+    return latest;
   };
 
   const handleUpload = async () => {
@@ -50,39 +78,37 @@ export default function ImportPage() {
     setUploading(true);
     try {
       const jobId = await importApi.upload(file, subject);
+      setPreview({
+        jobId,
+        originalName: file.name,
+        status: 'UPLOADED',
+        totalFound: 0,
+        questions: [],
+      });
       toast('Đang xử lý', 'AI đang phân tích file...', 'info');
-      let completed = false;
-      // Poll preview
-      for (let i = 0; i < 30; i++) {
-        await new Promise((r) => setTimeout(r, 1000));
-        const p = await importApi.getPreview(jobId);
-        if (p.status === 'REVIEW' || p.status === 'FAILED') {
-          completed = true;
-          setPreview(p);
-          setSelected(new Set(p.questions.map((_, idx) => idx)));
-          if (p.status === 'FAILED') {
-            toast('Lỗi', p.errorMessage || 'AI xử lý thất bại', 'error');
-          } else {
-            toast('Hoàn tất', `Tìm thấy ${p.totalFound} câu hỏi`, 'success');
-          }
-          break;
-        }
-      }
-      if (!completed) {
-        const latest = await importApi.getPreview(jobId);
-        if (latest.status === 'REVIEW' || latest.status === 'FAILED') {
-          setPreview(latest);
-          setSelected(new Set(latest.questions.map((_, idx) => idx)));
-        } else {
-          setPreview(latest);
-          toast('Quá thời gian chờ', 'Tệp vẫn đang được xử lý. Hãy thử tải lại bản xem trước sau ít phút.', 'warn');
-        }
+      const latest = await waitForJob(jobId);
+      if (latest.status === 'FAILED') {
+        toast('AI xử lý thất bại', latest.errorMessage || 'Vui lòng thử lại với tệp khác.', 'error');
+      } else if (latest.status === 'REVIEW') {
+        toast('Hoàn tất', `Tìm thấy ${latest.totalFound} câu hỏi`, 'success');
+      } else {
+        toast('Đang xử lý', 'Tệp cần thêm thời gian. Bạn có thể tải lại trạng thái sau.', 'warn');
       }
     } catch (err) {
       toast('Lỗi', extractError(err), 'error');
     } finally {
       setUploading(false);
     }
+  };
+
+  const updateQuestion = (index: number, updates: Partial<ParsedQuestion>) => {
+    setPreview((current) => current
+      ? {
+          ...current,
+          questions: current.questions.map((question, questionIndex) =>
+            questionIndex === index ? { ...question, ...updates } : question),
+        }
+      : current);
   };
 
   const toggleSelect = (idx: number) => {
@@ -166,6 +192,7 @@ export default function ImportPage() {
               type="file"
               accept=".docx,.pdf,.xlsx,.xls"
               className="hidden"
+              disabled={uploading}
               onChange={(event) => chooseFile(event.target.files?.[0])}
             />
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-500 text-white flex items-center justify-center mx-auto mb-4 shadow-xl">
@@ -175,7 +202,7 @@ export default function ImportPage() {
               {file ? file.name : 'Kéo thả file vào đây hoặc bấm để chọn'}
             </div>
             <div className="text-xs text-slate-500">
-              Hỗ trợ: .docx, .pdf, .xlsx, .xls — Tối đa 20MB
+              Hỗ trợ DOCX, PDF (kể cả PDF scan), XLSX và XLS — tối đa 20MB. PDF scan OCR tối đa 15MB.
             </div>
           </label>
 
@@ -202,7 +229,19 @@ export default function ImportPage() {
       )}
 
       {/* Step 2: Preview */}
-      {preview && preview.status === 'REVIEW' && (
+      {preview && preview.status === 'REVIEW' && preview.questions.length === 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 p-6 text-center">
+          <h3 className="font-bold text-amber-800 dark:text-amber-300">AI chưa tìm thấy câu hỏi</h3>
+          <p className="mt-1 text-sm text-amber-700 dark:text-amber-200">
+            Kiểm tra nội dung tệp có thể đọc được rồi thử lại. Với PDF scan, hãy bảo đảm chữ rõ và không bị nghiêng.
+          </p>
+          <Button variant="ghost" className="mt-3" onClick={() => setPreview(null)}>
+            Chọn tệp khác
+          </Button>
+        </div>
+      )}
+
+      {preview && preview.status === 'REVIEW' && preview.questions.length > 0 && (
         <>
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -217,6 +256,16 @@ export default function ImportPage() {
               </div>
             </div>
             <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setSelected(
+                  selected.size === preview.questions.length
+                    ? new Set()
+                    : new Set(preview.questions.map((_, idx) => idx)),
+                )}
+              >
+                {selected.size === preview.questions.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+              </Button>
               <Button variant="ghost" onClick={() => setPreview(null)}>
                 ← Upload lại
               </Button>
@@ -269,18 +318,14 @@ export default function ImportPage() {
                         {DIFFICULTY_LABELS[q.difficulty] || q.difficulty}
                       </span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-semibold">
-                        {q.type}
+                        {QUESTION_TYPES[q.type] || q.type}
                       </span>
                     </div>
                     <label className="block mb-3" onClick={(event) => event.stopPropagation()}>
                       <span className="sr-only">Nội dung câu hỏi {idx + 1}</span>
                       <textarea
                         value={q.content}
-                        onChange={(event) => setPreview({
-                          ...preview,
-                          questions: preview.questions.map((question, questionIndex) =>
-                            questionIndex === idx ? { ...question, content: event.target.value } : question),
-                        })}
+                        onChange={(event) => updateQuestion(idx, { content: event.target.value })}
                         onClick={(event) => event.stopPropagation()}
                         className="w-full resize-y rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm font-semibold text-slate-900 dark:text-white"
                       />
@@ -302,12 +347,9 @@ export default function ImportPage() {
                               <span className="mr-2 font-semibold">{letter}.</span>
                               <input
                                 value={opt}
-                                onChange={(event) => setPreview({
-                                  ...preview,
-                                  questions: preview.questions.map((question, questionIndex) =>
-                                    questionIndex === idx
-                                      ? { ...question, options: question.options.map((option, optionIndex) => optionIndex === i ? event.target.value : option) }
-                                      : question),
+                                onChange={(event) => updateQuestion(idx, {
+                                  options: q.options.map((option, optionIndex) =>
+                                    optionIndex === i ? event.target.value : option),
                                 })}
                                 onClick={(event) => event.stopPropagation()}
                                 className="w-[calc(100%-2rem)] bg-transparent outline-none"
@@ -318,10 +360,41 @@ export default function ImportPage() {
                         })}
                       </div>
                     )}
+                    {q.options.length > 0 && (
+                      <label className="mt-3 block max-w-xs text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        Đáp án đúng
+                        <select
+                          value={q.correctAnswer || ''}
+                          onChange={(event) => updateQuestion(idx, { correctAnswer: event.target.value || null })}
+                          className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800"
+                        >
+                          <option value="">Chưa xác định</option>
+                          {q.options.map((_, optionIndex) => {
+                            const letter = String.fromCharCode(65 + optionIndex);
+                            return <option key={letter} value={letter}>{letter}</option>;
+                          })}
+                        </select>
+                      </label>
+                    )}
+                    {(q.type === 'SHORT_ANSWER' || q.type === 'ESSAY' || q.answerText !== null) && (
+                      <label className="mt-3 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        Đáp án / gợi ý trả lời
+                        <textarea
+                          value={q.answerText || ''}
+                          onChange={(event) => updateQuestion(idx, { answerText: event.target.value || null })}
+                          className="mt-1 w-full rounded-lg border border-slate-200 bg-transparent px-3 py-2 text-sm font-normal dark:border-slate-700"
+                        />
+                      </label>
+                    )}
                     {q.explanation && (
-                      <div className="mt-3 text-xs p-3 rounded-lg bg-amber-50 text-amber-700">
-                        💡 {q.explanation}
-                      </div>
+                      <label className="mt-3 block text-xs font-semibold text-amber-700">
+                        Giải thích
+                        <textarea
+                          value={q.explanation}
+                          onChange={(event) => updateQuestion(idx, { explanation: event.target.value || null })}
+                          className="mt-1 w-full rounded-lg bg-amber-50 p-3 text-xs font-normal"
+                        />
+                      </label>
                     )}
                   </div>
                 </div>
@@ -352,17 +425,26 @@ export default function ImportPage() {
           <Button
             variant="ghost"
             className="mt-3"
+            loading={refreshing}
             onClick={async () => {
+              setRefreshing(true);
               try {
-                const latest = await importApi.getPreview(preview.jobId);
-                setPreview(latest);
-                if (latest.status === 'REVIEW') setSelected(new Set(latest.questions.map((_, idx) => idx)));
+                const latest = await waitForJob(preview.jobId);
+                if (latest.status === 'REVIEW') {
+                  toast('Hoàn tất', `Tìm thấy ${latest.totalFound} câu hỏi`, 'success');
+                } else if (latest.status === 'FAILED') {
+                  toast('AI xử lý thất bại', latest.errorMessage || 'Vui lòng thử lại với tệp khác.', 'error');
+                } else {
+                  toast('Đang xử lý', 'Tệp vẫn đang được xử lý. Hãy thử tải lại sau.', 'warn');
+                }
               } catch (error) {
                 toast('Không tải được bản xem trước', extractError(error), 'error');
+              } finally {
+                setRefreshing(false);
               }
             }}
           >
-            Tải lại trạng thái
+            Kiểm tra tiến trình
           </Button>
         </div>
       )}

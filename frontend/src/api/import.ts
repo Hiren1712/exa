@@ -26,9 +26,7 @@ export const importApi = {
     formData.append('file', file);
     if (subject) formData.append('subject', subject);
 
-    const res = await apiClient.post<ApiResponse<number>>('/v1/imports/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await apiClient.post<ApiResponse<number>>('/v1/imports/upload', formData);
     return res.data.data;
   },
 
