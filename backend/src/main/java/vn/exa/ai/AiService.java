@@ -41,6 +41,10 @@ public class AiService {
                 request.rubric(), request.maxScore());
     }
 
+    public String chat(List<GeminiParser.ChatTurn> history, boolean student) {
+        return geminiParser.chat(history, student ? "STUDENT" : "TEACHER");
+    }
+
     private Question saveGeneratedQuestion(Long userId, GenerateQuestionsRequest request, ParsedQuestion parsed) {
         if (parsed.getContent() == null || parsed.getContent().isBlank()
                 || parsed.getOptions() == null || parsed.getOptions().size() < 2) {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
+import { ChatWidget } from './ChatWidget';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
 import { profileImageUrl } from '../api/user';
@@ -36,6 +37,7 @@ export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout, theme, toggleTheme } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const navItems = user?.role === 'STUDENT' ? NAV_STUDENT : NAV_TEACHER;
 
@@ -165,6 +167,9 @@ export function Layout() {
           <Outlet />
         </main>
       </div>
+      {user && !/^\/exam\/\d+$/.test(location.pathname) && (
+        <ChatWidget key={user.id} userId={user.id} />
+      )}
     </div>
   );
 }

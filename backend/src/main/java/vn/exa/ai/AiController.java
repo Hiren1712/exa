@@ -2,6 +2,7 @@ package vn.exa.ai;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -21,6 +22,7 @@ import vn.exa.importjob.GeminiParser;
 import vn.exa.question.Question;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -52,6 +54,56 @@ public class AiController {
         return ResponseEntity.ok(ApiResponse.ok(
                 aiService.gradeEssay(user.getId(), command), "AI đã tạo gợi ý chấm điểm"));
     }
+
+    @PostMapping("/chat")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<ChatResponse>> chat(
+            @Valid @RequestBody ChatRequest request,
+            @AuthenticationPrincipal CurrentUser user) {
+        List<GeminiParser.ChatTurn> history = request.getMessages().stream()
+                .map(message -> new GeminiParser.ChatTurn(message.getRole(), message.getContent()))
+                .toList();
+        String reply = aiService.chat(history, user.isStudent());
+        return ResponseEntity.ok(ApiResponse.ok(new ChatResponse(reply), "Đã nhận câu trả lời"));
+    }
+
+    @Data
+    public static class ChatRequest {
+        @Valid
+        @NotNull
+        @Size(min = 1, max = 12)
+        private List<ChatMessage> messages = new ArrayList<>();
+
+        @AssertTrue(message = "Tin nhắn phải luân phiên người dùng và trợ lý, kết thúc bằng tin nhắn người dùng")
+        public boolean isConversationValid() {
+            if (messages == null || messages.isEmpty()) {
+                return false;
+            }
+            String previousRole = null;
+            for (ChatMessage message : messages) {
+                if (message == null || message.getRole() == null
+                        || !(message.getRole().equals("user") || message.getRole().equals("assistant"))
+                        || message.getRole().equals(previousRole)) {
+                    return false;
+                }
+                previousRole = message.getRole();
+            }
+            return "user".equals(previousRole);
+        }
+    }
+
+    @Data
+    public static class ChatMessage {
+        @NotBlank
+        @Pattern(regexp = "user|assistant")
+        private String role;
+
+        @NotBlank
+        @Size(max = 4000)
+        private String content;
+    }
+
+    public record ChatResponse(String reply) {}
 
     @Data
     public static class GenerateQuestionsRequest {
