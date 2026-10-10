@@ -20,6 +20,7 @@ Deploy the repository root to Railway and use the checked-in `railway.toml`; it 
 
 Attach a Railway persistent volume at `/app/uploads` if uploaded import files must survive service restarts or redeployments.
 AI import accepts DOCX, PDF, XLSX, XLS, PNG, JPG/JPEG, and WEBP files up to 20MB; images and scanned PDFs are limited to 15MB. The import flow supports extracting existing questions, generating new questions grounded in source content, and pasted text input.
+Question formulas render in previews, the question bank, and exams using `$...$` or `\(...\)` for mathematics and KaTeX mhchem syntax such as `$\ce{H2O}$` for chemistry.
 
 The backend uses Flyway migrations and `ddl-auto: validate` by default. Allow the service to complete migrations at startup and use a persistent, private MySQL database. Railway supplies `PORT` at runtime; the app binds to that port and its health check is `/api/actuator/health`.
 

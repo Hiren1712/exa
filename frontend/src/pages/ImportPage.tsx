@@ -5,6 +5,7 @@ import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
 import { Select } from '../components/Input';
 import { useToast } from '../components/Toast';
+import { MathText } from '../components/MathText';
 import { importApi } from '../api/import';
 import type { ImportMode, ImportPreview, ParsedQuestion } from '../api/import';
 import { extractError } from '../api/client';
@@ -411,6 +412,9 @@ export default function ImportPage() {
                         onClick={(event) => event.stopPropagation()}
                         className="w-full resize-y rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm font-semibold text-slate-900 dark:text-white"
                       />
+                      <MathText className="mt-2 block text-sm text-slate-700 dark:text-slate-200">
+                        {q.content}
+                      </MathText>
                     </label>
                     {q.options && q.options.length > 0 && (
                       <div className="space-y-1.5">
@@ -437,6 +441,9 @@ export default function ImportPage() {
                                 className="w-[calc(100%-2rem)] bg-transparent outline-none"
                               />
                               {isCorrect && ' ✓'}
+                              <MathText className="mt-1 block pl-6 text-xs">
+                                {opt}
+                              </MathText>
                             </label>
                           );
                         })}
@@ -457,6 +464,12 @@ export default function ImportPage() {
                           })}
                         </select>
                       </label>
+                    )}
+                    {q.explanation && (
+                      <p className="mt-3 text-xs text-slate-500">
+                        <strong>Giải thích xem trước:</strong>{' '}
+                        <MathText>{q.explanation}</MathText>
+                      </p>
                     )}
                     {(q.type === 'SHORT_ANSWER' || q.type === 'ESSAY' || q.answerText !== null) && (
                       <label className="mt-3 block text-xs font-semibold text-slate-600 dark:text-slate-300">

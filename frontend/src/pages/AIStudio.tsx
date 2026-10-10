@@ -4,6 +4,7 @@ import { aiApi, EssayGradeSuggestion } from '../api/ai';
 import { extractError } from '../api/client';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
+import { MathText } from '../components/MathText';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../hooks/useAuth';
 import { SUBJECTS, DIFFICULTY_LABELS } from '../lib/utils';
@@ -105,7 +106,7 @@ export default function AIStudio() {
             </label>
           </div>
           <Button variant="primary" loading={generating} onClick={() => void generate()} icon={<Icon name="sparkle" size={16} />}>Tạo và lưu câu hỏi</Button>
-          {questions.length > 0 && <div className="space-y-3">{questions.map((question, index) => <article key={question.id ?? index} className="rounded-xl border border-slate-100 dark:border-slate-800 p-4"><h2 className="text-sm font-semibold text-slate-900 dark:text-white">{index + 1}. {question.content}</h2>{question.correctAnswer && <p className="mt-2 text-xs text-emerald-700">Đáp án: {question.correctAnswer}</p>}{question.explanation && <p className="mt-1 text-xs text-slate-500">{question.explanation}</p>}</article>)}</div>}
+          {questions.length > 0 && <div className="space-y-3">{questions.map((question, index) => <article key={question.id ?? index} className="rounded-xl border border-slate-100 dark:border-slate-800 p-4"><h2 className="text-sm font-semibold text-slate-900 dark:text-white">{index + 1}. <MathText>{question.content}</MathText></h2>{question.correctAnswer && <p className="mt-2 text-xs text-emerald-700">Đáp án: {question.correctAnswer}</p>}{question.explanation && <p className="mt-1 text-xs text-slate-500"><MathText>{question.explanation}</MathText></p>}</article>)}</div>}
         </section>
       ) : (
         <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-4">

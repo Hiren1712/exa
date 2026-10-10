@@ -190,7 +190,10 @@ public class GeminiParser {
         return """
                 Dựa CHỈ trên kiến thức, dữ kiện và nội dung nguồn dưới đây, hãy tự biên soạn đúng %d câu hỏi trắc nghiệm mới bằng tiếng Việt cho môn %s, lớp %d, độ khó %s.
                 Nguồn không cần chứa câu hỏi có sẵn. Không chép nguyên văn câu hỏi nếu có; hãy kiểm tra mức độ phù hợp với nội dung nguồn, không thêm kiến thức ngoài nguồn và không bịa dữ kiện.
-                Mỗi câu có đúng 4 lựa chọn, chỉ một đáp án đúng; cung cấp đáp án và giải thích ngắn. Giữ công thức bằng LaTeX.
+                Mỗi câu có đúng 4 lựa chọn, chỉ một đáp án đúng; cung cấp đáp án và giải thích ngắn.
+                Định dạng công thức toán bằng $...$ (ví dụ $x^2$, $\\frac{a}{b}$, $\\sqrt{x}$).
+                Định dạng công thức/phản ứng hóa học bằng $\\ce{...}$ (ví dụ $\\ce{H2O}$, $\\ce{2H2 + O2 -> 2H2O}$).
+                Giữ ký hiệu sinh học, chỉ số dưới/trên, chữ Hy Lạp, đơn vị và dấu tiếng Việt chính xác.
                 Trả về duy nhất JSON array theo schema:
                 [{"number":1,"type":"MCQ","content":"...","options":["...","...","...","..."],"correctAnswer":"A","answerText":null,"difficulty":"%s","explanation":"..."}].
                 Nếu nội dung nguồn quá ít hoặc không đủ căn cứ để tạo câu hỏi chính xác, trả về [].
@@ -206,7 +209,8 @@ public class GeminiParser {
         if (mode == ImportMode.GENERATE) {
             return """
                     Dựa CHỈ trên kiến thức, dữ kiện và nội dung trong tài liệu được đính kèm, hãy tự biên soạn đúng %d câu hỏi trắc nghiệm mới bằng tiếng Việt cho môn %s, lớp %d, độ khó COMPREHENSION.
-                    Tài liệu không cần chứa câu hỏi có sẵn. Không thêm kiến thức ngoài nguồn, không bịa dữ kiện; mỗi câu có đúng 4 lựa chọn, chỉ một đáp án đúng, kèm giải thích ngắn. Giữ công thức bằng LaTeX.
+                    Tài liệu không cần chứa câu hỏi có sẵn. Không thêm kiến thức ngoài nguồn, không bịa dữ kiện; mỗi câu có đúng 4 lựa chọn, chỉ một đáp án đúng, kèm giải thích ngắn.
+                    Dùng $...$ cho công thức toán và $\\ce{...}$ cho công thức/phản ứng hóa học; giữ chỉ số, số mũ, đơn vị, ký hiệu sinh học và tiếng Việt chính xác.
                     Trả về duy nhất JSON array theo schema:
                     [{"number":1,"type":"MCQ","content":"...","options":["...","...","...","..."],"correctAnswer":"A","answerText":null,"difficulty":"COMPREHENSION","explanation":"..."}].
                     Nếu nguồn quá ít hoặc không đủ căn cứ để tạo câu hỏi chính xác, trả về [].
@@ -221,7 +225,7 @@ public class GeminiParser {
                 "correctAnswer":"A","answerText":null,"difficulty":"RECOGNITION","explanation":null}].
                 type chỉ được là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY.
                 difficulty chỉ được là RECOGNITION, COMPREHENSION, APPLICATION hoặc HIGH_APPLICATION.
-                Giữ nguyên công thức bằng LaTeX. Không trả markdown hay văn bản ngoài JSON.
+                Giữ ký hiệu toán, hóa, sinh, chỉ số dưới/trên và đơn vị chính xác; dùng $...$ cho công thức toán và $\\ce{...}$ cho công thức hóa học. Không trả markdown hay văn bản ngoài JSON.
                 """.formatted(subject);
     }
 
@@ -233,7 +237,7 @@ public class GeminiParser {
                 chủ đề "%s", độ khó %s. Trả về DUY NHẤT một JSON array đúng schema:
                 [{"number":1,"type":"MCQ","content":"...","options":["A. ...","B. ...","C. ...","D. ..."],
                 "correctAnswer":"A","answerText":null,"difficulty":"%s","explanation":"..."}].
-                Đáp án phải chính xác, các lựa chọn nhiễu hợp lý; nội dung toán học giữ LaTeX $...$.
+                Đáp án phải chính xác, các lựa chọn nhiễu hợp lý; dùng $...$ cho công thức toán và $\\ce{...}$ cho công thức hóa học.
                 """.formatted(count, subject, grade, topic, difficulty, difficulty);
         try {
             return parseAiResponse(extractResponseText(callGemini(prompt)));
@@ -327,14 +331,16 @@ public class GeminiParser {
                 1. Mỗi câu hỏi là 1 object JSON:
                    - number: số thứ tự câu (int)
                    - type: "MCQ" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY"
-                   - content: nội dung câu hỏi (giữ LaTeX dạng $...$)
+                   - content: nội dung câu hỏi; công thức toán dùng $...$, công thức hóa học dùng $\\ce{...}$
                    - options: array 4 đáp án ["A. ...", "B. ...", "C. ...", "D. ..."] — chỉ với MCQ
                    - correctAnswer: "A"|"B"|"C"|"D" — nếu không có, để null
                    - answerText: đáp án SHORT_ANSWER/ESSAY
                    - difficulty: "RECOGNITION" | "COMPREHENSION" | "APPLICATION" | "HIGH_APPLICATION"
                    - explanation: giải thích (hoặc null)
 
-                2. Giữ nguyên công thức LaTeX: $x^2 + 1$.
+                2. Giữ nguyên công thức toán trong $...$; công thức và phản ứng hóa học trong $\\ce{...}$.
+                   Ví dụ: $\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$, $\\ce{H2SO4}$, $\\ce{2H2 + O2 -> 2H2O}$.
+                   Giữ chính xác chỉ số dưới/trên, ký hiệu sinh học, chữ Hy Lạp, đơn vị và tiếng Việt.
                 3. Nếu đáp án đúng có đánh dấu trong file, nhận diện.
                 4. Nếu không tìm thấy câu hỏi, trả về [].
                 5. KHÔNG text giải thích, KHÔNG markdown, CHỈ JSON.

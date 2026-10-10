@@ -75,7 +75,9 @@ class GeminiParserTest {
                 .contains("Nguồn không cần chứa câu hỏi có sẵn")
                 .contains("Quang hợp chuyển năng lượng ánh sáng thành hóa năng.")
                 .contains("đúng 5 câu hỏi")
-                .contains("không thêm kiến thức ngoài nguồn");
+                .contains("không thêm kiến thức ngoài nguồn")
+                .contains("$...$")
+                .contains("$\\ce{...}$");
     }
 
     @Test

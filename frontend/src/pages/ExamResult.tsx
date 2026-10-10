@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Icon } from '../components/Icon';
+import { MathText } from '../components/MathText';
 import { Button } from '../components/Button';
 import { submissionApi, SubmissionReview } from '../api/submission';
 
@@ -94,7 +95,7 @@ export default function ExamResult() {
             }
             return (
               <article key={question.id} className="rounded-xl border border-slate-100 dark:border-slate-800 p-4">
-                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">{index + 1}. {question.content}</h3>
+                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">{index + 1}. <MathText>{question.content}</MathText></h3>
                 {options.length > 0 && <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-300">{options.map((option, optionIndex) => <li key={optionIndex}>{option}</li>)}</ul>}
                 <p className="mt-3 text-sm"><span className="text-slate-500">Câu trả lời của bạn: </span><strong>{question.studentAnswer || 'Chưa trả lời'}</strong></p>
                 {review.answersRevealed && (

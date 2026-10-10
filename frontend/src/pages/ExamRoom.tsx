@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Icon } from '../components/Icon';
+import { MathText } from '../components/MathText';
 import { Button } from '../components/Button';
 import { useToast } from '../components/Toast';
 import { useExamTimer } from '../hooks/useExamTimer';
@@ -341,7 +342,7 @@ export default function ExamRoom() {
               </div>
 
               <p className="text-base font-semibold text-slate-900 dark:text-white leading-relaxed mb-5 whitespace-pre-wrap">
-                {current.content}
+                <MathText>{current.content}</MathText>
               </p>
 
               {current.options && current.options.length > 0 ? (
@@ -372,7 +373,7 @@ export default function ExamRoom() {
                         >
                           {letter}
                         </div>
-                        <div className="text-sm pt-1.5">{opt}</div>
+                        <MathText className="text-sm pt-1.5">{opt}</MathText>
                       </button>
                     );
                   })}

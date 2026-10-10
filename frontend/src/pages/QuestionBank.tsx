@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
+import { MathText } from '../components/MathText';
 import { Input, Select, Textarea } from '../components/Input';
 import { Modal } from '../components/Modal';
 import { useToast } from '../components/Toast';
@@ -244,17 +245,17 @@ export default function QuestionBank() {
                     <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{QUESTION_TYPE_LABELS[question.type]}</span>
                     {question.unit && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">{question.unit}</span>}
                   </div>
-                  <p className="whitespace-pre-wrap text-sm font-semibold leading-relaxed text-slate-900 dark:text-white">{question.content}</p>
+                  <MathText className="whitespace-pre-wrap text-sm font-semibold leading-relaxed text-slate-900 dark:text-white">{question.content}</MathText>
                   {question.options && (
                     <div className="mt-3 grid sm:grid-cols-2 gap-2">
                       {question.options.map((option, index) => {
                         const answerLabel = String.fromCharCode(65 + index);
                         const correct = question.correctAnswer === answerLabel;
-                        return <div key={`${question.id}-${index}`} className={`rounded-lg px-3 py-2 text-xs ${correct ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>{answerLabel}. {option}</div>;
+                        return <div key={`${question.id}-${index}`} className={`rounded-lg px-3 py-2 text-xs ${correct ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>{answerLabel}. <MathText>{option}</MathText></div>;
                       })}
                     </div>
                   )}
-                  {question.explanation && <p className="mt-3 text-xs text-slate-500"><strong>Lời giải:</strong> {question.explanation}</p>}
+                  {question.explanation && <p className="mt-3 text-xs text-slate-500"><strong>Lời giải:</strong> <MathText>{question.explanation}</MathText></p>}
                 </div>
                 <div className="flex gap-1">
                   <button aria-label="Sửa câu hỏi" onClick={() => beginEdit(question)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-blue-600"><Icon name="edit" size={16} /></button>
