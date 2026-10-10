@@ -72,7 +72,7 @@ export default function ExamResult() {
         </div>
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 text-center">
           <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center mx-auto mb-2"><Icon name="clock" size={20} /></div>
-          <div className="text-2xl font-extrabold text-slate-900 dark:text-white">{review.durationSec == null ? '—' : Math.round(review.durationSec / 60)}</div>
+          <div className="text-2xl font-extrabold text-slate-900 dark:text-white">{review.durationSec == null ? '—' : Math.ceil(review.durationSec / 60)}</div>
           <div className="text-xs text-slate-500">Phút làm bài</div>
         </div>
       </div>
