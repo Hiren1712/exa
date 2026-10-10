@@ -55,6 +55,14 @@ class GeminiParserTest {
     }
 
     @Test
+    void triesAnotherModelForUnavailableOrPersistentlyOverloadedModelsOnly() {
+        assertThat(GeminiParser.shouldTryFallbackModel(404)).isTrue();
+        assertThat(GeminiParser.shouldTryFallbackModel(503)).isTrue();
+        assertThat(GeminiParser.shouldTryFallbackModel(429)).isFalse();
+        assertThat(GeminiParser.shouldTryFallbackModel(403)).isFalse();
+    }
+
+    @Test
     void serviceUnavailableMessageExplainsTheAutomaticRetry() {
         GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
 

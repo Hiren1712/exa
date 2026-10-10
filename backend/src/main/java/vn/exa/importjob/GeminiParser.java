@@ -42,6 +42,7 @@ public class GeminiParser {
             "https://generativelanguage.googleapis.com/v1beta/models";
     private static final int MAX_INLINE_PDF_SIZE = 15 * 1024 * 1024;
     private static final int MAX_GEMINI_RETRIES = 2;
+    private static final int MAX_FALLBACK_MODELS = 2;
 
     public void validateConfiguration() {
         requireConfiguredApiKey();
@@ -243,16 +244,20 @@ public class GeminiParser {
         try {
             return sendGeminiRequest(model, body);
         } catch (WebClientResponseException e) {
-            if (e.getStatusCode().value() == 404) {
+            if (shouldTryFallbackModel(e.getStatusCode().value())) {
                 List<String> fallbacks = getAvailableFallbackModels();
                 WebClientResponseException lastModelError = e;
+                int attemptedFallbacks = 0;
                 for (String fallback : fallbacks) {
                     if (fallback.equals(normalizeModelName(model))) continue;
-                    log.warn("Configured Gemini model is unavailable; retrying with {}", fallback);
+                    if (attemptedFallbacks >= MAX_FALLBACK_MODELS) break;
+                    attemptedFallbacks++;
+                    log.warn("Gemini model {} returned HTTP {}; retrying with {}",
+                            normalizeModelName(model), e.getStatusCode().value(), fallback);
                     try {
                         return sendGeminiRequest(fallback, body);
                     } catch (WebClientResponseException fallbackError) {
-                        if (fallbackError.getStatusCode().value() != 404) {
+                        if (!shouldTryFallbackModel(fallbackError.getStatusCode().value())) {
                             throw BusinessException.badRequest(userMessageForGeminiError(
                                     fallbackError.getStatusCode().value(), fallbackError.getResponseBodyAsString()));
                         }
@@ -310,6 +315,10 @@ public class GeminiParser {
         return statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504;
     }
 
+    static boolean shouldTryFallbackModel(int statusCode) {
+        return statusCode == 404 || isTransientGeminiStatus(statusCode);
+    }
+
     private List<String> getAvailableFallbackModels() {
         List<String> cached = availableFallbackModels;
         if (cached != null) return cached;
@@ -330,8 +339,8 @@ public class GeminiParser {
             throw BusinessException.badRequest(
                     userMessageForGeminiError(error.getStatusCode().value(), error.getResponseBodyAsString()));
         } catch (Exception error) {
-            log.warn("Could not discover Gemini models after configured model returned 404");
-            return null;
+            log.warn("Could not discover Gemini models for fallback");
+            return List.of();
         }
     }
 
