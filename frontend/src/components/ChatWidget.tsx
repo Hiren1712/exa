@@ -158,7 +158,6 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
       .slice(-11)
       .map(({ role, content: messageContent }) => ({ role, content: messageContent }));
     if (history[0]?.role === 'assistant') history.shift();
-    history.push({ role: 'user', content });
     await ask(history, threadId);
   };
 
