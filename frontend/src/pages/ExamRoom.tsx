@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
 import { useToast } from '../components/Toast';
@@ -9,6 +9,7 @@ import { examApi, Exam } from '../api/exam';
 import { submissionApi } from '../api/submission';
 import { extractError } from '../api/client';
 import { cn } from '../lib/utils';
+import { useAuth } from '../hooks/useAuth';
 
 function shuffledIndexes(length: number): number[] {
   const indexes = Array.from({ length }, (_, index) => index);
@@ -21,8 +22,12 @@ function shuffledIndexes(length: number): number[] {
 
 export default function ExamRoom() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isPreview = searchParams.get('preview') === '1'
+    && (user?.role === 'TEACHER' || user?.role === 'ADMIN');
 
   const [exam, setExam] = useState<Exam | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,23 +41,24 @@ export default function ExamRoom() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [autoSaveErrorShown, setAutoSaveErrorShown] = useState(false);
+  const [previewResult, setPreviewResult] = useState<{ score: number; needsManualGrading: number } | null>(null);
   answersRef.current = answers;
 
   const timer = useExamTimer({
     durationMin: exam?.durationMin || 45,
     autoStart: false,
     onExpire: () => {
-      toast('Hết giờ', 'Bài đã được nộp tự động', 'warn');
+      toast('Hết giờ', isPreview ? 'Đã kết thúc lượt thử đề' : 'Bài đã được nộp tự động', 'warn');
       handleSubmit(true);
     },
   });
   const resetTimer = timer.reset;
 
   const proctor = useProctor({
-    enabled: exam?.proctorEnabled ?? false,
+    enabled: !isPreview && (exam?.proctorEnabled ?? false),
     onViolation: (type, total) => {
       toast('Cảnh báo', `${type === 'TAB_SWITCH' ? 'Rời tab' : type === 'COPY' ? 'Copy' : 'Thoát fullscreen'} lần ${total}`, 'warn');
-      if (submissionId) {
+      if (submissionId && !isPreview) {
         void submissionApi.logProctorEvent(submissionId, type)
           .catch((err: unknown) => toast('Không ghi được nhật ký giám sát', extractError(err), 'error'));
       }
@@ -97,6 +103,14 @@ export default function ExamRoom() {
     if (!exam || !id) return;
     setStarting(true);
     try {
+      if (isPreview) {
+        setAnswers({});
+        setPreviewResult(null);
+        setSubmissionId(-1);
+        timer.reset(exam.durationMin * 60);
+        timer.start();
+        return;
+      }
       if (exam.lockScreen || exam.proctorEnabled) {
         try {
           await proctor.requestFullscreen();
@@ -132,7 +146,7 @@ export default function ExamRoom() {
   };
 
   useEffect(() => {
-    if (!submissionId || !exam) return;
+    if (!submissionId || submissionId < 0 || !exam) return;
     const interval = window.setInterval(() => {
       const currentAnswers: Record<number, string> = {};
       exam.questions?.forEach((question, index) => {
@@ -158,10 +172,37 @@ export default function ExamRoom() {
 
   const handleSubmit = async (auto = false) => {
     if (!submissionId || !exam) return;
-    if (!auto && !confirm('Bạn chắc chắn muốn nộp bài?')) return;
+    if (!auto && !isPreview && !confirm('Bạn chắc chắn muốn nộp bài?')) return;
 
     setSubmitting(true);
     try {
+      if (isPreview) {
+        const questions = exam.questions || [];
+        let score = 0;
+        let needsManualGrading = 0;
+        for (const question of questions) {
+          const answer = answers[question.id ?? 0]?.trim() ?? '';
+          if (question.type === 'ESSAY') {
+            needsManualGrading += 1;
+          } else if (question.type === 'MCQ' || question.type === 'TRUE_FALSE') {
+            if (answer && question.correctAnswer?.trim().toLowerCase() === answer.toLowerCase()) {
+              score += question.points ?? 0;
+            }
+          } else if (question.type === 'SHORT_ANSWER' && answer) {
+            const normalize = (value: string) => value.toLowerCase()
+              .replace(/\s+/g, ' ')
+              .replace(/[.,;:!?]/g, '')
+              .trim();
+            if (question.answerText && normalize(question.answerText) === normalize(answer)) {
+              score += question.points ?? 0;
+            }
+          }
+        }
+        setPreviewResult({ score: Number(score.toFixed(2)), needsManualGrading });
+        timer.pause();
+        toast('Đã kết thúc lượt thử', 'Lượt thử không được lưu vào kết quả hoặc số lần làm bài.', 'success');
+        return;
+      }
       const result = await submissionApi.submit(submissionId, answers);
       toast('Nộp bài thành công', `Điểm: ${result.totalScore}/${exam.totalPoints || 10}`, 'success');
       proctor.exitFullscreen();
@@ -188,13 +229,19 @@ export default function ExamRoom() {
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40"><Icon name="file" size={25} /></div>
           <h1 className="mt-4 text-center text-xl font-extrabold text-slate-900 dark:text-white">{exam.title}</h1>
           <p className="mt-2 text-center text-sm text-slate-500">{exam.subject} · {exam.durationMin} phút · {exam.questions?.length || 0} câu</p>
-          {exam.passwordProtected && (
+          {isPreview ? (
+            <p className="mt-4 rounded-xl bg-blue-50 p-3 text-center text-sm text-blue-800">
+              Chế độ thử dành cho giáo viên. Lượt này không được lưu và không ảnh hưởng số lần thi của học sinh.
+            </p>
+          ) : exam.passwordProtected && (
             <label className="mt-6 block text-xs font-semibold text-slate-600 dark:text-slate-400">Mật khẩu đề thi
               <input type="password" value={examPassword} onChange={(event) => setExamPassword(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3.5 py-2.5 text-sm" />
             </label>
           )}
-          {exam.lockScreen && <p className="mt-4 text-center text-xs text-amber-700">Đề thi yêu cầu bật chế độ toàn màn hình trước khi bắt đầu.</p>}
-          <Button variant="primary" block loading={starting} onClick={() => void handleStart()} className="mt-6">Bắt đầu làm bài</Button>
+          {!isPreview && exam.lockScreen && <p className="mt-4 text-center text-xs text-amber-700">Đề thi yêu cầu bật chế độ toàn màn hình trước khi bắt đầu.</p>}
+          <Button variant="primary" block loading={starting} onClick={() => void handleStart()} className="mt-6">
+            {isPreview ? 'Bắt đầu thử đề' : 'Bắt đầu làm bài'}
+          </Button>
         </section>
       </div>
     );
@@ -204,10 +251,43 @@ export default function ExamRoom() {
   const current = questions[currentIdx];
   const currentQuestionId = current?.id ?? currentIdx + 1;
 
+  if (isPreview && previewResult) {
+    return (
+      <div className="mx-auto mt-10 max-w-xl rounded-3xl border border-blue-200 bg-white p-8 text-center shadow-lg dark:border-slate-700 dark:bg-slate-900">
+        <Icon name="check" size={32} className="mx-auto text-emerald-500" />
+        <h1 className="mt-4 text-2xl font-extrabold text-slate-900 dark:text-white">Kết quả thử đề</h1>
+        <p className="mt-2 text-slate-600 dark:text-slate-300">{exam.title}</p>
+        <p className="mt-5 text-4xl font-extrabold text-blue-600">
+          {previewResult.score} / {exam.totalPoints || 10}
+        </p>
+        {previewResult.needsManualGrading > 0 && (
+          <p className="mt-3 text-sm text-amber-700">
+            {previewResult.needsManualGrading} câu tự luận cần giáo viên chấm; điểm trên chỉ tính câu khách quan.
+          </p>
+        )}
+        <p className="mt-3 text-xs text-slate-500">Lượt thử không được lưu vào hệ thống.</p>
+        <div className="mt-6 flex justify-center gap-3">
+          <Button variant="ghost" onClick={() => navigate('/exams')}>Quay lại đề thi</Button>
+          <Button variant="primary" onClick={() => {
+            setAnswers({});
+            setPreviewResult(null);
+            setCurrentIdx(0);
+            setSubmissionId(null);
+          }}>Thử lại</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-40 bg-slate-50 dark:bg-slate-950 flex flex-col">
       {/* Top bar */}
       <div className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center gap-4 px-5">
+        {isPreview && (
+          <span className="rounded-lg bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+            ĐANG THỬ — KHÔNG LƯU KẾT QUẢ
+          </span>
+        )}
         <div
           className={cn(
             'flex items-center gap-2 px-4 py-2 rounded-xl font-bold tabular-nums text-base',
@@ -226,10 +306,10 @@ export default function ExamRoom() {
             {exam.title}
           </div>
           <div className="text-xs text-slate-500">
-            {questions.length} câu hỏi {exam.proctorEnabled && '• 🛡️ Proctoring Pro'}
+            {questions.length} câu hỏi {isPreview ? '• Chế độ thử' : exam.proctorEnabled && '• 🛡️ Proctoring Pro'}
           </div>
         </div>
-        {exam.proctorEnabled && (
+        {!isPreview && exam.proctorEnabled && (
           <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-red-500">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             <span>Rời tab: {proctor.stats.tabSwitches}</span>
@@ -392,7 +472,7 @@ export default function ExamRoom() {
             </div>
           </div>
 
-          {exam.proctorEnabled && (
+          {!isPreview && exam.proctorEnabled && (
             <div className="mt-6 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-xs text-red-600">
               <div className="font-bold mb-1">🛡️ Proctoring Pro</div>
               <div>Rời tab: {proctor.stats.tabSwitches}</div>

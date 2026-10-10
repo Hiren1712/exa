@@ -64,8 +64,10 @@ public class ExamController {
             }
         }
         boolean includeAnswers = isOwner || user.isAdmin();
+        var pointsByQuestion = examService.listQuestionPoints(id);
         List<QuestionDetail> questions = examService.listQuestions(id).stream()
-                .map(question -> QuestionDetail.from(question, includeAnswers))
+                .map(question -> QuestionDetail.from(question, includeAnswers,
+                        pointsByQuestion.getOrDefault(question.getId(), java.math.BigDecimal.ZERO)))
                 .toList();
         ExamDetail result = new ExamDetail(exam.getId(), exam.getTitle(), exam.getDescription(),
                 exam.getSubject(), exam.getClassroomId(), exam.getDurationMin(),
@@ -172,12 +174,12 @@ public class ExamController {
 
     public record QuestionDetail(
             Long id, String subject, Integer grade, String unit, String difficulty,
-            String type, String content, String options, String correctAnswer,
+            String type, String content, String options, java.math.BigDecimal points, String correctAnswer,
             String answerText, String explanation) {
-        static QuestionDetail from(Question question, boolean includeAnswers) {
+        static QuestionDetail from(Question question, boolean includeAnswers, java.math.BigDecimal points) {
             return new QuestionDetail(question.getId(), question.getSubject(), question.getGrade(),
                     question.getUnit(), question.getDifficulty().name(), question.getType().name(),
-                    question.getContent(), question.getOptions(),
+                    question.getContent(), question.getOptions(), points,
                     includeAnswers ? question.getCorrectAnswer() : null,
                     includeAnswers ? question.getAnswerText() : null,
                     includeAnswers ? question.getExplanation() : null);

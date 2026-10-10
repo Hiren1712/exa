@@ -15,6 +15,7 @@ export interface Question {
   correctAnswer?: string;
   answerText?: string;
   explanation?: string;
+  points?: number;
 }
 
 export interface QuestionFilter {

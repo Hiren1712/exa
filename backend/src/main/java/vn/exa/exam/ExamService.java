@@ -162,6 +162,11 @@ public class ExamService {
                 .map(ExamQuestion::getQuestionId).toList();
     }
 
+    public java.util.Map<Long, BigDecimal> listQuestionPoints(Long examId) {
+        return examQuestionRepository.findByExamIdOrderByOrderIndexAsc(examId).stream()
+                .collect(java.util.stream.Collectors.toMap(ExamQuestion::getQuestionId, ExamQuestion::getPoints));
+    }
+
     @Transactional
     public void addQuestions(Long examId, Long ownerId, List<Long> questionIds) {
         Exam exam = getById(examId);

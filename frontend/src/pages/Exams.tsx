@@ -190,10 +190,10 @@ export default function Exams() {
                 })() : (
                   <>
                     <button
-                      onClick={() => navigate(`/exam/${exam.id}`)}
+                      onClick={() => navigate(`/exam/${exam.id}?preview=1`)}
                       className="flex-1 py-2 text-xs font-semibold rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                     >
-                      👁️ Xem
+                      Thử đề
                     </button>
                     <button
                       onClick={() => navigate(`/exams/${exam.id}/edit`)}
