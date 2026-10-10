@@ -41,4 +41,16 @@ class GeminiParserTest {
         assertThat(parser.userMessageForGeminiError(429, ""))
                 .contains("quota/billing");
     }
+
+    @Test
+    void referrerRestrictedApiKeyExplainsServerSideKeyRestriction() {
+        GeminiParser parser = new GeminiParser(WebClient.builder(), new ObjectMapper());
+        String response = """
+                {"error":{"details":[{"reason":"API_KEY_HTTP_REFERRER_BLOCKED"}]}}
+                """;
+
+        assertThat(parser.userMessageForGeminiError(403, response))
+                .contains("giới hạn theo website")
+                .contains("HTTP referrer");
+    }
 }
