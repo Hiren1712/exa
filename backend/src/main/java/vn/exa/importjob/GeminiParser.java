@@ -1,5 +1,6 @@
 package vn.exa.importjob;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -249,17 +250,46 @@ public class GeminiParser {
                     .block();
         } catch (WebClientResponseException e) {
             log.warn("Gemini API returned HTTP {}", e.getStatusCode().value());
-            if (e.getStatusCode().value() == 401 || e.getStatusCode().value() == 403) {
-                throw BusinessException.badRequest("Gemini từ chối API key. Hãy kiểm tra GEMINI_API_KEY.");
-            }
-            if (e.getStatusCode().value() == 429) {
-                throw BusinessException.badRequest("Gemini đang quá tải hoặc đã hết hạn mức. Vui lòng thử lại sau.");
-            }
-            throw BusinessException.badRequest("Gemini gặp lỗi khi phân tích tài liệu. Vui lòng thử lại sau.");
+            throw BusinessException.badRequest(
+                    userMessageForGeminiError(e.getStatusCode().value(), e.getResponseBodyAsString()));
         } catch (Exception e) {
             log.error("Gemini API call failed: {}", e.getClass().getSimpleName());
             throw BusinessException.badRequest("Không kết nối được Gemini. Vui lòng thử lại sau.");
         }
+    }
+
+    String userMessageForGeminiError(int statusCode, String responseBody) {
+        String reason = "";
+        try {
+            JsonNode error = objectMapper.readTree(responseBody).path("error");
+            for (JsonNode detail : error.path("details")) {
+                String detailReason = detail.path("reason").asText("");
+                if (!detailReason.isBlank()) {
+                    reason = detailReason;
+                    break;
+                }
+            }
+            if (reason.isBlank()) reason = error.path("status").asText("");
+        } catch (JsonProcessingException ignored) {
+            log.debug("Gemini error response did not contain readable error metadata");
+        }
+
+        if (statusCode == 401 || statusCode == 403 || "API_KEY_INVALID".equals(reason)) {
+            return "Gemini không chấp nhận API key. Kiểm tra lại biến GEMINI_API_KEY trên Railway rồi redeploy backend.";
+        }
+        if (statusCode == 404) {
+            return "Không tìm thấy Gemini model đang cấu hình. Kiểm tra GEMINI_MODEL trên Railway (mặc định: gemini-2.5-flash).";
+        }
+        if (statusCode == 429) {
+            return "Gemini đang quá tải hoặc API key đã hết hạn mức. Kiểm tra quota/billing của Google AI Studio rồi thử lại.";
+        }
+        if (statusCode == 400) {
+            return "Gemini từ chối nội dung yêu cầu. Hãy kiểm tra model, kích thước/định dạng tệp và thử một tệp nhỏ hơn.";
+        }
+        if (statusCode == 413) {
+            return "Tệp quá lớn để gửi đến Gemini. Hãy dùng tệp nhỏ hơn.";
+        }
+        return "Gemini đang gặp sự cố (HTTP " + statusCode + "). Vui lòng thử lại sau.";
     }
 
     private List<ParsedQuestion> parseAiResponse(String aiText) throws Exception {
