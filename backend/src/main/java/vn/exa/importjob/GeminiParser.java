@@ -320,17 +320,19 @@ public class GeminiParser {
         if (available.isEmpty()) return null;
 
         String configured = normalizeModelName(configuredModel);
-        if (available.contains(configured)) return configured;
 
-        return available.stream()
+        String fallback = available.stream()
+                .filter(name -> !name.equals(configured))
                 .filter(name -> name.contains("flash") && !name.contains("preview"))
                 .sorted(Comparator.comparingInt(this::modelPreference).thenComparing(String::compareTo))
                 .findFirst()
                 .orElseGet(() -> available.stream()
+                        .filter(name -> !name.equals(configured))
                         .filter(name -> !name.contains("preview"))
                         .sorted()
                         .findFirst()
-                        .orElse(available.get(0)));
+                        .orElse(null));
+        return fallback != null ? fallback : available.contains(configured) ? configured : available.get(0);
     }
 
     private int modelPreference(String name) {
