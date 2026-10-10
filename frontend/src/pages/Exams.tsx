@@ -72,7 +72,7 @@ export default function Exams() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">
-            {isStudent ? 'Bài tập được giao' : 'Đề thi &amp; Bài tập'}
+            {isStudent ? 'Bài tập được giao' : 'Đề thi & Bài tập'}
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
             {isStudent ? 'Các đề thi đang mở cho lớp học của bạn' : 'Quản lý và giao đề cho lớp học'}
