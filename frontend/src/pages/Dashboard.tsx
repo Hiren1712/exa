@@ -117,7 +117,12 @@ export default function Dashboard() {
           </div>
           {isTeacher && (
             <Link to="/exams/new">
-              <Button variant="primary" size="lg" icon={<Icon name="plus" size={16} />} className="!bg-white !text-blue-600">
+              <Button
+                variant="primary"
+                size="lg"
+                icon={<Icon name="plus" size={16} />}
+                className="!bg-white !text-blue-700 !shadow-lg !shadow-indigo-950/30 hover:!bg-blue-50 hover:!text-blue-800 focus-visible:!outline-white"
+              >
                 Tạo đề thi
               </Button>
             </Link>

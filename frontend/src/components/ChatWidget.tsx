@@ -217,14 +217,14 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
       {open && (
         <section
           aria-label="Chat với trợ lý EXA"
-          className="fixed bottom-3 right-3 z-50 flex h-[min(680px,calc(100dvh-1.5rem))] w-[calc(100vw-1.5rem)] max-w-[430px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 dark:border-slate-700 dark:bg-slate-900 sm:bottom-5 sm:right-5 sm:h-[min(680px,calc(100dvh-2.5rem))]"
+          className="fixed bottom-3 right-3 z-50 flex h-[min(590px,calc(100dvh-1.5rem))] w-[calc(100vw-1.5rem)] max-w-[370px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 dark:border-slate-700 dark:bg-slate-900 sm:bottom-5 sm:right-5 sm:h-[min(590px,calc(100dvh-2.5rem))]"
         >
           <header className="flex shrink-0 items-center gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-white">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15">
               <Icon name="sparkle" size={21} />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-sm font-bold">Trợ lý học tập EXA</h2>
+              <h2 className="truncate text-sm font-bold">ExaBot</h2>
               <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-blue-100">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
                 Hỏi bài, giải thích và hỗ trợ học tập
