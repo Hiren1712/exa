@@ -208,8 +208,8 @@ export default function ExamBuilder() {
       toast('Thiếu tiêu đề', 'Vui lòng nhập tiêu đề đề thi', 'warn');
       return;
     }
-    if (!questions.length) {
-      toast('Chưa có câu hỏi', 'Thêm ít nhất một câu hỏi trước khi lưu đề thi', 'warn');
+    if (publish && !questions.length) {
+      toast('Chưa có câu hỏi', 'Thêm ít nhất một câu hỏi trước khi công khai đề thi', 'warn');
       return;
     }
     const saved = await persistDraft(false);
