@@ -267,7 +267,7 @@ export default function Login() {
         </div>
 
         <p className="text-center text-xs text-slate-400 mt-6">
-          © 2026 EXA — Exam Extra. Made with ❤️ in Việt Nam
+          © 2026 EXA — Exam Extra. Made by Revenge Studio
         </p>
       </div>
     </div>

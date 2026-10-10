@@ -53,13 +53,13 @@ export function extractError(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as ApiResponse<unknown> | undefined;
     if (!error.response && error.code === 'ERR_NETWORK') {
-      return 'Không thể kết nối máy chủ. Kiểm tra địa chỉ API, trạng thái backend và cấu hình CORS.';
+      return 'Mất kết nối tới máy chủ. Hãy kiểm tra mạng rồi thử lại; nếu lỗi tiếp diễn, vui lòng báo quản trị viên.';
     }
     if (error.response?.status === 405) {
-      return 'Máy chủ từ chối phương thức đăng nhập (HTTP 405). Nếu đang dùng Cloudflare Pages, hãy đặt VITE_API_URL thành URL backend có hậu tố /api rồi build và deploy lại.';
+      return 'Máy chủ không hỗ trợ thao tác này (HTTP 405). Vui lòng tải lại trang và thử lại.';
     }
     if (error.response?.status === 404) {
-      return 'Không tìm thấy API đăng nhập. Kiểm tra VITE_API_URL có trỏ đến backend và bao gồm đường dẫn /api.';
+      return 'Không tìm thấy API được yêu cầu (HTTP 404). Vui lòng tải lại trang và thử lại.';
     }
     return data?.message || error.message || 'Lỗi không xác định';
   }

@@ -33,7 +33,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const toast = useCallback((title: string, message?: string, type: ToastType = 'info') => {
     const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, title, message, type }]);
+    setToasts((prev) => {
+      const duplicate = prev.some(
+        (item) => item.title === title && item.message === message && item.type === type,
+      );
+      return duplicate ? prev : [...prev.slice(-2), { id, title, message, type }];
+    });
 
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -47,14 +52,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-3 max-w-sm">
+      <div className="fixed top-4 left-4 right-4 z-[100] flex flex-col items-stretch gap-3 sm:left-auto sm:w-full sm:max-w-sm">
         {toasts.map((t) => {
           const cfg = typeConfig[t.type];
           return (
             <div
               key={t.id}
               className={cn(
-                'bg-white dark:bg-slate-900 rounded-2xl shadow-xl border-l-4 p-4 pr-10 flex gap-3 animate-slide-up relative',
+                'w-full min-w-0 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border-l-4 p-4 pr-10 flex gap-3 animate-slide-up relative',
                 cfg.color,
               )}
             >
@@ -62,9 +67,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 <Icon name={cfg.icon} size={18} />
               </div>
               <div className="flex-1 min-w-0">
-                <h5 className="text-sm font-semibold text-slate-900 dark:text-white">{t.title}</h5>
+                <h5 className="break-words text-sm font-semibold text-slate-900 dark:text-white">{t.title}</h5>
                 {t.message && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.message}</p>
+                  <p className="break-words text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.message}</p>
                 )}
               </div>
               <button
