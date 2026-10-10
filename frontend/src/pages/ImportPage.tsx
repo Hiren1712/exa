@@ -404,47 +404,57 @@ export default function ImportPage() {
                         {QUESTION_TYPES[q.type] || q.type}
                       </span>
                     </div>
-                    <label className="block mb-3" onClick={(event) => event.stopPropagation()}>
-                      <span className="sr-only">Nội dung câu hỏi {idx + 1}</span>
-                      <textarea
-                        value={q.content}
-                        onChange={(event) => updateQuestion(idx, { content: event.target.value })}
-                        onClick={(event) => event.stopPropagation()}
-                        className="w-full resize-y rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm font-semibold text-slate-900 dark:text-white"
-                      />
-                      <MathText className="mt-2 block text-sm text-slate-700 dark:text-slate-200">
+                    <div className="mb-3">
+                      <MathText className="block whitespace-pre-wrap text-sm font-semibold leading-relaxed text-slate-900 dark:text-white">
                         {q.content}
                       </MathText>
-                    </label>
+                      <details className="mt-2 text-xs text-slate-500" onClick={(event) => event.stopPropagation()}>
+                        <summary className="w-fit cursor-pointer select-none">Sửa nội dung câu hỏi</summary>
+                        <textarea
+                          aria-label={`Nội dung câu hỏi ${idx + 1}`}
+                          value={q.content}
+                          onChange={(event) => updateQuestion(idx, { content: event.target.value })}
+                          onClick={(event) => event.stopPropagation()}
+                          className="mt-2 w-full resize-y rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm font-normal text-slate-900 dark:text-white"
+                        />
+                      </details>
+                    </div>
                     {q.options && q.options.length > 0 && (
                       <div className="space-y-1.5">
                         {q.options.map((opt, i) => {
                           const letter = String.fromCharCode(65 + i);
                           const isCorrect = q.correctAnswer === letter;
                           return (
-                            <label
+                            <div
                               key={i}
-                              className={`text-xs px-3 py-2 rounded-lg ${
+                              className={`text-sm px-3 py-2 rounded-lg ${
                                 isCorrect
-                                  ? 'bg-emerald-50 text-emerald-700 font-semibold'
-                                  : 'bg-slate-50 dark:bg-slate-800 text-slate-600'
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200'
+                                  : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200'
                               }`}
                             >
-                              <span className="mr-2 font-semibold">{letter}.</span>
-                              <input
-                                value={opt}
-                                onChange={(event) => updateQuestion(idx, {
-                                  options: q.options.map((option, optionIndex) =>
-                                    optionIndex === i ? event.target.value : option),
-                                })}
-                                onClick={(event) => event.stopPropagation()}
-                                className="w-[calc(100%-2rem)] bg-transparent outline-none"
-                              />
-                              {isCorrect && ' ✓'}
-                              <MathText className="mt-1 block pl-6 text-xs">
-                                {opt}
-                              </MathText>
-                            </label>
+                              <div className="flex items-start gap-2">
+                                <span className="font-semibold">{letter}.</span>
+                                <MathText className="min-w-0 flex-1 whitespace-pre-wrap">
+                                  {opt}
+                                </MathText>
+                                {isCorrect && <span aria-label="Đáp án đúng">✓</span>}
+                              </div>
+                              <details className="mt-1 text-xs opacity-75" onClick={(event) => event.stopPropagation()}>
+                                <summary className="w-fit cursor-pointer select-none">Sửa phương án {letter}</summary>
+                                <textarea
+                                  aria-label={`Phương án ${letter}, câu ${idx + 1}`}
+                                  value={opt}
+                                  rows={2}
+                                  onChange={(event) => updateQuestion(idx, {
+                                    options: q.options.map((option, optionIndex) =>
+                                      optionIndex === i ? event.target.value : option),
+                                  })}
+                                  onClick={(event) => event.stopPropagation()}
+                                  className="mt-2 w-full resize-y rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm font-normal text-slate-900 dark:text-white"
+                                />
+                              </details>
+                            </div>
                           );
                         })}
                       </div>
@@ -466,7 +476,7 @@ export default function ImportPage() {
                       </label>
                     )}
                     {q.explanation && (
-                      <p className="mt-3 text-xs text-slate-500">
+                      <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                         <strong>Giải thích xem trước:</strong>{' '}
                         <MathText>{q.explanation}</MathText>
                       </p>
@@ -482,14 +492,16 @@ export default function ImportPage() {
                       </label>
                     )}
                     {q.explanation && (
-                      <label className="mt-3 block text-xs font-semibold text-amber-700">
-                        Giải thích
+                      <details className="mt-3 text-xs font-semibold text-amber-700" onClick={(event) => event.stopPropagation()}>
+                        <summary className="w-fit cursor-pointer select-none">Sửa giải thích</summary>
                         <textarea
+                          aria-label={`Giải thích câu ${idx + 1}`}
                           value={q.explanation}
                           onChange={(event) => updateQuestion(idx, { explanation: event.target.value || null })}
-                          className="mt-1 w-full rounded-lg bg-amber-50 p-3 text-xs font-normal"
+                          onClick={(event) => event.stopPropagation()}
+                          className="mt-2 w-full rounded-lg bg-amber-50 p-3 text-xs font-normal"
                         />
-                      </label>
+                      </details>
                     )}
                   </div>
                 </div>
