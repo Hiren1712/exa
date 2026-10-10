@@ -110,7 +110,18 @@ export default function ExamRoom() {
       }
       const submission = await submissionApi.start(Number(id), examPassword || undefined);
       if (!submission.id) throw new Error('Máy chủ không trả về mã bài thi');
+      const savedAnswers = typeof submission.answers === 'string'
+        ? JSON.parse(submission.answers) as Record<string, string>
+        : Array.isArray(submission.answers)
+          ? Object.fromEntries(submission.answers.map((answer) => [String(answer.questionId), answer.answerData]))
+          : {};
+      setAnswers(Object.fromEntries(
+        Object.entries(savedAnswers).map(([questionId, answer]) => [Number(questionId), answer]),
+      ));
       setSubmissionId(submission.id);
+      const startedAt = submission.startedAt ? new Date(submission.startedAt).getTime() : Date.now();
+      const elapsedSeconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+      timer.reset(Math.max(0, exam.durationMin * 60 - elapsedSeconds));
       timer.start();
     } catch (error) {
       await proctor.exitFullscreen();

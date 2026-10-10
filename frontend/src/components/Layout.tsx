@@ -28,7 +28,7 @@ const NAV_TEACHER: NavItem[] = [
 const NAV_STUDENT: NavItem[] = [
   { to: '/', icon: 'home', label: 'Trang chủ' },
   { to: '/exams', icon: 'file', label: 'Bài tập' },
-  { to: '/questions', icon: 'book', label: 'Ôn luyện' },
+  { to: '/classes', icon: 'building', label: 'Lớp học' },
   { to: '/settings', icon: 'settings', label: 'Cài đặt' },
 ];
 

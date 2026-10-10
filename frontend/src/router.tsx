@@ -36,6 +36,16 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   return children;
 }
 
+function RequireTeacher({ children }: { children: JSX.Element }) {
+  const { user } = useAuth();
+
+  if (user?.role !== 'TEACHER' && user?.role !== 'ADMIN') {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
+
 export function AppRouter() {
   return (
     <Routes>
@@ -51,18 +61,18 @@ export function AppRouter() {
       >
         <Route index element={<Dashboard />} />
         <Route path="exams" element={<Exams />} />
-        <Route path="exams/new" element={<ExamBuilder />} />
-        <Route path="exams/:id/edit" element={<ExamBuilder />} />
+        <Route path="exams/new" element={<RequireTeacher><ExamBuilder /></RequireTeacher>} />
+        <Route path="exams/:id/edit" element={<RequireTeacher><ExamBuilder /></RequireTeacher>} />
         <Route path="exam/:id" element={<ExamRoom />} />
         <Route path="exam/:id/result" element={<ExamResult />} />
-        <Route path="questions" element={<QuestionBank />} />
+        <Route path="questions" element={<RequireTeacher><QuestionBank /></RequireTeacher>} />
         <Route path="classes" element={<Classes />} />
         <Route path="classes/:id" element={<ClassDetail />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="grading" element={<Grading />} />
-        <Route path="proctor" element={<Proctor />} />
-        <Route path="ai-studio" element={<AIStudio />} />
-        <Route path="import" element={<ImportPage />} />
+        <Route path="reports" element={<RequireTeacher><Reports /></RequireTeacher>} />
+        <Route path="grading" element={<RequireTeacher><Grading /></RequireTeacher>} />
+        <Route path="proctor" element={<RequireTeacher><Proctor /></RequireTeacher>} />
+        <Route path="ai-studio" element={<RequireTeacher><AIStudio /></RequireTeacher>} />
+        <Route path="import" element={<RequireTeacher><ImportPage /></RequireTeacher>} />
         <Route path="settings" element={<Settings />} />
       </Route>
 

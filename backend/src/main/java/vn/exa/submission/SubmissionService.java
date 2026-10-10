@@ -59,6 +59,12 @@ public class SubmissionService {
             throw BusinessException.forbidden("Mật khẩu đề thi không chính xác");
         }
 
+        var inProgress = submissionRepository.findFirstByExamIdAndStudentIdAndStatusOrderByStartedAtDesc(
+                examId, studentId, Submission.Status.IN_PROGRESS);
+        if (inProgress.isPresent()) {
+            return inProgress.get();
+        }
+
         // Kiểm tra số lần làm bài
         int currentAttempts = Math.toIntExact(
                 submissionRepository.countByExamIdAndStudentId(examId, studentId));

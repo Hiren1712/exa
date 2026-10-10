@@ -20,6 +20,9 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
     Optional<Submission> findByIdAndStudentId(Long id, Long studentId);
 
+    Optional<Submission> findFirstByExamIdAndStudentIdAndStatusOrderByStartedAtDesc(
+            Long examId, Long studentId, Submission.Status status);
+
     long countByExamId(Long examId);
 
     long countByExamIdAndStudentId(Long examId, Long studentId);
