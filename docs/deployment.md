@@ -19,7 +19,7 @@ Deploy the repository root to Railway and use the checked-in `railway.toml`; it 
 - `GEMINI_API_KEY` to enable AI import and Gemini-backed features. The default model is `gemini-3.6-flash`; set `GEMINI_MODEL` only to override it. If unavailable, the backend discovers supported models and retries them.
 
 Attach a Railway persistent volume at `/app/uploads` if uploaded import files must survive service restarts or redeployments.
-AI import accepts DOCX, PDF, XLSX, and XLS files up to 20MB. Text PDFs are extracted locally; scanned PDFs are OCR-processed by Gemini and limited to 15MB.
+AI import accepts DOCX, PDF, XLSX, XLS, PNG, JPG/JPEG, and WEBP files up to 20MB; images and scanned PDFs are limited to 15MB. The import flow supports extracting existing questions, generating new questions grounded in source content, and pasted text input.
 
 The backend uses Flyway migrations and `ddl-auto: validate` by default. Allow the service to complete migrations at startup and use a persistent, private MySQL database. Railway supplies `PORT` at runtime; the app binds to that port and its health check is `/api/actuator/health`.
 

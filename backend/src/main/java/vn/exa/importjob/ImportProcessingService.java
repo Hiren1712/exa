@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -28,7 +29,8 @@ public class ImportProcessingService {
     private String aiModel;
 
     @Async("importTaskExecutor")
-    public void processAsync(Long jobId, String subjectHint) {
+    public void processAsync(Long jobId, String subjectHint, String supplementalContent,
+                             ImportMode mode, Integer questionCount, Integer grade) {
         ImportJob job = importJobRepository.findById(jobId).orElse(null);
         if (job == null) {
             log.error("Import job {} disappeared before processing", jobId);
@@ -48,24 +50,44 @@ public class ImportProcessingService {
             byte[] fileBytes = Files.readAllBytes(path);
             MultipartFile multipartFile = new StoredMultipartFile(
                     job.getOriginalName(), fileBytes);
-            String text = documentParser.extractText(multipartFile);
-            if ((text == null || text.isBlank()) && "pdf".equals(job.getFileType())) {
-                job.setStatus(ImportJob.Status.PARSING);
-                importJobRepository.save(job);
-                GeminiParser.ParseResult result = geminiParser.parsePdf(fileBytes, subjectHint);
-                saveResult(job, result);
-                return;
-            }
-            if (text == null || text.isBlank()) {
-                fail(job, "Không đọc được nội dung file");
-                return;
+            String fileType = job.getFileType().toLowerCase();
+            boolean imageFile = List.of("png", "jpg", "jpeg", "webp").contains(fileType);
+            String extractedText = "txt".equals(fileType)
+                    ? Files.readString(path, java.nio.charset.StandardCharsets.UTF_8)
+                    : imageFile ? "" : documentParser.extractText(multipartFile);
+            String text = extractedText;
+            if (supplementalContent != null && !supplementalContent.isBlank()) {
+                text = text == null || text.isBlank()
+                        ? supplementalContent
+                        : text + "\n\nNỘI DUNG BỔ SUNG:\n" + supplementalContent;
             }
 
-            job.setExtractedText(text);
             job.setStatus(ImportJob.Status.PARSING);
             importJobRepository.save(job);
 
-            GeminiParser.ParseResult result = geminiParser.parse(text, subjectHint);
+            GeminiParser.ParseResult result;
+            if (imageFile) {
+                result = geminiParser.processImage(fileBytes, imageMimeType(fileType), subjectHint,
+                        text, mode, questionCount, grade);
+            } else if ("pdf".equals(fileType) && (extractedText == null || extractedText.isBlank())) {
+                if (text != null && !text.isBlank()) job.setExtractedText(text);
+                result = geminiParser.processPdf(
+                        fileBytes, subjectHint, text, mode, questionCount, grade);
+            } else if (mode == ImportMode.GENERATE) {
+                if (text == null || text.isBlank()) {
+                    fail(job, "Không đọc được nội dung để tạo câu hỏi");
+                    return;
+                }
+                job.setExtractedText(text);
+                result = geminiParser.generateQuestionsFromText(
+                        text, subjectHint, grade, questionCount, "COMPREHENSION");
+            } else if (text == null || text.isBlank()) {
+                fail(job, "Không đọc được nội dung file");
+                return;
+            } else {
+                job.setExtractedText(text);
+                result = geminiParser.parse(text, subjectHint);
+            }
             saveResult(job, result);
         } catch (BusinessException error) {
             log.warn("Import job {} could not be processed: {}", jobId, error.getMessage());
@@ -74,6 +96,14 @@ public class ImportProcessingService {
             log.error("Import job {} failed", jobId, error);
             fail(job, "Không thể phân tích nội dung tệp. Hãy kiểm tra định dạng rồi thử lại.");
         }
+    }
+
+    private String imageMimeType(String fileType) {
+        return switch (fileType) {
+            case "png" -> "image/png";
+            case "webp" -> "image/webp";
+            default -> "image/jpeg";
+        };
     }
 
     private void saveResult(ImportJob job, GeminiParser.ParseResult result) throws Exception {

@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.reactive.function.client.WebClient;
 import vn.exa.common.BusinessException;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -60,6 +62,31 @@ class GeminiParserTest {
         assertThat(GeminiParser.shouldTryFallbackModel(503)).isTrue();
         assertThat(GeminiParser.shouldTryFallbackModel(429)).isFalse();
         assertThat(GeminiParser.shouldTryFallbackModel(403)).isFalse();
+    }
+
+    @Test
+    void generatedQuestionPromptUsesProvidedContentWithoutRequiringExistingQuestions() {
+        GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
+
+        String prompt = parser.generationPrompt(
+                "Quang hợp chuyển năng lượng ánh sáng thành hóa năng.", "Sinh học", 10, 5, "APPLICATION");
+
+        assertThat(prompt)
+                .contains("Nguồn không cần chứa câu hỏi có sẵn")
+                .contains("Quang hợp chuyển năng lượng ánh sáng thành hóa năng.")
+                .contains("đúng 5 câu hỏi")
+                .contains("không thêm kiến thức ngoài nguồn");
+    }
+
+    @Test
+    void generatedQuestionCountIsAllocatedAcrossTextChunks() {
+        GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
+
+        List<Integer> allocation = parser.distributeQuestionCount(
+                List.of("ngắn", "đoạn văn dài hơn", "đoạn dài nhất trong ba phần"), 7);
+
+        assertThat(allocation).containsExactly(1, 2, 4);
+        assertThat(allocation).allMatch(count -> count >= 0);
     }
 
     @Test

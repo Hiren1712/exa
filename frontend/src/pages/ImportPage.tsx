@@ -6,7 +6,7 @@ import { Button } from '../components/Button';
 import { Select } from '../components/Input';
 import { useToast } from '../components/Toast';
 import { importApi } from '../api/import';
-import type { ImportPreview, ParsedQuestion } from '../api/import';
+import type { ImportMode, ImportPreview, ParsedQuestion } from '../api/import';
 import { extractError } from '../api/client';
 import { SUBJECTS, DIFFICULTY_LABELS } from '../lib/utils';
 
@@ -18,9 +18,13 @@ const QUESTION_TYPES: Record<string, string> = {
   SHORT_ANSWER: 'Trả lời ngắn',
   ESSAY: 'Tự luận',
 };
+const SUPPORTED_EXTENSIONS = ['docx', 'pdf', 'xlsx', 'xls', 'png', 'jpg', 'jpeg', 'webp'];
 
 export default function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
+  const [content, setContent] = useState('');
+  const [importMode, setImportMode] = useState<ImportMode>('EXTRACT');
+  const [questionCount, setQuestionCount] = useState(10);
   const [subject, setSubject] = useState('Toán');
   const [grade, setGrade] = useState(12);
   const [unit, setUnit] = useState('');
@@ -36,12 +40,16 @@ export default function ImportPage() {
   const chooseFile = (candidate?: File) => {
     if (!candidate) return;
     const extension = candidate.name.split('.').pop()?.toLowerCase();
-    if (!extension || !['docx', 'pdf', 'xlsx', 'xls'].includes(extension)) {
-      toast('Định dạng không hỗ trợ', 'Chỉ nhận file DOCX, PDF, XLSX hoặc XLS.', 'warn');
+    if (!extension || !SUPPORTED_EXTENSIONS.includes(extension)) {
+      toast('Định dạng không hỗ trợ', 'Chỉ nhận DOCX, PDF, XLSX, XLS, PNG, JPG hoặc WEBP.', 'warn');
       return;
     }
     if (candidate.size > 20 * 1024 * 1024) {
       toast('File quá lớn', 'Dung lượng file tối đa là 20MB.', 'warn');
+      return;
+    }
+    if (['png', 'jpg', 'jpeg', 'webp'].includes(extension) && candidate.size > 15 * 1024 * 1024) {
+      toast('Ảnh quá lớn', 'Dung lượng ảnh gửi đến AI tối đa 15MB.', 'warn');
       return;
     }
     setFile(candidate);
@@ -71,26 +79,28 @@ export default function ImportPage() {
   };
 
   const handleUpload = async () => {
-    if (!file) {
-      toast('Chưa chọn file', 'Vui lòng chọn file Word/PDF/Excel', 'warn');
+    if (!file && !content.trim()) {
+      toast('Chưa có nội dung', 'Hãy chọn tệp hoặc nhập nội dung cần xử lý.', 'warn');
       return;
     }
     setUploading(true);
     try {
-      const jobId = await importApi.upload(file, subject);
+      const jobId = await importApi.upload(file, content, subject, grade, importMode, questionCount);
       setPreview({
         jobId,
-        originalName: file.name,
+        originalName: file?.name || 'Nội dung nhập tay',
         status: 'UPLOADED',
         totalFound: 0,
         questions: [],
       });
-      toast('Đang xử lý', 'AI đang phân tích file...', 'info');
+      toast('Đang xử lý', importMode === 'GENERATE'
+        ? 'AI đang đọc nội dung và tạo câu hỏi...'
+        : 'AI đang phân tích tài liệu...', 'info');
       const latest = await waitForJob(jobId);
       if (latest.status === 'FAILED') {
         toast('AI xử lý thất bại', latest.errorMessage || 'Vui lòng thử lại với tệp khác.', 'error');
       } else if (latest.status === 'REVIEW') {
-        toast('Hoàn tất', `Tìm thấy ${latest.totalFound} câu hỏi`, 'success');
+        toast('Hoàn tất', `${importMode === 'GENERATE' ? 'Đã tạo' : 'Tìm thấy'} ${latest.totalFound} câu hỏi`, 'success');
       } else {
         toast('Đang xử lý', 'Tệp cần thêm thời gian. Bạn có thể tải lại trạng thái sau.', 'warn');
       }
@@ -142,7 +152,7 @@ export default function ImportPage() {
       <div>
         <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">Import đề thi bằng AI</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Upload file Word/PDF/Excel → AI tự động tách câu hỏi & đáp án
+          Đọc ảnh/tài liệu, tách câu hỏi có sẵn hoặc tạo câu hỏi mới từ nội dung
         </p>
       </div>
 
@@ -175,6 +185,72 @@ export default function ImportPage() {
             </div>
           </div>
 
+          <div className="grid md:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setImportMode('EXTRACT')}
+              className={`rounded-xl border p-4 text-left transition-colors ${
+                importMode === 'EXTRACT'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30'
+                  : 'border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              <span className="block text-sm font-bold text-slate-900 dark:text-white">
+                Tách câu hỏi có sẵn
+              </span>
+              <span className="mt-1 block text-xs text-slate-500">
+                Giữ câu hỏi và đáp án tìm thấy trong tài liệu hoặc ảnh.
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setImportMode('GENERATE')}
+              className={`rounded-xl border p-4 text-left transition-colors ${
+                importMode === 'GENERATE'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30'
+                  : 'border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              <span className="block text-sm font-bold text-slate-900 dark:text-white">
+                Tạo câu hỏi từ nội dung
+              </span>
+              <span className="mt-1 block text-xs text-slate-500">
+                Không cần có câu hỏi sẵn; AI tạo câu hỏi mới dựa trên nội dung nguồn.
+              </span>
+            </button>
+          </div>
+
+          {importMode === 'GENERATE' && (
+            <Select
+              label="Số câu hỏi cần tạo"
+              value={String(questionCount)}
+              onChange={(event) => setQuestionCount(Number(event.target.value))}
+              options={[5, 10, 15, 20].map((count) => ({
+                value: String(count),
+                label: `${count} câu`,
+              }))}
+            />
+          )}
+
+          <div>
+            <label className="mb-2 block text-xs font-semibold text-slate-600 dark:text-slate-400">
+              Nội dung nguồn (tùy chọn nếu đã chọn tệp)
+            </label>
+            <textarea
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              maxLength={100000}
+              rows={5}
+              placeholder={importMode === 'GENERATE'
+                ? 'Dán bài học, đoạn văn, ghi chú hoặc kiến thức cần dùng để tạo câu hỏi...'
+                : 'Có thể dán thêm nội dung để AI trích xuất câu hỏi...'}
+              className="w-full resize-y rounded-xl border border-slate-200 bg-transparent px-3.5 py-3 text-sm outline-none focus:border-blue-500 dark:border-slate-700"
+            />
+            <p className="mt-1 text-right text-xs text-slate-400">
+              {content.length.toLocaleString()} / 100.000 ký tự
+            </p>
+          </div>
+
           <label
             onDragOver={(event) => {
               event.preventDefault();
@@ -190,7 +266,7 @@ export default function ImportPage() {
           >
             <input
               type="file"
-              accept=".docx,.pdf,.xlsx,.xls"
+              accept=".docx,.pdf,.xlsx,.xls,.png,.jpg,.jpeg,.webp"
               className="hidden"
               disabled={uploading}
               onChange={(event) => chooseFile(event.target.files?.[0])}
@@ -202,7 +278,7 @@ export default function ImportPage() {
               {file ? file.name : 'Kéo thả file vào đây hoặc bấm để chọn'}
             </div>
             <div className="text-xs text-slate-500">
-              Hỗ trợ DOCX, PDF (kể cả PDF scan), XLSX và XLS — tối đa 20MB. PDF scan OCR tối đa 15MB.
+              Hỗ trợ DOCX, PDF (kể cả PDF scan), XLSX, XLS, PNG, JPG và WEBP. Tệp tối đa 20MB, ảnh tối đa 15MB.
             </div>
           </label>
 
@@ -214,7 +290,9 @@ export default function ImportPage() {
             onClick={handleUpload}
             icon={<Icon name="sparkle" size={18} />}
           >
-            {uploading ? 'AI đang xử lý...' : 'Bắt đầu import bằng AI'}
+            {uploading ? 'AI đang xử lý...' : importMode === 'GENERATE'
+              ? 'Tạo câu hỏi bằng AI'
+              : 'Bắt đầu import bằng AI'}
           </Button>
           {uploading && (
             <div
@@ -231,9 +309,13 @@ export default function ImportPage() {
       {/* Step 2: Preview */}
       {preview && preview.status === 'REVIEW' && preview.questions.length === 0 && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 p-6 text-center">
-          <h3 className="font-bold text-amber-800 dark:text-amber-300">AI chưa tìm thấy câu hỏi</h3>
+          <h3 className="font-bold text-amber-800 dark:text-amber-300">
+            {importMode === 'GENERATE' ? 'AI chưa tạo được câu hỏi' : 'AI chưa tìm thấy câu hỏi'}
+          </h3>
           <p className="mt-1 text-sm text-amber-700 dark:text-amber-200">
-            Kiểm tra nội dung tệp có thể đọc được rồi thử lại. Với PDF scan, hãy bảo đảm chữ rõ và không bị nghiêng.
+            {importMode === 'GENERATE'
+              ? 'Nội dung nguồn có thể chưa đủ thông tin để tạo câu hỏi chính xác. Hãy bổ sung nội dung rõ hơn hoặc chọn tệp khác.'
+              : 'Kiểm tra nội dung tệp có thể đọc được rồi thử lại. Với ảnh hoặc PDF scan, hãy bảo đảm chữ rõ và không bị nghiêng.'}
           </p>
           <Button variant="ghost" className="mt-3" onClick={() => setPreview(null)}>
             Chọn tệp khác
@@ -250,7 +332,7 @@ export default function ImportPage() {
               </div>
               <div>
                 <h3 className="font-bold text-slate-900 dark:text-white">
-                  Tìm thấy {preview.totalFound} câu hỏi
+                  {importMode === 'GENERATE' ? 'Đã tạo' : 'Tìm thấy'} {preview.totalFound} câu hỏi
                 </h3>
                 <p className="text-xs text-slate-500">{preview.originalName}</p>
               </div>

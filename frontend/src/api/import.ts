@@ -20,11 +20,24 @@ export interface ImportPreview {
   errorMessage?: string;
 }
 
+export type ImportMode = 'EXTRACT' | 'GENERATE';
+
 export const importApi = {
-  upload: async (file: File, subject?: string): Promise<number> => {
+  upload: async (
+    file: File | null,
+    content: string,
+    subject: string,
+    grade: number,
+    mode: ImportMode,
+    questionCount: number,
+  ): Promise<number> => {
     const formData = new FormData();
-    formData.append('file', file);
-    if (subject) formData.append('subject', subject);
+    if (file) formData.append('file', file);
+    if (content.trim()) formData.append('content', content);
+    formData.append('subject', subject);
+    formData.append('grade', String(grade));
+    formData.append('mode', mode);
+    formData.append('questionCount', String(questionCount));
 
     const res = await apiClient.post<ApiResponse<number>>('/v1/imports/upload', formData);
     return res.data.data;

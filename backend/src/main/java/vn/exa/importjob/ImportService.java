@@ -32,24 +32,33 @@ public class ImportService {
     @Value("${exa.storage.upload-dir:./uploads}")
     private String uploadDir;
 
-    public Long uploadAndProcess(MultipartFile file, Long userId, String subjectHint) {
-        validateFile(file);
+    public Long uploadAndProcess(MultipartFile file, String content, Long userId, String subjectHint,
+                                 ImportMode mode, Integer questionCount, Integer grade) {
+        validateInput(file, content, mode, questionCount, grade);
         geminiParser.validateConfiguration();
 
         try {
-            String storagePath = saveFile(file, userId);
+            boolean hasFile = file != null && !file.isEmpty();
+            String originalName = hasFile ? file.getOriginalFilename() : "Nội dung nhập tay.txt";
+            String fileType = hasFile
+                    ? getExtension(file.getOriginalFilename()).toLowerCase()
+                    : "txt";
+            String storagePath = hasFile
+                    ? saveFile(file, userId)
+                    : saveText(content, userId);
 
             ImportJob job = ImportJob.builder()
                     .userId(userId)
-                    .originalName(file.getOriginalFilename())
+                    .originalName(originalName)
                     .storagePath(storagePath)
-                    .fileType(getExtension(file.getOriginalFilename()).toLowerCase())
-                    .fileSize(file.getSize())
+                    .fileType(fileType)
+                    .fileSize(hasFile ? file.getSize() : content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length)
                     .status(ImportJob.Status.UPLOADED)
                     .build();
 
             job = importJobRepo.save(job);
-            importProcessingService.processAsync(job.getId(), subjectHint);
+            importProcessingService.processAsync(
+                    job.getId(), subjectHint, hasFile ? content : null, mode, questionCount, grade);
             return job.getId();
         } catch (BusinessException be) {
             throw be;
@@ -144,14 +153,36 @@ public class ImportService {
         return saved;
     }
 
-    private void validateFile(MultipartFile file) {
-        if (file == null) throw BusinessException.badRequest("Vui lòng chọn tệp để import");
-        if (file.isEmpty()) throw BusinessException.badRequest("File trống");
-        long maxSize = 20L * 1024 * 1024;
-        if (file.getSize() > maxSize) throw BusinessException.badRequest("File quá lớn (tối đa 20MB)");
-        String ext = getExtension(file.getOriginalFilename()).toLowerCase();
-        if (!List.of("docx", "pdf", "xlsx", "xls").contains(ext)) {
-            throw BusinessException.badRequest("Định dạng không hỗ trợ. Chỉ nhận docx, pdf, xlsx hoặc xls");
+    private void validateInput(MultipartFile file, String content, ImportMode mode,
+                               Integer questionCount, Integer grade) {
+        boolean hasFile = file != null && !file.isEmpty();
+        boolean hasContent = content != null && !content.isBlank();
+        if (!hasFile && !hasContent) {
+            throw BusinessException.badRequest("Hãy chọn tệp hoặc nhập nội dung cần xử lý");
+        }
+        if (content != null && content.length() > 100_000) {
+            throw BusinessException.badRequest("Nội dung nhập trực tiếp tối đa 100.000 ký tự");
+        }
+        if (mode == null || questionCount == null || questionCount < 1 || questionCount > 50
+                || grade == null || grade < 1 || grade > 12) {
+            throw BusinessException.badRequest("Chế độ import, số câu hỏi hoặc khối lớp không hợp lệ");
+        }
+        if (!hasFile) return;
+        if (file.getSize() > 20L * 1024 * 1024) {
+            throw BusinessException.badRequest("File quá lớn (tối đa 20MB)");
+        }
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || originalFilename.isBlank()) {
+            throw BusinessException.badRequest("Tên tệp không hợp lệ");
+        }
+        String ext = getExtension(originalFilename).toLowerCase();
+        if (!List.of("docx", "pdf", "xlsx", "xls", "png", "jpg", "jpeg", "webp")
+                .contains(ext)) {
+            throw BusinessException.badRequest(
+                    "Định dạng không hỗ trợ. Chỉ nhận docx, pdf, xlsx, xls, png, jpg, jpeg hoặc webp");
+        }
+        if (List.of("png", "jpg", "jpeg", "webp").contains(ext) && file.getSize() > 15L * 1024 * 1024) {
+            throw BusinessException.badRequest("Ảnh gửi đến AI phải nhỏ hơn 15MB");
         }
     }
 
@@ -161,6 +192,14 @@ public class ImportService {
         String filename = UUID.randomUUID() + "." + getExtension(file.getOriginalFilename()).toLowerCase();
         Path target = userUploadDir.resolve(filename);
         file.transferTo(target.toFile());
+        return target.toString();
+    }
+
+    private String saveText(String content, Long userId) throws Exception {
+        Path userUploadDir = Paths.get(uploadDir).resolve("imports").resolve(String.valueOf(userId));
+        Files.createDirectories(userUploadDir);
+        Path target = userUploadDir.resolve(UUID.randomUUID() + ".txt");
+        Files.writeString(target, content, java.nio.charset.StandardCharsets.UTF_8);
         return target.toString();
     }
 

@@ -70,6 +70,16 @@ public class GeminiParser {
     }
 
     public ParseResult parsePdf(byte[] pdfBytes, String subjectHint) {
+        return processPdf(pdfBytes, subjectHint, ImportMode.EXTRACT, 10, 12);
+    }
+
+    public ParseResult processPdf(byte[] pdfBytes, String subjectHint, ImportMode mode,
+                                  int questionCount, int grade) {
+        return processPdf(pdfBytes, subjectHint, "", mode, questionCount, grade);
+    }
+
+    public ParseResult processPdf(byte[] pdfBytes, String subjectHint, String supplementalContent,
+                                  ImportMode mode, int questionCount, int grade) {
         requireConfiguredApiKey();
         if (pdfBytes == null || pdfBytes.length == 0) {
             throw BusinessException.badRequest("Tệp PDF trống");
@@ -78,21 +88,9 @@ public class GeminiParser {
             throw BusinessException.badRequest("PDF scan để OCR trực tiếp phải nhỏ hơn 15MB");
         }
 
-        String subjectLine = subjectHint == null || subjectHint.isBlank()
-                ? "" : "\nMôn học gợi ý: " + subjectHint;
-        String prompt = """
-                Đọc toàn bộ tài liệu PDF, bao gồm cả nội dung trong ảnh scan, bảng và công thức.
-                Trích xuất tất cả câu hỏi cùng đáp án được đánh dấu (nếu có). Trả về duy nhất
-                JSON array theo schema:
-                [{"number":1,"type":"MCQ","content":"...","options":["...","..."],
-                "correctAnswer":"A","answerText":null,"difficulty":"RECOGNITION","explanation":null}].
-                type chỉ được là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY.
-                difficulty chỉ được là RECOGNITION, COMPREHENSION, APPLICATION hoặc HIGH_APPLICATION.
-                Không tự đoán đáp án đúng nếu tài liệu không cung cấp; khi đó dùng null.
-                Giữ nguyên công thức bằng LaTeX. Nếu không có câu hỏi, trả về [].
-                Không trả markdown hay văn bản ngoài JSON.
-                %s
-                """.formatted(subjectLine);
+        String prompt = sourcePrompt(subjectHint, grade, mode, questionCount)
+                + (supplementalContent == null || supplementalContent.isBlank()
+                ? "" : "\n\nNỘI DUNG BỔ SUNG:\n" + supplementalContent);
 
         Map<String, Object> pdfPart = Map.of("inline_data", Map.of(
                 "mime_type", "application/pdf",
@@ -107,6 +105,124 @@ public class GeminiParser {
                         "responseMimeType", "application/json"));
 
         return parseResponse(callGemini(body));
+    }
+
+    public ParseResult processImage(byte[] imageBytes, String mimeType, String subjectHint,
+                                    String supplementalContent, ImportMode mode,
+                                    int questionCount, int grade) {
+        requireConfiguredApiKey();
+        if (imageBytes == null || imageBytes.length == 0) {
+            throw BusinessException.badRequest("Tệp ảnh trống");
+        }
+        if (imageBytes.length > MAX_INLINE_PDF_SIZE) {
+            throw BusinessException.badRequest("Ảnh gửi đến AI phải nhỏ hơn 15MB");
+        }
+        if (!List.of("image/png", "image/jpeg", "image/webp").contains(mimeType)) {
+            throw BusinessException.badRequest("Định dạng ảnh chưa được hỗ trợ");
+        }
+
+        String prompt = sourcePrompt(subjectHint, grade, mode, questionCount)
+                + (supplementalContent == null || supplementalContent.isBlank()
+                ? "" : "\n\nNỘI DUNG BỔ SUNG:\n" + supplementalContent);
+        Map<String, Object> imagePart = Map.of("inline_data", Map.of(
+                "mime_type", mimeType,
+                "data", Base64.getEncoder().encodeToString(imageBytes)));
+        Map<String, Object> body = Map.of(
+                "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt), imagePart))),
+                "generationConfig", Map.of(
+                        "temperature", 0.1,
+                        "maxOutputTokens", 16384,
+                        "responseMimeType", "application/json"));
+        return parseResponse(callGemini(body));
+    }
+
+    public ParseResult generateQuestionsFromText(String sourceText, String subject, int grade,
+                                                 int questionCount, String difficulty) {
+        requireConfiguredApiKey();
+        if (sourceText == null || sourceText.isBlank()) {
+            throw BusinessException.badRequest("Hãy nhập nội dung để AI tạo câu hỏi");
+        }
+        List<String> chunks = chunkText(sourceText, 6000);
+        List<Integer> counts = distributeQuestionCount(chunks, questionCount);
+        List<ParsedQuestion> questions = new ArrayList<>();
+        int tokens = 0;
+        for (int i = 0; i < chunks.size(); i++) {
+            int chunkCount = counts.get(i);
+            if (chunkCount == 0) continue;
+            String prompt = generationPrompt(chunks.get(i), subject, grade, chunkCount, difficulty);
+            ParseResult result = parseResponse(callGemini(prompt));
+            questions.addAll(result.questions());
+            tokens += result.tokensUsed();
+        }
+        List<ParsedQuestion> deduped = dedupe(questions);
+        if (deduped.size() > questionCount) {
+            deduped = new ArrayList<>(deduped.subList(0, questionCount));
+        }
+        return new ParseResult(deduped, tokens);
+    }
+
+    List<Integer> distributeQuestionCount(List<String> chunks, int questionCount) {
+        if (chunks.isEmpty()) return List.of();
+        List<Integer> result = new ArrayList<>(Collections.nCopies(chunks.size(), 0));
+        int questionsLeft = questionCount;
+        if (questionCount >= chunks.size()) {
+            Collections.fill(result, 1);
+            questionsLeft -= chunks.size();
+        }
+        for (int question = 0; question < questionsLeft; question++) {
+            int bestChunk = 0;
+            double bestRatio = -1;
+            for (int i = 0; i < chunks.size(); i++) {
+                double ratio = (double) chunks.get(i).length() / (result.get(i) + 1);
+                if (ratio > bestRatio) {
+                    bestRatio = ratio;
+                    bestChunk = i;
+                }
+            }
+            result.set(bestChunk, result.get(bestChunk) + 1);
+        }
+        return List.copyOf(result);
+    }
+
+    String generationPrompt(String sourceText, String subject, int grade, int count, String difficulty) {
+        String subjectName = subject == null || subject.isBlank() ? "chưa xác định" : subject;
+        String level = difficulty == null || difficulty.isBlank() ? "COMPREHENSION" : difficulty;
+        return """
+                Dựa CHỈ trên kiến thức, dữ kiện và nội dung nguồn dưới đây, hãy tự biên soạn đúng %d câu hỏi trắc nghiệm mới bằng tiếng Việt cho môn %s, lớp %d, độ khó %s.
+                Nguồn không cần chứa câu hỏi có sẵn. Không chép nguyên văn câu hỏi nếu có; hãy kiểm tra mức độ phù hợp với nội dung nguồn, không thêm kiến thức ngoài nguồn và không bịa dữ kiện.
+                Mỗi câu có đúng 4 lựa chọn, chỉ một đáp án đúng; cung cấp đáp án và giải thích ngắn. Giữ công thức bằng LaTeX.
+                Trả về duy nhất JSON array theo schema:
+                [{"number":1,"type":"MCQ","content":"...","options":["...","...","...","..."],"correctAnswer":"A","answerText":null,"difficulty":"%s","explanation":"..."}].
+                Nếu nội dung nguồn quá ít hoặc không đủ căn cứ để tạo câu hỏi chính xác, trả về [].
+                === NỘI DUNG NGUỒN ===
+                %s
+                === HẾT NỘI DUNG ===
+                """.formatted(count, subjectName, grade, level, level, sourceText);
+    }
+
+    private String sourcePrompt(String subjectHint, int grade, ImportMode mode, int questionCount) {
+        String subject = subjectHint == null || subjectHint.isBlank()
+                ? "chưa xác định" : subjectHint;
+        if (mode == ImportMode.GENERATE) {
+            return """
+                    Dựa CHỈ trên kiến thức, dữ kiện và nội dung trong tài liệu được đính kèm, hãy tự biên soạn đúng %d câu hỏi trắc nghiệm mới bằng tiếng Việt cho môn %s, lớp %d, độ khó COMPREHENSION.
+                    Tài liệu không cần chứa câu hỏi có sẵn. Không thêm kiến thức ngoài nguồn, không bịa dữ kiện; mỗi câu có đúng 4 lựa chọn, chỉ một đáp án đúng, kèm giải thích ngắn. Giữ công thức bằng LaTeX.
+                    Trả về duy nhất JSON array theo schema:
+                    [{"number":1,"type":"MCQ","content":"...","options":["...","...","...","..."],"correctAnswer":"A","answerText":null,"difficulty":"COMPREHENSION","explanation":"..."}].
+                    Nếu nguồn quá ít hoặc không đủ căn cứ để tạo câu hỏi chính xác, trả về [].
+                    """.formatted(questionCount, subject, grade);
+        }
+        return """
+                Đọc toàn bộ tài liệu đính kèm, bao gồm chữ trong ảnh scan, bảng và công thức.
+                Chỉ trích xuất câu hỏi thực sự có trong tài liệu cùng đáp án được đánh dấu (nếu có).
+                Không tự tạo thêm câu hỏi trong chế độ trích xuất và không đoán đáp án; nếu không có câu hỏi, trả về [].
+                Môn học gợi ý: %s. Trả về duy nhất JSON array theo schema:
+                [{"number":1,"type":"MCQ","content":"...","options":["...","..."],
+                "correctAnswer":"A","answerText":null,"difficulty":"RECOGNITION","explanation":null}].
+                type chỉ được là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY.
+                difficulty chỉ được là RECOGNITION, COMPREHENSION, APPLICATION hoặc HIGH_APPLICATION.
+                Giữ nguyên công thức bằng LaTeX. Không trả markdown hay văn bản ngoài JSON.
+                """.formatted(subject);
     }
 
     public List<ParsedQuestion> generateQuestions(String subject, Integer grade, String topic,

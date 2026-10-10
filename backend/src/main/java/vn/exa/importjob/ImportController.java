@@ -23,10 +23,15 @@ public class ImportController {
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public ResponseEntity<ApiResponse<Long>> upload(
-            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "content", required = false) String content,
             @RequestParam(value = "subject", required = false) String subjectHint,
+            @RequestParam(value = "mode", defaultValue = "EXTRACT") ImportMode mode,
+            @RequestParam(value = "questionCount", defaultValue = "10") Integer questionCount,
+            @RequestParam(value = "grade", defaultValue = "12") Integer grade,
             @AuthenticationPrincipal CurrentUser user) {
-        Long jobId = importService.uploadAndProcess(file, user.getId(), subjectHint);
+        Long jobId = importService.uploadAndProcess(
+                file, content, user.getId(), subjectHint, mode, questionCount, grade);
         return ResponseEntity.ok(ApiResponse.ok(jobId, "Đã upload, đang xử lý"));
     }
 
