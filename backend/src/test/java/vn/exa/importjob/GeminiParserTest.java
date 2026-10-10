@@ -57,22 +57,25 @@ class GeminiParserTest {
     }
 
     @Test
-    void unavailableConfiguredModelFallsBackToAnAvailableFlashModel() throws Exception {
+    void unavailableConfiguredModelFallsBackToTheNewestAvailableStableFlashModel() throws Exception {
         GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
         JsonNode availableModels = objectMapper.readTree("""
                 {"models":[
                   {"name":"models/text-embedding-004","supportedGenerationMethods":["embedContent"]},
                   {"name":"models/gemini-2.5-flash-lite","supportedGenerationMethods":["generateContent"]},
-                  {"name":"models/gemini-2.5-flash","supportedGenerationMethods":["generateContent"]}
+                  {"name":"models/gemini-2.5-flash","supportedGenerationMethods":["generateContent"]},
+                  {"name":"models/gemini-3.6-flash","supportedGenerationMethods":["generateContent"]},
+                  {"name":"models/gemini-3.8-live-preview","supportedGenerationMethods":["generateContent"]}
                 ]}
                 """);
 
-        assertThat(parser.selectAvailableModel(availableModels, "retired-model"))
-                .isEqualTo("gemini-2.5-flash");
+        assertThat(parser.selectAvailableModels(availableModels, "retired-model"))
+                .containsExactly("gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite",
+                        "gemini-3.8-live-preview");
     }
 
     @Test
-    void modelDiscoveryChoosesAnotherModelWhenConfiguredModelWasAlreadyTried() throws Exception {
+    void modelDiscoveryExcludesUnavailableConfiguredModelFromRetryCandidates() throws Exception {
         GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
         JsonNode availableModels = objectMapper.readTree("""
                 {"models":[
@@ -81,12 +84,12 @@ class GeminiParserTest {
                 ]}
                 """);
 
-        assertThat(parser.selectAvailableModel(availableModels, "gemini-2.5-flash"))
-                .isEqualTo("gemini-2.5-flash-lite");
+        assertThat(parser.selectAvailableModels(availableModels, "gemini-2.5-flash"))
+                .containsExactly("gemini-2.5-flash-lite");
     }
 
     @Test
-    void modelDiscoveryUsesConfiguredModelWhenItIsTheOnlyAvailableOption() throws Exception {
+    void modelDiscoveryReturnsNoRetryCandidatesWhenOnlyTheFailedModelIsListed() throws Exception {
         GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
         JsonNode availableModels = objectMapper.readTree("""
                 {"models":[
@@ -94,7 +97,7 @@ class GeminiParserTest {
                 ]}
                 """);
 
-        assertThat(parser.selectAvailableModel(availableModels, "gemini-2.5-flash-lite"))
-                .isEqualTo("gemini-2.5-flash-lite");
+        assertThat(parser.selectAvailableModels(availableModels, "gemini-2.5-flash-lite"))
+                .isEmpty();
     }
 }

@@ -28,13 +28,13 @@ public class GeminiParser {
     @Value("${exa.gemini.api-key:}")
     private String apiKey;
 
-    @Value("${exa.gemini.model:gemini-2.5-flash}")
+    @Value("${exa.gemini.model:gemini-3.6-flash}")
     private String model;
 
     @Value("${exa.gemini.timeout-ms:60000}")
     private long timeoutMs;
 
-    private volatile String availableFallbackModel;
+    private volatile List<String> availableFallbackModels;
 
     private static final String GEMINI_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent";
@@ -243,16 +243,23 @@ public class GeminiParser {
             return sendGeminiRequest(model, body);
         } catch (WebClientResponseException e) {
             if (e.getStatusCode().value() == 404) {
-                String fallback = getAvailableFallbackModel();
-                if (fallback != null && !fallback.equals(normalizeModelName(model))) {
+                List<String> fallbacks = getAvailableFallbackModels();
+                WebClientResponseException lastModelError = e;
+                for (String fallback : fallbacks) {
+                    if (fallback.equals(normalizeModelName(model))) continue;
                     log.warn("Configured Gemini model is unavailable; retrying with {}", fallback);
                     try {
                         return sendGeminiRequest(fallback, body);
                     } catch (WebClientResponseException fallbackError) {
-                        throw BusinessException.badRequest(userMessageForGeminiError(
-                                fallbackError.getStatusCode().value(), fallbackError.getResponseBodyAsString()));
+                        if (fallbackError.getStatusCode().value() != 404) {
+                            throw BusinessException.badRequest(userMessageForGeminiError(
+                                    fallbackError.getStatusCode().value(), fallbackError.getResponseBodyAsString()));
+                        }
+                        lastModelError = fallbackError;
                     }
                 }
+                throw BusinessException.badRequest(userMessageForGeminiError(
+                        lastModelError.getStatusCode().value(), lastModelError.getResponseBodyAsString()));
             }
             log.warn("Gemini API returned HTTP {}", e.getStatusCode().value());
             throw BusinessException.badRequest(
@@ -277,8 +284,8 @@ public class GeminiParser {
                 .block();
     }
 
-    private String getAvailableFallbackModel() {
-        String cached = availableFallbackModel;
+    private List<String> getAvailableFallbackModels() {
+        List<String> cached = availableFallbackModels;
         if (cached != null) return cached;
         try {
             String response = webClientBuilder.build()
@@ -289,9 +296,9 @@ public class GeminiParser {
                     .bodyToMono(String.class)
                     .timeout(Duration.ofMillis(timeoutMs))
                     .block();
-            if (response == null) return null;
-            String selected = selectAvailableModel(objectMapper.readTree(response), model);
-            if (selected != null) availableFallbackModel = selected;
+            if (response == null) return List.of();
+            List<String> selected = selectAvailableModels(objectMapper.readTree(response), model);
+            if (!selected.isEmpty()) availableFallbackModels = selected;
             return selected;
         } catch (WebClientResponseException error) {
             throw BusinessException.badRequest(
@@ -302,7 +309,7 @@ public class GeminiParser {
         }
     }
 
-    String selectAvailableModel(JsonNode response, String configuredModel) {
+    List<String> selectAvailableModels(JsonNode response, String configuredModel) {
         List<String> available = new ArrayList<>();
         for (JsonNode candidate : response.path("models")) {
             boolean supportsGenerateContent = false;
@@ -317,28 +324,47 @@ public class GeminiParser {
                 available.add(normalizeModelName(name));
             }
         }
-        if (available.isEmpty()) return null;
+        if (available.isEmpty()) return List.of();
 
         String configured = normalizeModelName(configuredModel);
-
-        String fallback = available.stream()
+        Comparator<String> preference = Comparator
+                .comparingInt(this::modelFamilyPreference)
+                .thenComparing(Comparator.comparingDouble(this::modelVersion).reversed())
+                .thenComparing(String::compareTo);
+        List<String> stableFlash = available.stream()
                 .filter(name -> !name.equals(configured))
                 .filter(name -> name.contains("flash") && !name.contains("preview"))
-                .sorted(Comparator.comparingInt(this::modelPreference).thenComparing(String::compareTo))
-                .findFirst()
-                .orElseGet(() -> available.stream()
-                        .filter(name -> !name.equals(configured))
-                        .filter(name -> !name.contains("preview"))
-                        .sorted()
-                        .findFirst()
-                        .orElse(null));
-        return fallback != null ? fallback : available.contains(configured) ? configured : available.get(0);
+                .sorted(preference)
+                .toList();
+        List<String> stableModels = available.stream()
+                .filter(name -> !name.equals(configured))
+                .filter(name -> !name.contains("preview"))
+                .filter(name -> !stableFlash.contains(name))
+                .sorted(preference)
+                .toList();
+        List<String> previewModels = available.stream()
+                .filter(name -> !name.equals(configured))
+                .filter(name -> name.contains("preview"))
+                .sorted(preference)
+                .toList();
+
+        List<String> fallbacks = new ArrayList<>(stableFlash);
+        fallbacks.addAll(stableModels);
+        fallbacks.addAll(previewModels);
+        return List.copyOf(fallbacks);
     }
 
-    private int modelPreference(String name) {
-        if (name.equals("gemini-2.5-flash")) return 0;
-        if (name.equals("gemini-2.5-flash-lite")) return 1;
-        if (name.equals("gemini-2.0-flash")) return 2;
+    private int modelFamilyPreference(String name) {
+        if (name.matches("gemini-\\d+(?:\\.\\d+)?-flash(?:-\\d+)?")) return 0;
+        if (name.contains("flash")) return 1;
+        return 2;
+    }
+
+    private double modelVersion(String name) {
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("^gemini-(\\d+(?:\\.\\d+)?)")
+                .matcher(name);
+        if (matcher.find()) return Double.parseDouble(matcher.group(1));
         return 3;
     }
 
@@ -379,7 +405,7 @@ public class GeminiParser {
             return "Gemini từ chối quyền của API key. Kiểm tra giới hạn API key và quyền dùng Generative Language API.";
         }
         if (statusCode == 404) {
-            return "Gemini không tìm thấy model khả dụng cho API key này. Kiểm tra GEMINI_MODEL trên Railway và xác nhận Google AI Studio key có quyền dùng Generative Language API.";
+            return "Gemini không tìm thấy model khả dụng cho API key này. Kiểm tra quyền Generative Language API của key và thử chọn một model được liệt kê trong Google AI Studio.";
         }
         if (statusCode == 429) {
             return "Gemini đang quá tải hoặc API key đã hết hạn mức. Kiểm tra quota/billing của Google AI Studio rồi thử lại.";

@@ -24,7 +24,7 @@ public class ImportProcessingService {
     private final GeminiParser geminiParser;
     private final ObjectMapper objectMapper;
 
-    @Value("${exa.gemini.model:gemini-2.5-flash}")
+    @Value("${exa.gemini.model:gemini-3.6-flash}")
     private String aiModel;
 
     @Async("importTaskExecutor")
