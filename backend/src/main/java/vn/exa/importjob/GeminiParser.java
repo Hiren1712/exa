@@ -34,8 +34,12 @@ public class GeminiParser {
     @Value("${exa.gemini.timeout-ms:60000}")
     private long timeoutMs;
 
+    private volatile String availableFallbackModel;
+
     private static final String GEMINI_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent";
+    private static final String GEMINI_MODELS_URL =
+            "https://generativelanguage.googleapis.com/v1beta/models";
     private static final int MAX_INLINE_PDF_SIZE = 15 * 1024 * 1024;
 
     public void validateConfiguration() {
@@ -235,20 +239,21 @@ public class GeminiParser {
     }
 
     private String callGemini(Map<String, Object> body) {
-        String url = String.format(GEMINI_URL, model);
-
         try {
-            return webClientBuilder.build()
-                    .post()
-                    .uri(url)
-                    .header("x-goog-api-key", apiKey.trim())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(body)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .timeout(Duration.ofMillis(timeoutMs))
-                    .block();
+            return sendGeminiRequest(model, body);
         } catch (WebClientResponseException e) {
+            if (e.getStatusCode().value() == 404) {
+                String fallback = getAvailableFallbackModel();
+                if (fallback != null && !fallback.equals(normalizeModelName(model))) {
+                    log.warn("Configured Gemini model is unavailable; retrying with {}", fallback);
+                    try {
+                        return sendGeminiRequest(fallback, body);
+                    } catch (WebClientResponseException fallbackError) {
+                        throw BusinessException.badRequest(userMessageForGeminiError(
+                                fallbackError.getStatusCode().value(), fallbackError.getResponseBodyAsString()));
+                    }
+                }
+            }
             log.warn("Gemini API returned HTTP {}", e.getStatusCode().value());
             throw BusinessException.badRequest(
                     userMessageForGeminiError(e.getStatusCode().value(), e.getResponseBodyAsString()));
@@ -256,6 +261,88 @@ public class GeminiParser {
             log.error("Gemini API call failed: {}", e.getClass().getSimpleName());
             throw BusinessException.badRequest("Không kết nối được Gemini. Vui lòng thử lại sau.");
         }
+    }
+
+    private String sendGeminiRequest(String modelName, Map<String, Object> body) {
+        String url = String.format(GEMINI_URL, normalizeModelName(modelName));
+        return webClientBuilder.build()
+                .post()
+                .uri(url)
+                .header("x-goog-api-key", apiKey.trim())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(String.class)
+                .timeout(Duration.ofMillis(timeoutMs))
+                .block();
+    }
+
+    private String getAvailableFallbackModel() {
+        String cached = availableFallbackModel;
+        if (cached != null) return cached;
+        try {
+            String response = webClientBuilder.build()
+                    .get()
+                    .uri(GEMINI_MODELS_URL)
+                    .header("x-goog-api-key", apiKey.trim())
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .timeout(Duration.ofMillis(timeoutMs))
+                    .block();
+            if (response == null) return null;
+            String selected = selectAvailableModel(objectMapper.readTree(response), model);
+            if (selected != null) availableFallbackModel = selected;
+            return selected;
+        } catch (WebClientResponseException error) {
+            throw BusinessException.badRequest(
+                    userMessageForGeminiError(error.getStatusCode().value(), error.getResponseBodyAsString()));
+        } catch (Exception error) {
+            log.warn("Could not discover Gemini models after configured model returned 404");
+            return null;
+        }
+    }
+
+    String selectAvailableModel(JsonNode response, String configuredModel) {
+        List<String> available = new ArrayList<>();
+        for (JsonNode candidate : response.path("models")) {
+            boolean supportsGenerateContent = false;
+            for (JsonNode method : candidate.path("supportedGenerationMethods")) {
+                if ("generateContent".equals(method.asText())) {
+                    supportsGenerateContent = true;
+                    break;
+                }
+            }
+            String name = candidate.path("name").asText("");
+            if (supportsGenerateContent && name.startsWith("models/gemini-")) {
+                available.add(normalizeModelName(name));
+            }
+        }
+        if (available.isEmpty()) return null;
+
+        String configured = normalizeModelName(configuredModel);
+        if (available.contains(configured)) return configured;
+
+        return available.stream()
+                .filter(name -> name.contains("flash") && !name.contains("preview"))
+                .sorted(Comparator.comparingInt(this::modelPreference).thenComparing(String::compareTo))
+                .findFirst()
+                .orElseGet(() -> available.stream()
+                        .filter(name -> !name.contains("preview"))
+                        .sorted()
+                        .findFirst()
+                        .orElse(available.get(0)));
+    }
+
+    private int modelPreference(String name) {
+        if (name.equals("gemini-2.5-flash")) return 0;
+        if (name.equals("gemini-2.5-flash-lite")) return 1;
+        if (name.equals("gemini-2.0-flash")) return 2;
+        return 3;
+    }
+
+    private String normalizeModelName(String modelName) {
+        String normalized = modelName == null ? "" : modelName.trim();
+        return normalized.startsWith("models/") ? normalized.substring("models/".length()) : normalized;
     }
 
     String userMessageForGeminiError(int statusCode, String responseBody) {
@@ -290,7 +377,7 @@ public class GeminiParser {
             return "Gemini từ chối quyền của API key. Kiểm tra giới hạn API key và quyền dùng Generative Language API.";
         }
         if (statusCode == 404) {
-            return "Không tìm thấy Gemini model đang cấu hình. Kiểm tra GEMINI_MODEL trên Railway (mặc định: gemini-2.5-flash).";
+            return "Gemini không tìm thấy model khả dụng cho API key này. Kiểm tra GEMINI_MODEL trên Railway và xác nhận Google AI Studio key có quyền dùng Generative Language API.";
         }
         if (statusCode == 429) {
             return "Gemini đang quá tải hoặc API key đã hết hạn mức. Kiểm tra quota/billing của Google AI Studio rồi thử lại.";
