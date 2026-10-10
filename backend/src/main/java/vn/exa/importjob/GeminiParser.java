@@ -41,6 +41,7 @@ public class GeminiParser {
     private static final String GEMINI_MODELS_URL =
             "https://generativelanguage.googleapis.com/v1beta/models";
     private static final int MAX_INLINE_PDF_SIZE = 15 * 1024 * 1024;
+    private static final int MAX_GEMINI_RETRIES = 2;
 
     public void validateConfiguration() {
         requireConfiguredApiKey();
@@ -264,6 +265,8 @@ public class GeminiParser {
             log.warn("Gemini API returned HTTP {}", e.getStatusCode().value());
             throw BusinessException.badRequest(
                     userMessageForGeminiError(e.getStatusCode().value(), e.getResponseBodyAsString()));
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Gemini API call failed: {}", e.getClass().getSimpleName());
             throw BusinessException.badRequest("Không kết nối được Gemini. Vui lòng thử lại sau.");
@@ -272,16 +275,39 @@ public class GeminiParser {
 
     private String sendGeminiRequest(String modelName, Map<String, Object> body) {
         String url = String.format(GEMINI_URL, normalizeModelName(modelName));
-        return webClientBuilder.build()
-                .post()
-                .uri(url)
-                .header("x-goog-api-key", apiKey.trim())
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(body)
-                .retrieve()
-                .bodyToMono(String.class)
-                .timeout(Duration.ofMillis(timeoutMs))
-                .block();
+        for (int attempt = 0; ; attempt++) {
+            try {
+                return webClientBuilder.build()
+                        .post()
+                        .uri(url)
+                        .header("x-goog-api-key", apiKey.trim())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(body)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .timeout(Duration.ofMillis(timeoutMs))
+                        .block();
+            } catch (WebClientResponseException error) {
+                if (!isTransientGeminiStatus(error.getStatusCode().value())
+                        || attempt >= MAX_GEMINI_RETRIES) {
+                    throw error;
+                }
+                long delayMs = 1000L << attempt;
+                log.warn("Gemini returned HTTP {} for {}; retrying in {}ms (attempt {}/{})",
+                        error.getStatusCode().value(), normalizeModelName(modelName),
+                        delayMs, attempt + 1, MAX_GEMINI_RETRIES);
+                try {
+                    Thread.sleep(delayMs);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw BusinessException.badRequest("Yêu cầu xử lý AI đã bị gián đoạn. Vui lòng thử lại.");
+                }
+            }
+        }
+    }
+
+    static boolean isTransientGeminiStatus(int statusCode) {
+        return statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504;
     }
 
     private List<String> getAvailableFallbackModels() {
@@ -409,6 +435,9 @@ public class GeminiParser {
         }
         if (statusCode == 429) {
             return "Gemini đang quá tải hoặc API key đã hết hạn mức. Kiểm tra quota/billing của Google AI Studio rồi thử lại.";
+        }
+        if (statusCode == 503) {
+            return "Gemini đang tạm thời quá tải. Hệ thống đã tự thử lại; vui lòng chờ một chút rồi thử lại.";
         }
         if (statusCode == 400) {
             return "Gemini từ chối nội dung yêu cầu. Hãy kiểm tra model, kích thước/định dạng tệp và thử một tệp nhỏ hơn.";

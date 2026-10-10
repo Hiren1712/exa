@@ -45,6 +45,25 @@ class GeminiParserTest {
     }
 
     @Test
+    void retriesOnlyTransientGeminiFailures() {
+        assertThat(GeminiParser.isTransientGeminiStatus(503)).isTrue();
+        assertThat(GeminiParser.isTransientGeminiStatus(500)).isTrue();
+        assertThat(GeminiParser.isTransientGeminiStatus(504)).isTrue();
+        assertThat(GeminiParser.isTransientGeminiStatus(429)).isFalse();
+        assertThat(GeminiParser.isTransientGeminiStatus(404)).isFalse();
+        assertThat(GeminiParser.isTransientGeminiStatus(403)).isFalse();
+    }
+
+    @Test
+    void serviceUnavailableMessageExplainsTheAutomaticRetry() {
+        GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
+
+        assertThat(parser.userMessageForGeminiError(503, ""))
+                .contains("tạm thời quá tải")
+                .contains("tự thử lại");
+    }
+
+    @Test
     void referrerRestrictedApiKeyExplainsServerSideKeyRestriction() {
         GeminiParser parser = new GeminiParser(WebClient.builder(), new ObjectMapper());
         String response = """
