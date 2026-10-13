@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.math.BigDecimal;
 import java.util.Base64;
 import java.util.*;
+import java.util.concurrent.TimeoutException;
 
 @Component
 @Slf4j
@@ -188,18 +189,20 @@ public class GeminiParser {
         String subjectName = subject == null || subject.isBlank() ? "chưa xác định" : subject;
         String level = difficulty == null || difficulty.isBlank() ? "COMPREHENSION" : difficulty;
         return """
-                Dựa CHỈ trên kiến thức, dữ kiện và nội dung nguồn dưới đây, hãy tự biên soạn đúng %d câu hỏi trắc nghiệm mới bằng tiếng Việt cho môn %s, lớp %d, độ khó %s.
-                Nguồn không cần chứa câu hỏi có sẵn. Không chép nguyên văn câu hỏi nếu có; hãy kiểm tra mức độ phù hợp với nội dung nguồn, không thêm kiến thức ngoài nguồn và không bịa dữ kiện.
-                Mỗi câu có đúng 4 lựa chọn, chỉ một đáp án đúng; cung cấp đáp án và giải thích ngắn.
+                Hãy tạo đúng %d câu hỏi bằng tiếng Việt cho môn %s, lớp %d, độ khó %s từ nội dung hoặc yêu cầu người dùng gửi.
+                Đầu vào có thể là ghi chú, đoạn văn, danh sách, bảng, dữ kiện, chủ đề ngắn hoặc yêu cầu viết tự nhiên; không cần đúng định dạng đề thi và không cần chứa câu hỏi có sẵn.
+                Nếu có nội dung kiến thức cụ thể, ưu tiên nội dung đó và không mâu thuẫn với dữ kiện đã cho. Nếu đầu vào chỉ nêu chủ đề hoặc yêu cầu chung, hãy dùng kiến thức phù hợp với môn học và khối lớp để tạo câu hỏi; không trả về [] chỉ vì đầu vào ngắn hoặc không có câu hỏi sẵn.
+                Làm theo yêu cầu về dạng câu hỏi nếu người dùng nêu rõ; nếu không, mặc định tạo trắc nghiệm 4 lựa chọn với một đáp án đúng. Với câu Đúng/Sai, dùng options ["Đúng","Sai"] và đáp án A hoặc B. Với câu Trả lời ngắn hoặc Tự luận, dùng options [] và điền đáp án vào answerText. Cung cấp giải thích ngắn.
                 Định dạng công thức toán bằng $...$ (ví dụ $x^2$, $\\frac{a}{b}$, $\\sqrt{x}$).
                 Định dạng công thức/phản ứng hóa học bằng $\\ce{...}$ (ví dụ $\\ce{H2O}$, $\\ce{2H2 + O2 -> 2H2O}$).
                 Giữ ký hiệu sinh học, chỉ số dưới/trên, chữ Hy Lạp, đơn vị và dấu tiếng Việt chính xác.
                 Trả về duy nhất JSON array theo schema:
                 [{"number":1,"type":"MCQ","content":"...","options":["...","...","...","..."],"correctAnswer":"A","answerText":null,"difficulty":"%s","explanation":"..."}].
-                Nếu nội dung nguồn quá ít hoặc không đủ căn cứ để tạo câu hỏi chính xác, trả về [].
-                === NỘI DUNG NGUỒN ===
+                type phải là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY; correctAnswer có thể là null khi phù hợp với dạng câu hỏi.
+                Chỉ trả về [] nếu đầu vào thực sự không có chủ đề/yêu cầu nào để tạo câu hỏi.
+                === NỘI DUNG HOẶC YÊU CẦU ===
                 %s
-                === HẾT NỘI DUNG ===
+                === HẾT ĐẦU VÀO ===
                 """.formatted(count, subjectName, grade, level, level, sourceText);
     }
 
@@ -208,12 +211,15 @@ public class GeminiParser {
                 ? "chưa xác định" : subjectHint;
         if (mode == ImportMode.GENERATE) {
             return """
-                    Dựa CHỈ trên kiến thức, dữ kiện và nội dung trong tài liệu được đính kèm, hãy tự biên soạn đúng %d câu hỏi trắc nghiệm mới bằng tiếng Việt cho môn %s, lớp %d, độ khó COMPREHENSION.
-                    Tài liệu không cần chứa câu hỏi có sẵn. Không thêm kiến thức ngoài nguồn, không bịa dữ kiện; mỗi câu có đúng 4 lựa chọn, chỉ một đáp án đúng, kèm giải thích ngắn.
+                    Hãy tạo đúng %d câu hỏi bằng tiếng Việt cho môn %s, lớp %d, độ khó COMPREHENSION dựa trên tài liệu đính kèm và nội dung bổ sung (nếu có).
+                    Tài liệu có thể là ghi chú, đoạn văn, danh sách, bảng, dữ kiện hoặc nội dung bất kỳ; không cần đúng định dạng đề thi và không cần chứa câu hỏi có sẵn.
+                    Ưu tiên thông tin cụ thể trong tài liệu. Nếu tài liệu chỉ nêu chủ đề hoặc yêu cầu chung, hãy dùng kiến thức phù hợp với môn học và khối lớp; không trả về [] chỉ vì tài liệu ngắn hoặc không có câu hỏi sẵn.
+                    Làm theo yêu cầu về dạng câu hỏi trong nội dung bổ sung nếu có; nếu không, mặc định tạo trắc nghiệm 4 lựa chọn với một đáp án đúng. Với câu Đúng/Sai, dùng options ["Đúng","Sai"] và đáp án A hoặc B. Với câu Trả lời ngắn hoặc Tự luận, dùng options [] và điền đáp án vào answerText. Cung cấp giải thích ngắn.
                     Dùng $...$ cho công thức toán và $\\ce{...}$ cho công thức/phản ứng hóa học; giữ chỉ số, số mũ, đơn vị, ký hiệu sinh học và tiếng Việt chính xác.
                     Trả về duy nhất JSON array theo schema:
                     [{"number":1,"type":"MCQ","content":"...","options":["...","...","...","..."],"correctAnswer":"A","answerText":null,"difficulty":"COMPREHENSION","explanation":"..."}].
-                    Nếu nguồn quá ít hoặc không đủ căn cứ để tạo câu hỏi chính xác, trả về [].
+                    type phải là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY; correctAnswer có thể là null khi phù hợp với dạng câu hỏi.
+                    Chỉ trả về [] nếu tài liệu và nội dung bổ sung thực sự không có chủ đề/yêu cầu nào để tạo câu hỏi.
                     """.formatted(questionCount, subject, grade);
         }
         return """
@@ -421,27 +427,7 @@ public class GeminiParser {
             return sendGeminiRequest(model, body, requestApiKey);
         } catch (WebClientResponseException e) {
             if (shouldTryFallbackModel(e.getStatusCode().value())) {
-                List<String> fallbacks = getAvailableFallbackModels(requestApiKey);
-                WebClientResponseException lastModelError = e;
-                int attemptedFallbacks = 0;
-                for (String fallback : fallbacks) {
-                    if (fallback.equals(normalizeModelName(model))) continue;
-                    if (attemptedFallbacks >= MAX_FALLBACK_MODELS) break;
-                    attemptedFallbacks++;
-                    log.warn("Gemini model {} returned HTTP {}; retrying with {}",
-                            normalizeModelName(model), e.getStatusCode().value(), fallback);
-                    try {
-                        return sendGeminiRequest(fallback, body, requestApiKey);
-                    } catch (WebClientResponseException fallbackError) {
-                        if (!shouldTryFallbackModel(fallbackError.getStatusCode().value())) {
-                            throw BusinessException.badRequest(userMessageForGeminiError(
-                                    fallbackError.getStatusCode().value(), fallbackError.getResponseBodyAsString()));
-                        }
-                        lastModelError = fallbackError;
-                    }
-                }
-                throw BusinessException.badRequest(userMessageForGeminiError(
-                        lastModelError.getStatusCode().value(), lastModelError.getResponseBodyAsString()));
+                return retryWithFallbackModels(body, requestApiKey, e, false);
             }
             log.warn("Gemini API returned HTTP {}", e.getStatusCode().value());
             throw BusinessException.badRequest(
@@ -449,9 +435,63 @@ public class GeminiParser {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
+            if (isGeminiTimeout(e)) {
+                log.warn("Gemini model {} timed out; trying available fallback models",
+                        normalizeModelName(model));
+                return retryWithFallbackModels(body, requestApiKey, null, true);
+            }
             log.error("Gemini API call failed: {}", e.getClass().getSimpleName());
             throw BusinessException.badRequest("Không kết nối được Gemini. Vui lòng thử lại sau.");
         }
+    }
+
+    private String retryWithFallbackModels(Map<String, Object> body, String requestApiKey,
+                                           WebClientResponseException lastModelError,
+                                           boolean timedOut) {
+        List<String> fallbacks = getAvailableFallbackModels(requestApiKey);
+        int attemptedFallbacks = 0;
+        for (String fallback : fallbacks) {
+            if (fallback.equals(normalizeModelName(model))) continue;
+            if (attemptedFallbacks >= MAX_FALLBACK_MODELS) break;
+            attemptedFallbacks++;
+            log.warn("Retrying Gemini request with fallback model {}", fallback);
+            try {
+                return sendGeminiRequest(fallback, body, requestApiKey);
+            } catch (WebClientResponseException fallbackError) {
+                if (!shouldTryFallbackModel(fallbackError.getStatusCode().value())) {
+                    throw BusinessException.badRequest(userMessageForGeminiError(
+                            fallbackError.getStatusCode().value(), fallbackError.getResponseBodyAsString()));
+                }
+                lastModelError = fallbackError;
+            } catch (BusinessException fallbackError) {
+                throw fallbackError;
+            } catch (Exception fallbackError) {
+                if (!isGeminiTimeout(fallbackError)) {
+                    log.error("Gemini fallback model {} failed: {}",
+                            fallback, fallbackError.getClass().getSimpleName());
+                    throw BusinessException.badRequest("Không kết nối được Gemini. Vui lòng thử lại sau.");
+                }
+                timedOut = true;
+                log.warn("Gemini fallback model {} timed out", fallback);
+            }
+        }
+        if (timedOut) {
+            throw BusinessException.badRequest(
+                    "Gemini đang phản hồi quá chậm hoặc tạm thời không khả dụng. Hệ thống đã thử model dự phòng; vui lòng thử lại sau.");
+        }
+        if (lastModelError != null) {
+            throw BusinessException.badRequest(userMessageForGeminiError(
+                    lastModelError.getStatusCode().value(), lastModelError.getResponseBodyAsString()));
+        }
+        throw BusinessException.badRequest(
+                "Gemini đang tạm thời không khả dụng và không tìm thấy model dự phòng. Vui lòng thử lại sau.");
+    }
+
+    static boolean isGeminiTimeout(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+            if (cause instanceof TimeoutException) return true;
+        }
+        return false;
     }
 
     private String sendGeminiRequest(String modelName, Map<String, Object> body, String requestApiKey) {

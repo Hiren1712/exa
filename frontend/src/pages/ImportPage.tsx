@@ -24,7 +24,7 @@ const SUPPORTED_EXTENSIONS = ['docx', 'pdf', 'xlsx', 'xls', 'png', 'jpg', 'jpeg'
 export default function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [content, setContent] = useState('');
-  const [importMode, setImportMode] = useState<ImportMode>('EXTRACT');
+  const [importMode, setImportMode] = useState<ImportMode>('GENERATE');
   const [questionCount, setQuestionCount] = useState(10);
   const [subject, setSubject] = useState('Toán');
   const [grade, setGrade] = useState(12);
@@ -216,7 +216,7 @@ export default function ImportPage() {
                 Tạo câu hỏi từ nội dung
               </span>
               <span className="mt-1 block text-xs text-slate-500">
-                Không cần có câu hỏi sẵn; AI tạo câu hỏi mới dựa trên nội dung nguồn.
+                Dùng được với ghi chú, đoạn văn, chủ đề ngắn hoặc yêu cầu tự nhiên; không cần có câu hỏi sẵn.
               </span>
             </button>
           </div>
@@ -235,7 +235,9 @@ export default function ImportPage() {
 
           <div>
             <label className="mb-2 block text-xs font-semibold text-slate-600 dark:text-slate-400">
-              Nội dung nguồn (tùy chọn nếu đã chọn tệp)
+              {importMode === 'GENERATE'
+                ? 'Nội dung, chủ đề hoặc yêu cầu cho AI (tùy chọn nếu đã chọn tệp)'
+                : 'Nội dung nguồn (tùy chọn nếu đã chọn tệp)'}
             </label>
             <textarea
               value={content}
@@ -243,10 +245,15 @@ export default function ImportPage() {
               maxLength={100000}
               rows={5}
               placeholder={importMode === 'GENERATE'
-                ? 'Dán bài học, đoạn văn, ghi chú hoặc kiến thức cần dùng để tạo câu hỏi...'
+                ? 'Dán bất kỳ nội dung nào hoặc nhập yêu cầu tự nhiên, ví dụ: “Tạo câu hỏi về quang hợp lớp 10” — không cần theo mẫu đề thi...'
                 : 'Có thể dán thêm nội dung để AI trích xuất câu hỏi...'}
               className="w-full resize-y rounded-xl border border-slate-200 bg-transparent px-3.5 py-3 text-sm outline-none focus:border-blue-500 dark:border-slate-700"
             />
+            {importMode === 'GENERATE' && (
+              <p className="mt-1 text-xs text-slate-500">
+                Nếu chỉ nhập chủ đề hoặc yêu cầu ngắn, AI vẫn có thể tự biên soạn câu hỏi theo môn học và khối lớp đã chọn.
+              </p>
+            )}
             <p className="mt-1 text-right text-xs text-slate-400">
               {content.length.toLocaleString()} / 100.000 ký tự
             </p>

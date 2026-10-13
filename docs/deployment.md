@@ -28,7 +28,7 @@ Deploy the repository root to Railway and use the checked-in `railway.toml`; it 
   Only enabled providers in the priority list are tried. When one fails (including rate limits or quota errors), ExaBot tries the next configured provider. This does not increase any provider's own quota; free-tier limits and availability vary, and a configured model may incur charges. Keep all provider keys in Railway secrets, never in frontend variables or source code.
 
 Attach a Railway persistent volume at `/app/uploads` if uploaded import files must survive service restarts or redeployments.
-AI import accepts DOCX, PDF, XLSX, XLS, PNG, JPG/JPEG, and WEBP files up to 20MB; images and scanned PDFs are limited to 15MB. The import flow supports extracting existing questions, generating new questions grounded in source content, and pasted text input.
+AI import accepts DOCX, PDF, XLSX, XLS, PNG, JPG/JPEG, and WEBP files up to 20MB; images and scanned PDFs are limited to 15MB. The import flow supports extracting existing questions and generating questions from arbitrary source content, notes, short topics, or natural-language requests. Generated questions do not require a preformatted exam or existing questions; teachers can paste plain text directly.
 Question formulas render in previews, the question bank, and exams using `$...$` or `\(...\)` for mathematics and KaTeX mhchem syntax such as `$\ce{H2O}$` for chemistry.
 
 The backend uses Flyway migrations and `ddl-auto: validate` by default. Allow the service to complete migrations at startup and use a persistent, private MySQL database. Railway supplies `PORT` at runtime; the app binds to that port and its health check is `/api/actuator/health`.

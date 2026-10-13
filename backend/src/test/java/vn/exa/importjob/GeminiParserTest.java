@@ -7,6 +7,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import vn.exa.common.BusinessException;
 
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -65,6 +66,15 @@ class GeminiParserTest {
     }
 
     @Test
+    void identifiesReactiveTimeoutsAsFallbackEligibleFailures() {
+        assertThat(GeminiParser.isGeminiTimeout(
+                new RuntimeException("reactive timeout", new TimeoutException("request timed out"))))
+                .isTrue();
+        assertThat(GeminiParser.isGeminiTimeout(new IllegalStateException("invalid response")))
+                .isFalse();
+    }
+
+    @Test
     void generatedQuestionPromptUsesProvidedContentWithoutRequiringExistingQuestions() {
         GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
 
@@ -72,12 +82,27 @@ class GeminiParserTest {
                 "Quang hợp chuyển năng lượng ánh sáng thành hóa năng.", "Sinh học", 10, 5, "APPLICATION");
 
         assertThat(prompt)
-                .contains("Nguồn không cần chứa câu hỏi có sẵn")
+                .contains("không cần chứa câu hỏi có sẵn")
                 .contains("Quang hợp chuyển năng lượng ánh sáng thành hóa năng.")
                 .contains("đúng 5 câu hỏi")
-                .contains("không thêm kiến thức ngoài nguồn")
+                .contains("chủ đề ngắn")
+                .contains("không trả về [] chỉ vì đầu vào ngắn")
+                .contains("Làm theo yêu cầu về dạng câu hỏi")
+                .contains("type phải là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY")
                 .contains("$...$")
                 .contains("$\\ce{...}$");
+    }
+
+    @Test
+    void generatedQuestionPromptCanUseOnlyAShortNaturalLanguageRequest() {
+        GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
+
+        String prompt = parser.generationPrompt("Hãy tạo câu hỏi", "Toán", 12, 10, "COMPREHENSION");
+
+        assertThat(prompt)
+                .contains("dùng kiến thức phù hợp với môn học và khối lớp")
+                .contains("không trả về [] chỉ vì đầu vào ngắn")
+                .contains("Hãy tạo câu hỏi");
     }
 
     @Test
