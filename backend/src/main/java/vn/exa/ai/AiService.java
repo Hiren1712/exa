@@ -22,6 +22,7 @@ public class AiService {
     private final UserRepository userRepository;
     private final QuestionRepository questionRepository;
     private final GeminiParser geminiParser;
+    private final ChatbotService chatbotService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -42,7 +43,7 @@ public class AiService {
     }
 
     public String chat(List<GeminiParser.ChatTurn> history, boolean student) {
-        return geminiParser.chat(history, student ? "STUDENT" : "TEACHER");
+        return chatbotService.chat(history, student);
     }
 
     private Question saveGeneratedQuestion(Long userId, GenerateQuestionsRequest request, ParsedQuestion parsed) {

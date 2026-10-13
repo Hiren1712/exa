@@ -24,7 +24,7 @@ export const aiApi = {
     const response = await apiClient.post<ApiResponse<{ reply: string }>>(
       '/v1/ai/chat',
       { messages },
-      { timeout: 90_000 },
+      { timeout: 180_000 },
     );
     return response.data.data.reply;
   },

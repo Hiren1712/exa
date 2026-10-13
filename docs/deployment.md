@@ -17,6 +17,14 @@ Deploy the repository root to Railway and use the checked-in `railway.toml`; it 
 - `JWT_SECRET` (generate a unique random value of at least 32 bytes)
 - `CORS_ORIGINS` (exact Cloudflare Pages origin(s), comma-separated)
 - `GEMINI_API_KEY` to enable AI import and Gemini-backed features. The default model is `gemini-3.6-flash`; set `GEMINI_MODEL` only to override it. If unavailable, the backend discovers supported models and retries them.
+- ExaBot can fail over across multiple providers. Set `EXABOT_PROVIDER_ORDER` to a comma-separated priority list using `gemini`, `openrouter`, `openai`, `groq`, or `deepseek` (default: `gemini,openrouter,openai,groq,deepseek`). Configure a provider's private API key and model to enable it:
+  - `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` (OpenRouter model ID, such as `provider/model`)
+  - `OPENAI_API_KEY` and `OPENAI_MODEL`
+  - `GROQ_API_KEY` and `GROQ_MODEL`
+  - `DEEPSEEK_API_KEY` and `DEEPSEEK_MODEL`
+  - `GEMINI_API_KEY` and `GEMINI_MODEL` (also used by AI import and AI Studio)
+  Optional endpoint overrides are `OPENROUTER_BASE_URL`, `OPENAI_BASE_URL`, `GROQ_BASE_URL`, and `DEEPSEEK_BASE_URL`; request timeout is configurable with `EXABOT_TIMEOUT_MS` (default 25000ms per compatible provider).
+  Only enabled providers in the priority list are tried. When one fails (including rate limits or quota errors), ExaBot tries the next configured provider. This does not increase any provider's own quota; free-tier limits and availability vary, and a configured model may incur charges. Keep all provider keys in Railway secrets, never in frontend variables or source code.
 
 Attach a Railway persistent volume at `/app/uploads` if uploaded import files must survive service restarts or redeployments.
 AI import accepts DOCX, PDF, XLSX, XLS, PNG, JPG/JPEG, and WEBP files up to 20MB; images and scanned PDFs are limited to 15MB. The import flow supports extracting existing questions, generating new questions grounded in source content, and pasted text input.
