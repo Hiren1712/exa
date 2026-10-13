@@ -274,6 +274,11 @@ public class GeminiParser {
 
     public String chat(List<ChatTurn> history, String audience) {
         requireConfiguredApiKey();
+        return chat(history, audience, apiKey);
+    }
+
+    public String chat(List<ChatTurn> history, String audience, String requestApiKey) {
+        requireConfiguredApiKey(requestApiKey);
         String audienceGuidance = "STUDENT".equals(audience)
                 ? "Người dùng là học sinh. Giải thích kiên nhẫn, dễ hiểu, gợi mở cách suy nghĩ và không làm bài kiểm tra đang diễn ra hộ học sinh."
                 : "Người dùng là giáo viên. Hỗ trợ soạn bài, ra đề, giải thích kiến thức và sử dụng nền tảng EXA.";
@@ -297,7 +302,7 @@ public class GeminiParser {
                         "temperature", 0.6,
                         "maxOutputTokens", 2048));
         try {
-            String response = extractResponseText(callGemini(body)).trim();
+            String response = extractResponseText(callGemini(body, requestApiKey)).trim();
             if (response.isBlank()) {
                 throw new IllegalStateException("Gemini returned an empty chat response");
             }
@@ -313,7 +318,12 @@ public class GeminiParser {
     public record ChatTurn(String role, String content) {}
 
     private void requireConfiguredApiKey() {
-        if (apiKey == null || apiKey.isBlank() || apiKey.equals("your_gemini_api_key_here")) {
+        requireConfiguredApiKey(apiKey);
+    }
+
+    private void requireConfiguredApiKey(String requestApiKey) {
+        if (requestApiKey == null || requestApiKey.isBlank()
+                || requestApiKey.equals("your_gemini_api_key_here")) {
             throw BusinessException.badRequest("Chưa cấu hình Gemini API key trên máy chủ");
         }
     }
@@ -403,11 +413,15 @@ public class GeminiParser {
     }
 
     private String callGemini(Map<String, Object> body) {
+        return callGemini(body, apiKey);
+    }
+
+    private String callGemini(Map<String, Object> body, String requestApiKey) {
         try {
-            return sendGeminiRequest(model, body);
+            return sendGeminiRequest(model, body, requestApiKey);
         } catch (WebClientResponseException e) {
             if (shouldTryFallbackModel(e.getStatusCode().value())) {
-                List<String> fallbacks = getAvailableFallbackModels();
+                List<String> fallbacks = getAvailableFallbackModels(requestApiKey);
                 WebClientResponseException lastModelError = e;
                 int attemptedFallbacks = 0;
                 for (String fallback : fallbacks) {
@@ -417,7 +431,7 @@ public class GeminiParser {
                     log.warn("Gemini model {} returned HTTP {}; retrying with {}",
                             normalizeModelName(model), e.getStatusCode().value(), fallback);
                     try {
-                        return sendGeminiRequest(fallback, body);
+                        return sendGeminiRequest(fallback, body, requestApiKey);
                     } catch (WebClientResponseException fallbackError) {
                         if (!shouldTryFallbackModel(fallbackError.getStatusCode().value())) {
                             throw BusinessException.badRequest(userMessageForGeminiError(
@@ -440,14 +454,14 @@ public class GeminiParser {
         }
     }
 
-    private String sendGeminiRequest(String modelName, Map<String, Object> body) {
+    private String sendGeminiRequest(String modelName, Map<String, Object> body, String requestApiKey) {
         String url = String.format(GEMINI_URL, normalizeModelName(modelName));
         for (int attempt = 0; ; attempt++) {
             try {
                 return webClientBuilder.build()
                         .post()
                         .uri(url)
-                        .header("x-goog-api-key", apiKey.trim())
+                        .header("x-goog-api-key", requestApiKey.trim())
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(body)
                         .retrieve()
@@ -481,21 +495,29 @@ public class GeminiParser {
         return statusCode == 404 || isTransientGeminiStatus(statusCode);
     }
 
-    private List<String> getAvailableFallbackModels() {
+    private List<String> getAvailableFallbackModels(String requestApiKey) {
+        if (!requestApiKey.equals(apiKey)) {
+            return discoverAvailableFallbackModels(requestApiKey);
+        }
         List<String> cached = availableFallbackModels;
         if (cached != null) return cached;
+        List<String> selected = discoverAvailableFallbackModels(requestApiKey);
+        if (!selected.isEmpty()) availableFallbackModels = selected;
+        return selected;
+    }
+
+    private List<String> discoverAvailableFallbackModels(String requestApiKey) {
         try {
             String response = webClientBuilder.build()
                     .get()
                     .uri(GEMINI_MODELS_URL)
-                    .header("x-goog-api-key", apiKey.trim())
+                    .header("x-goog-api-key", requestApiKey.trim())
                     .retrieve()
                     .bodyToMono(String.class)
                     .timeout(Duration.ofMillis(timeoutMs))
                     .block();
             if (response == null) return List.of();
             List<String> selected = selectAvailableModels(objectMapper.readTree(response), model);
-            if (!selected.isEmpty()) availableFallbackModels = selected;
             return selected;
         } catch (WebClientResponseException error) {
             throw BusinessException.badRequest(

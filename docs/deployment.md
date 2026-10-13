@@ -23,6 +23,7 @@ Deploy the repository root to Railway and use the checked-in `railway.toml`; it 
   - `GROQ_API_KEY` and `GROQ_MODEL`
   - `DEEPSEEK_API_KEY` and `DEEPSEEK_MODEL`
   - `GEMINI_API_KEY` and `GEMINI_MODEL` (also used by AI import and AI Studio)
+  For ExaBot, additional same-provider API keys can be set as numbered Railway variables, for example `gemini1`, `gemini2`, `deep1`, `deep2` (or `deepseek1`, `deepseek2`). The standard provider key is tried first, followed by numbered keys in numeric order; a failed key advances to the next key before ExaBot moves to the next provider in `EXABOT_PROVIDER_ORDER`. Numbered keys share that provider's configured model (`GEMINI_MODEL` or `DEEPSEEK_MODEL`). Numbered Gemini keys are for ExaBot only; AI import and AI Studio continue to use `GEMINI_API_KEY`.
   Optional endpoint overrides are `OPENROUTER_BASE_URL`, `OPENAI_BASE_URL`, `GROQ_BASE_URL`, and `DEEPSEEK_BASE_URL`; request timeout is configurable with `EXABOT_TIMEOUT_MS` (default 25000ms per compatible provider).
   Only enabled providers in the priority list are tried. When one fails (including rate limits or quota errors), ExaBot tries the next configured provider. This does not increase any provider's own quota; free-tier limits and availability vary, and a configured model may incur charges. Keep all provider keys in Railway secrets, never in frontend variables or source code.
 

@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.EnumerablePropertySource;
+import org.springframework.core.env.PropertySource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -14,19 +17,30 @@ import vn.exa.importjob.GeminiParser;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class ChatbotService {
 
+    private static final String DEFAULT_PROVIDER_ORDER = "gemini,openrouter,openai,groq,deepseek";
+
     private final GeminiParser geminiParser;
     private final WebClient.Builder webClientBuilder;
+    private final ConfigurableEnvironment environment;
 
-    @Value("${exa.chat.provider-order:gemini,openrouter,openai,groq,deepseek}")
+    @Value("${exa.gemini.api-key:}")
+    private String geminiApiKey;
+
+    @Value("${exa.chat.provider-order:" + DEFAULT_PROVIDER_ORDER + "}")
     private String providerOrder;
 
     @Value("${exa.chat.timeout-ms:45000}")
@@ -73,24 +87,21 @@ public class ChatbotService {
         RuntimeException lastError = null;
         boolean hasConfiguredProvider = false;
         for (String provider : parseProviderOrder(providerOrder)) {
-            ProviderConfig config = configFor(provider);
-            if (config == null) {
-                if ("gemini".equals(provider)) {
-                    hasConfiguredProvider = true;
-                }
-                continue;
-            }
+            List<ProviderConfig> configs = configsFor(provider);
+            if (configs.isEmpty()) continue;
             hasConfiguredProvider = true;
-            try {
-                String reply = "gemini".equals(provider)
-                        ? geminiParser.chat(history, audience)
-                        : callCompatibleProvider(config, history, student);
-                log.info("ExaBot answered using provider {}", provider);
-                return reply;
-            } catch (RuntimeException error) {
-                lastError = error;
-                log.warn("ExaBot provider {} failed; trying next configured provider ({})",
-                        provider, error.getClass().getSimpleName());
+            for (ProviderConfig config : configs) {
+                try {
+                    String reply = "gemini".equals(provider)
+                            ? geminiParser.chat(history, audience, config.apiKey())
+                            : callCompatibleProvider(config, history, student);
+                    log.info("ExaBot answered using provider {} slot {}", provider, config.slot());
+                    return reply;
+                } catch (RuntimeException error) {
+                    lastError = error;
+                    log.warn("ExaBot provider {} slot {} failed; trying the next key/provider ({})",
+                            provider, config.slot(), error.getClass().getSimpleName());
+                }
             }
         }
         if (lastError instanceof BusinessException businessException) {
@@ -109,7 +120,7 @@ public class ChatbotService {
 
     static List<String> parseProviderOrder(String configuredOrder) {
         if (configuredOrder == null || configuredOrder.isBlank()) {
-            return List.of();
+            configuredOrder = DEFAULT_PROVIDER_ORDER;
         }
         List<String> providers = new ArrayList<>();
         for (String item : configuredOrder.split(",")) {
@@ -123,24 +134,81 @@ public class ChatbotService {
         return List.copyOf(providers);
     }
 
-    private ProviderConfig configFor(String provider) {
+    private List<ProviderConfig> configsFor(String provider) {
         return switch (provider) {
-            case "gemini" -> null;
-            case "openrouter" -> compatibleConfig(provider, openRouterApiKey, openRouterModel, openRouterBaseUrl);
-            case "openai" -> compatibleConfig(provider, openAiApiKey, openAiModel, openAiBaseUrl);
-            case "groq" -> compatibleConfig(provider, groqApiKey, groqModel, groqBaseUrl);
-            case "deepseek" -> compatibleConfig(provider, deepSeekApiKey, deepSeekModel, deepSeekBaseUrl);
+            case "gemini" -> apiKeysFor(provider, geminiApiKey).stream()
+                    .map(key -> new ProviderConfig(provider, key.slot(), key.apiKey(), "", ""))
+                    .toList();
+            case "openrouter" -> compatibleConfigs(provider, openRouterApiKey, openRouterModel, openRouterBaseUrl);
+            case "openai" -> compatibleConfigs(provider, openAiApiKey, openAiModel, openAiBaseUrl);
+            case "groq" -> compatibleConfigs(provider, groqApiKey, groqModel, groqBaseUrl);
+            case "deepseek" -> compatibleConfigs(provider, deepSeekApiKey, deepSeekModel, deepSeekBaseUrl);
             default -> throw new IllegalStateException("Unsupported ExaBot provider: " + provider);
         };
     }
 
-    private ProviderConfig compatibleConfig(String provider, String apiKey, String model, String baseUrl) {
-        if (apiKey == null || apiKey.isBlank()) return null;
+    private List<ProviderConfig> compatibleConfigs(String provider, String apiKey, String model, String baseUrl) {
         if (model == null || model.isBlank()) {
-            log.warn("ExaBot provider {} is configured without a model and will be skipped", provider);
-            return null;
+            if (!apiKeysFor(provider, apiKey).isEmpty()) {
+                log.warn("ExaBot provider {} is configured without a model and will be skipped", provider);
+            }
+            return List.of();
         }
-        return new ProviderConfig(provider, apiKey.trim(), model.trim(), baseUrl);
+        return apiKeysFor(provider, apiKey).stream()
+                .map(key -> new ProviderConfig(provider, key.slot(), key.apiKey(), model.trim(), baseUrl))
+                .toList();
+    }
+
+    private List<ApiKeySlot> apiKeysFor(String provider, String primaryKey) {
+        Map<String, String> numberedKeys = new LinkedHashMap<>();
+        Pattern pattern = Pattern.compile(numberedKeyPattern(provider));
+        for (PropertySource<?> source : environment.getPropertySources()) {
+            if (!(source instanceof EnumerablePropertySource<?> enumerable)) continue;
+            for (String propertyName : enumerable.getPropertyNames()) {
+                Matcher matcher = pattern.matcher(propertyName);
+                if (!matcher.matches()) continue;
+                Object value = source.getProperty(propertyName);
+                if (value != null) numberedKeys.putIfAbsent(propertyName, value.toString());
+            }
+        }
+        return orderedApiKeys(provider, primaryKey, numberedKeys);
+    }
+
+    static List<ApiKeySlot> orderedApiKeys(String provider, String primaryKey, Map<String, String> numberedKeys) {
+        List<ApiKeySlot> result = new ArrayList<>();
+        if (primaryKey != null && !primaryKey.isBlank()) {
+            result.add(new ApiKeySlot("primary", primaryKey.trim()));
+        }
+        Pattern pattern = Pattern.compile(numberedKeyPattern(provider));
+        List<NumberedApiKey> keys = numberedKeys.entrySet().stream()
+                .map(entry -> {
+                    Matcher matcher = pattern.matcher(entry.getKey());
+                    return matcher.matches() && entry.getValue() != null && !entry.getValue().isBlank()
+                            ? new NumberedApiKey(Integer.parseInt(matcher.group(1)), entry.getKey(), entry.getValue())
+                            : null;
+                })
+                .filter(key -> key != null)
+                .sorted(Comparator.comparingInt(NumberedApiKey::number)
+                        .thenComparingInt(key -> key.propertyName().length())
+                        .thenComparing(NumberedApiKey::propertyName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+        Set<Integer> usedSlots = new LinkedHashSet<>();
+        for (NumberedApiKey key : keys) {
+            if (usedSlots.add(key.number())) {
+                result.add(new ApiKeySlot(Integer.toString(key.number()), key.apiKey().trim()));
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    private static String numberedKeyPattern(String provider) {
+        String prefix = switch (provider) {
+            case "gemini" -> "gemini";
+            case "deepseek" -> "deep(?:seek)?";
+            case "openrouter", "openai", "groq" -> provider;
+            default -> throw new IllegalStateException("Unsupported ExaBot provider: " + provider);
+        };
+        return "(?i)^" + prefix + "(\\d+)$";
     }
 
     private String callCompatibleProvider(
@@ -201,7 +269,11 @@ public class ChatbotService {
                 """.formatted(guidance);
     }
 
-    private record ProviderConfig(String provider, String apiKey, String model, String baseUrl) {}
+    record ApiKeySlot(String slot, String apiKey) {}
+
+    private record NumberedApiKey(int number, String propertyName, String apiKey) {}
+
+    private record ProviderConfig(String provider, String slot, String apiKey, String model, String baseUrl) {}
 
     private static final class ChatProviderException extends RuntimeException {
         private ChatProviderException(String provider, int statusCode) {
