@@ -117,6 +117,44 @@ class GeminiParserTest {
     }
 
     @Test
+    void parsesDeepSeekQuestionArrayUsingTheImportQuestionSchema() {
+        GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
+
+        GeminiParser.ParseResult result = parser.parseGeneratedQuestions("""
+                [{"number":1,"type":"MCQ","content":"Thực vật quang hợp chủ yếu ở bào quan nào?",
+                "options":["Ti thể","Lục lạp","Ribosome","Nhân"],"correctAnswer":"B",
+                "answerText":null,"difficulty":"COMPREHENSION","explanation":"Lục lạp chứa diệp lục."}]
+                """);
+
+        assertThat(result.questions()).hasSize(1);
+        assertThat(result.questions().get(0).getContent())
+                .isEqualTo("Thực vật quang hợp chủ yếu ở bào quan nào?");
+        assertThat(result.questions().get(0).getCorrectAnswer()).isEqualTo("B");
+        assertThat(result.questions().get(0).getOptions())
+                .containsExactly("Ti thể", "Lục lạp", "Ribosome", "Nhân");
+    }
+
+    @Test
+    void textQuestionGenerationCanUseTheConfiguredExternalProvider() {
+        GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
+        String response = """
+                [{"number":1,"type":"MCQ","content":"Thực vật quang hợp chủ yếu ở bào quan nào?",
+                "options":["Ti thể","Lục lạp","Ribosome","Nhân"],"correctAnswer":"B",
+                "answerText":null,"difficulty":"COMPREHENSION","explanation":"Lục lạp chứa diệp lục."}]
+                """;
+
+        GeminiParser.ParseResult result = parser.generateQuestionsFromText(
+                "Tạo câu hỏi về quang hợp", "Sinh học", 10, 1, "COMPREHENSION",
+                prompt -> {
+                    assertThat(prompt).contains("Tạo câu hỏi về quang hợp");
+                    return parser.parseGeneratedQuestions(response);
+                });
+
+        assertThat(result.questions()).hasSize(1);
+        assertThat(result.questions().getFirst().getCorrectAnswer()).isEqualTo("B");
+    }
+
+    @Test
     void serviceUnavailableMessageExplainsTheAutomaticRetry() {
         GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
 

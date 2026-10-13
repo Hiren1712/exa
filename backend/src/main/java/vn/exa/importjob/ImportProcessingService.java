@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import vn.exa.common.BusinessException;
+import vn.exa.ai.ChatbotService;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,6 +24,7 @@ public class ImportProcessingService {
     private final ImportJobRepository importJobRepository;
     private final DocumentParser documentParser;
     private final GeminiParser geminiParser;
+    private final ChatbotService chatbotService;
     private final ObjectMapper objectMapper;
 
     @Value("${exa.gemini.model:gemini-3.6-flash}")
@@ -66,6 +68,7 @@ public class ImportProcessingService {
             importJobRepository.save(job);
 
             GeminiParser.ParseResult result;
+            String resultModel = aiModel;
             if (imageFile) {
                 result = geminiParser.processImage(fileBytes, imageMimeType(fileType), subjectHint,
                         text, mode, questionCount, grade);
@@ -80,7 +83,10 @@ public class ImportProcessingService {
                 }
                 job.setExtractedText(text);
                 result = geminiParser.generateQuestionsFromText(
-                        text, subjectHint, grade, questionCount, "COMPREHENSION");
+                        text, subjectHint, grade, questionCount, "COMPREHENSION",
+                        prompt -> geminiParser.parseGeneratedQuestions(
+                                chatbotService.generateWithDeepSeek(prompt)));
+                resultModel = chatbotService.deepSeekModelName();
             } else if (text == null || text.isBlank()) {
                 fail(job, "Không đọc được nội dung file");
                 return;
@@ -88,7 +94,7 @@ public class ImportProcessingService {
                 job.setExtractedText(text);
                 result = geminiParser.parse(text, subjectHint);
             }
-            saveResult(job, result);
+            saveResult(job, result, resultModel);
         } catch (BusinessException error) {
             log.warn("Import job {} could not be processed: {}", jobId, error.getMessage());
             fail(job, error.getMessage());
@@ -106,10 +112,10 @@ public class ImportProcessingService {
         };
     }
 
-    private void saveResult(ImportJob job, GeminiParser.ParseResult result) throws Exception {
+    private void saveResult(ImportJob job, GeminiParser.ParseResult result, String resultModel) throws Exception {
         job.setParsedResult(objectMapper.writeValueAsString(result.questions()));
         job.setTotalFound(result.questions().size());
-        job.setAiModel(aiModel);
+        job.setAiModel(resultModel);
         job.setAiTokensUsed(result.tokensUsed());
         job.setStatus(ImportJob.Status.REVIEW);
         job.setFinishedAt(LocalDateTime.now());

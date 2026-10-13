@@ -46,6 +46,9 @@ public class ChatbotService {
     @Value("${exa.chat.timeout-ms:45000}")
     private long timeoutMs;
 
+    @Value("${exa.import.timeout-ms:60000}")
+    private long importTimeoutMs;
+
     @Value("${exa.chat.openrouter.api-key:}")
     private String openRouterApiKey;
 
@@ -116,6 +119,54 @@ public class ChatbotService {
                     "Chưa cấu hình API chatbot. Hãy thêm GEMINI_API_KEY hoặc cấu hình một nhà cung cấp ExaBot trên Railway.");
         }
         throw BusinessException.badRequest("Không có nhà cung cấp AI nào được bật trong EXABOT_PROVIDER_ORDER.");
+    }
+
+    public String generateWithDeepSeek(String prompt) {
+        List<ProviderConfig> configs = configsFor("deepseek");
+        if (configs.isEmpty()) {
+            throw BusinessException.badRequest(
+                    "Chưa cấu hình DEEPSEEK_API_KEY (hoặc deep1, deep2, ...) và DEEPSEEK_MODEL trên Railway.");
+        }
+        ChatProviderException lastError = null;
+        for (ProviderConfig config : configs) {
+            try {
+                return callCompatibleProvider(
+                        config,
+                        List.of(new GeminiParser.ChatTurn("user", prompt)),
+                        "Bạn là công cụ tạo câu hỏi. Hãy làm đúng yêu cầu và chỉ trả về JSON hợp lệ, không markdown.",
+                        8192,
+                        0.2,
+                        importTimeoutMs);
+            } catch (ChatProviderException error) {
+                lastError = error;
+                log.warn("DeepSeek import slot {} failed with HTTP {}; trying the next key",
+                        config.slot(), error.statusCode());
+            }
+        }
+        if (lastError != null && lastError.statusCode() == 402) {
+            throw BusinessException.badRequest(
+                    "DeepSeek đã từ chối yêu cầu vì tài khoản chưa có số dư hoặc chưa bật thanh toán. Kiểm tra Billing/Balance của DeepSeek rồi thử lại.");
+        }
+        if (lastError != null && (lastError.statusCode() == 401 || lastError.statusCode() == 403)) {
+            throw BusinessException.badRequest(
+                    "DeepSeek không chấp nhận API key. Kiểm tra lại các biến DEEPSEEK_API_KEY/deep1, deep2... trên Railway.");
+        }
+        if (lastError != null) {
+            throw BusinessException.badRequest(
+                    "Các API DeepSeek đã cấu hình hiện không phản hồi. Vui lòng thử lại hoặc kiểm tra model và trạng thái dịch vụ.");
+        }
+        throw BusinessException.badRequest("Không thể gửi yêu cầu tạo câu hỏi đến DeepSeek.");
+    }
+
+    public void validateDeepSeekConfiguration() {
+        if (configsFor("deepseek").isEmpty()) {
+            throw BusinessException.badRequest(
+                    "Chưa cấu hình DEEPSEEK_API_KEY (hoặc deep1, deep2, ...) và DEEPSEEK_MODEL trên Railway.");
+        }
+    }
+
+    public String deepSeekModelName() {
+        return deepSeekModel;
     }
 
     static List<String> parseProviderOrder(String configuredOrder) {
@@ -215,16 +266,33 @@ public class ChatbotService {
             ProviderConfig config,
             List<GeminiParser.ChatTurn> history,
             boolean student) {
+        return callCompatibleProvider(config, history, systemPrompt(student), 2048, 0.6, timeoutMs);
+    }
+
+    private String callCompatibleProvider(
+            ProviderConfig config,
+            List<GeminiParser.ChatTurn> history,
+            String systemPrompt) {
+        return callCompatibleProvider(config, history, systemPrompt, 2048, 0.6, timeoutMs);
+    }
+
+    private String callCompatibleProvider(
+            ProviderConfig config,
+            List<GeminiParser.ChatTurn> history,
+            String systemPrompt,
+            int maxTokens,
+            double temperature,
+            long requestTimeoutMs) {
         List<Map<String, String>> messages = new ArrayList<>();
-        messages.add(Map.of("role", "system", "content", systemPrompt(student)));
+        messages.add(Map.of("role", "system", "content", systemPrompt));
         history.forEach(turn -> messages.add(Map.of(
                 "role", "assistant".equals(turn.role()) ? "assistant" : "user",
                 "content", turn.content())));
         Map<String, Object> request = new LinkedHashMap<>();
         request.put("model", config.model());
         request.put("messages", messages);
-        request.put("temperature", 0.6);
-        request.put("max_tokens", 2048);
+        request.put("temperature", temperature);
+        request.put("max_tokens", maxTokens);
 
         try {
             JsonNode response = webClientBuilder.build()
@@ -235,7 +303,7 @@ public class ChatbotService {
                     .bodyValue(request)
                     .retrieve()
                     .bodyToMono(JsonNode.class)
-                    .timeout(Duration.ofMillis(timeoutMs))
+                    .timeout(Duration.ofMillis(requestTimeoutMs))
                     .block();
             JsonNode content = response == null
                     ? null
@@ -276,8 +344,15 @@ public class ChatbotService {
     private record ProviderConfig(String provider, String slot, String apiKey, String model, String baseUrl) {}
 
     private static final class ChatProviderException extends RuntimeException {
+        private final int statusCode;
+
         private ChatProviderException(String provider, int statusCode) {
             super("ExaBot provider " + provider + " failed with HTTP " + statusCode);
+            this.statusCode = statusCode;
+        }
+
+        private int statusCode() {
+            return statusCode;
         }
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import vn.exa.common.BusinessException;
+import vn.exa.ai.ChatbotService;
 import vn.exa.question.Question;
 import vn.exa.question.QuestionRepository;
 
@@ -26,6 +27,7 @@ public class ImportService {
     private final ImportJobRepository importJobRepo;
     private final ImportProcessingService importProcessingService;
     private final GeminiParser geminiParser;
+    private final ChatbotService chatbotService;
     private final QuestionRepository questionRepo;
     private final ObjectMapper objectMapper;
 
@@ -35,7 +37,13 @@ public class ImportService {
     public Long uploadAndProcess(MultipartFile file, String content, Long userId, String subjectHint,
                                  ImportMode mode, Integer questionCount, Integer grade) {
         validateInput(file, content, mode, questionCount, grade);
-        geminiParser.validateConfiguration();
+        if (mode != ImportMode.GENERATE) {
+            geminiParser.validateConfiguration();
+        } else if (requiresGeminiVision(file)) {
+            geminiParser.validateConfiguration();
+        } else {
+            chatbotService.validateDeepSeekConfiguration();
+        }
 
         try {
             boolean hasFile = file != null && !file.isEmpty();
@@ -244,6 +252,12 @@ public class ImportService {
         if (name == null) return "";
         int i = name.lastIndexOf('.');
         return i >= 0 ? name.substring(i + 1) : "";
+    }
+
+    private boolean requiresGeminiVision(MultipartFile file) {
+        if (file == null || file.isEmpty()) return false;
+        String extension = getExtension(file.getOriginalFilename()).toLowerCase(Locale.ROOT);
+        return List.of("png", "jpg", "jpeg", "webp").contains(extension);
     }
 
 }

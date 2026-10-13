@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.util.Base64;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 
 @Component
 @Slf4j
@@ -140,6 +141,13 @@ public class GeminiParser {
     public ParseResult generateQuestionsFromText(String sourceText, String subject, int grade,
                                                  int questionCount, String difficulty) {
         requireConfiguredApiKey();
+        return generateQuestionsFromText(sourceText, subject, grade, questionCount, difficulty,
+                prompt -> parseResponse(callGemini(prompt)));
+    }
+
+    public ParseResult generateQuestionsFromText(String sourceText, String subject, int grade,
+                                                 int questionCount, String difficulty,
+                                                 Function<String, ParseResult> generateWithProvider) {
         if (sourceText == null || sourceText.isBlank()) {
             throw BusinessException.badRequest("Hãy nhập nội dung để AI tạo câu hỏi");
         }
@@ -151,7 +159,7 @@ public class GeminiParser {
             int chunkCount = counts.get(i);
             if (chunkCount == 0) continue;
             String prompt = generationPrompt(chunks.get(i), subject, grade, chunkCount, difficulty);
-            ParseResult result = parseResponse(callGemini(prompt));
+            ParseResult result = generateWithProvider.apply(prompt);
             questions.addAll(result.questions());
             tokens += result.tokensUsed();
         }
@@ -160,6 +168,17 @@ public class GeminiParser {
             deduped = new ArrayList<>(deduped.subList(0, questionCount));
         }
         return new ParseResult(deduped, tokens);
+    }
+
+    public ParseResult parseGeneratedQuestions(String responseText) {
+        try {
+            return new ParseResult(parseAiResponse(responseText), 0);
+        } catch (BusinessException error) {
+            throw error;
+        } catch (Exception error) {
+            log.warn("AI question provider returned invalid structured data");
+            throw BusinessException.badRequest("AI trả về dữ liệu câu hỏi không hợp lệ. Vui lòng thử lại.");
+        }
     }
 
     List<Integer> distributeQuestionCount(List<String> chunks, int questionCount) {
