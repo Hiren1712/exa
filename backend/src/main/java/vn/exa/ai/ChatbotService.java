@@ -32,6 +32,7 @@ import java.util.regex.Pattern;
 public class ChatbotService {
 
     private static final String DEFAULT_PROVIDER_ORDER = "gemini,openrouter,openai,groq,deepseek";
+    private static final String DEFAULT_DEEPSEEK_MODEL = "deepseek-chat";
 
     private final GeminiParser geminiParser;
     private final WebClient.Builder webClientBuilder;
@@ -79,7 +80,7 @@ public class ChatbotService {
     @Value("${exa.chat.deepseek.api-key:}")
     private String deepSeekApiKey;
 
-    @Value("${exa.chat.deepseek.model:}")
+    @Value("${exa.chat.deepseek.model:deepseek-chat}")
     private String deepSeekModel;
 
     @Value("${exa.chat.deepseek.base-url:https://api.deepseek.com/chat/completions}")
@@ -166,7 +167,11 @@ public class ChatbotService {
     }
 
     public String deepSeekModelName() {
-        return deepSeekModel;
+        return resolveDeepSeekModel(deepSeekModel);
+    }
+
+    static String resolveDeepSeekModel(String model) {
+        return model == null || model.isBlank() ? DEFAULT_DEEPSEEK_MODEL : model.trim();
     }
 
     static List<String> parseProviderOrder(String configuredOrder) {
@@ -193,7 +198,8 @@ public class ChatbotService {
             case "openrouter" -> compatibleConfigs(provider, openRouterApiKey, openRouterModel, openRouterBaseUrl);
             case "openai" -> compatibleConfigs(provider, openAiApiKey, openAiModel, openAiBaseUrl);
             case "groq" -> compatibleConfigs(provider, groqApiKey, groqModel, groqBaseUrl);
-            case "deepseek" -> compatibleConfigs(provider, deepSeekApiKey, deepSeekModel, deepSeekBaseUrl);
+            case "deepseek" -> compatibleConfigs(
+                    provider, deepSeekApiKey, resolveDeepSeekModel(deepSeekModel), deepSeekBaseUrl);
             default -> throw new IllegalStateException("Unsupported ExaBot provider: " + provider);
         };
     }

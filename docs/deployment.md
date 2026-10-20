@@ -3,6 +3,7 @@
 ## Cloudflare Pages frontend
 
 Use the `frontend` directory as the Pages project root, `npm run build` as the build command, and `dist` as the build output directory. Configure `VITE_API_URL` as a Pages build-time variable, including the backend context path, e.g. `https://api.example.com/api`. Cloudflare builds fail if this variable is missing or does not use HTTPS. This value is public and must never contain a secret.
+Add `exa-edulab.page.dev` as a custom domain in the Cloudflare Pages project. Keep `VITE_API_URL` pointed at the existing Railway backend URL; do not use the frontend domain for the API unless Railway is explicitly configured to serve the API there.
 
 If testing the frontend locally against a remote API, set `VITE_API_URL` in the frontend build environment. For the Vite development proxy, use `VITE_API_PROXY_TARGET` for the backend origin, e.g. `https://api.example.com`; local default is `http://localhost:8080`.
 
@@ -15,7 +16,7 @@ Deploy the repository root to Railway and use the checked-in `railway.toml`; it 
 - `SPRING_PROFILES_ACTIVE=prod`
 - `MYSQLHOST`, `MYSQLPORT`, `MYSQLDATABASE`, `MYSQLUSER`, `MYSQLPASSWORD`
 - `JWT_SECRET` (generate a unique random value of at least 32 bytes)
-- `CORS_ORIGINS` (exact Cloudflare Pages origin(s), comma-separated)
+- `CORS_ORIGINS` (exact Cloudflare Pages origin(s), comma-separated; include `https://exa-edulab.page.dev`)
 - `GEMINI_API_KEY` for question extraction, image/scanned-PDF processing, and Gemini-backed features. The default model is `gemini-3.6-flash`; set `GEMINI_MODEL` only to override it. If unavailable, the backend discovers supported models and retries them.
 - `DEEPSEEK_MODEL` (default `deepseek-chat`) and `DEEPSEEK_API_KEY` or numbered `deep1`, `deep2`, etc. for text-based AI question generation. The backend tries the configured DeepSeek keys in numeric order. Image and scanned-PDF question generation still uses Gemini for vision/OCR.
 - ExaBot can fail over across multiple providers. Set `EXABOT_PROVIDER_ORDER` to a comma-separated priority list using `gemini`, `openrouter`, `openai`, `groq`, or `deepseek` (default: `gemini,openrouter,openai,groq,deepseek`). Configure a provider's private API key and model to enable it:
@@ -32,6 +33,6 @@ Attach a Railway persistent volume at `/app/uploads` if uploaded import files mu
 AI import accepts DOCX, PDF, XLSX, XLS, PNG, JPG/JPEG, and WEBP files up to 20MB; images and scanned PDFs are limited to 15MB. The import flow supports extracting existing questions and generating questions from arbitrary source content, notes, short topics, or natural-language requests. Plain-text and text-extracted document generation uses DeepSeek; image and scanned-PDF generation uses Gemini. Generated questions do not require a preformatted exam or existing questions; teachers can paste plain text directly.
 Question formulas render in previews, the question bank, and exams using `$...$` or `\(...\)` for mathematics and KaTeX mhchem syntax such as `$\ce{H2O}$` for chemistry.
 
-The backend uses Flyway migrations and `ddl-auto: validate` by default. Allow the service to complete migrations at startup and use a persistent, private MySQL database. Railway supplies `PORT` at runtime; the app binds to that port and its health check is `/api/actuator/health`.
+The backend uses Flyway migrations and `ddl-auto: validate` by default. Allow the service to complete migrations at startup and use a persistent, private MySQL database. Railway supplies `PORT` at runtime; the app binds to that port and its health check is `/api/actuator/health`. Text question generation defaults `DEEPSEEK_MODEL` to `deepseek-chat` when only the API key is configured.
 
 Never add real credentials to `.env.example`, frontend variables, source code, or deployment manifests committed to the repository. Rotate any credential that has been exposed.

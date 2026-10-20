@@ -71,7 +71,7 @@ exa:
       base-url: ${GROQ_BASE_URL:https://api.groq.com/openai/v1/chat/completions}
     deepseek:
       api-key: ${DEEPSEEK_API_KEY:}
-      model: ${DEEPSEEK_MODEL:}
+      model: ${DEEPSEEK_MODEL:deepseek-chat}
       base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/chat/completions}
   storage:
     upload-dir: /app/uploads

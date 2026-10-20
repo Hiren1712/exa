@@ -22,6 +22,14 @@ class ChatbotServiceTest {
     }
 
     @Test
+    void blankDeepSeekModelUsesDocumentedDefault() {
+        assertThat(ChatbotService.resolveDeepSeekModel(null)).isEqualTo("deepseek-chat");
+        assertThat(ChatbotService.resolveDeepSeekModel(" ")).isEqualTo("deepseek-chat");
+        assertThat(ChatbotService.resolveDeepSeekModel(" deepseek-reasoner "))
+                .isEqualTo("deepseek-reasoner");
+    }
+
+    @Test
     void providerOrderRejectsUnknownProviders() {
         assertThatThrownBy(() -> ChatbotService.parseProviderOrder("gemini,unknown"))
                 .isInstanceOf(IllegalStateException.class)
