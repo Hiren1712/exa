@@ -5,7 +5,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.EnumerablePropertySource;
+import org.springframework.core.env.PropertySource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -18,6 +22,8 @@ import java.util.Base64;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 @Slf4j
@@ -26,6 +32,9 @@ public class GeminiParser {
 
     private final WebClient.Builder webClientBuilder;
     private final ObjectMapper objectMapper;
+
+    @Autowired
+    private ConfigurableEnvironment environment;
 
     @Value("${exa.gemini.api-key:}")
     private String apiKey;
@@ -45,6 +54,7 @@ public class GeminiParser {
     private static final int MAX_INLINE_PDF_SIZE = 15 * 1024 * 1024;
     private static final int MAX_GEMINI_RETRIES = 2;
     private static final int MAX_FALLBACK_MODELS = 2;
+    private static final Pattern NUMBERED_GEMINI_KEY = Pattern.compile("(?i)^gemini(\\d+)$");
 
     public void validateConfiguration() {
         requireConfiguredApiKey();
@@ -55,14 +65,21 @@ public class GeminiParser {
      */
     public ParseResult parse(String rawText, String subjectHint) {
         requireConfiguredApiKey();
+        return parse(rawText, subjectHint, prompt -> parseResponse(callGemini(prompt)));
+    }
 
+    public ParseResult parse(String rawText, String subjectHint,
+                             Function<String, ParseResult> parseWithProvider) {
+        if (rawText == null || rawText.isBlank()) {
+            throw BusinessException.badRequest("Không đọc được nội dung file");
+        }
         List<String> chunks = chunkText(rawText, 6000);
         List<ParsedQuestion> all = new ArrayList<>();
         int totalTokens = 0;
 
         for (int i = 0; i < chunks.size(); i++) {
             log.info("Parsing chunk {}/{}", i + 1, chunks.size());
-            ParseResult r = parseChunk(chunks.get(i), subjectHint);
+            ParseResult r = parseWithProvider.apply(buildPrompt(chunks.get(i), subjectHint));
             all.addAll(r.questions());
             totalTokens += r.tokensUsed();
         }
@@ -178,6 +195,23 @@ public class GeminiParser {
         } catch (Exception error) {
             log.warn("AI question provider returned invalid structured data");
             throw BusinessException.badRequest("AI trả về dữ liệu câu hỏi không hợp lệ. Vui lòng thử lại.");
+        }
+    }
+
+    public String generateTextWithGemini(String prompt, String requestApiKey) {
+        requireConfiguredApiKey(requestApiKey);
+        Map<String, Object> body = Map.of(
+                "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
+                "generationConfig", Map.of(
+                        "temperature", 0.2,
+                        "maxOutputTokens", 8192,
+                        "responseMimeType", "application/json"));
+        try {
+            return extractResponseText(callGemini(body, requestApiKey));
+        } catch (BusinessException error) {
+            throw error;
+        } catch (Exception error) {
+            throw BusinessException.badRequest("Gemini trả về dữ liệu không hợp lệ. Vui lòng thử lại.");
         }
     }
 
@@ -299,7 +333,7 @@ public class GeminiParser {
 
     public String chat(List<ChatTurn> history, String audience) {
         requireConfiguredApiKey();
-        return chat(history, audience, apiKey);
+        return chat(history, audience, configuredApiKeys().get(0));
     }
 
     public String chat(List<ChatTurn> history, String audience, String requestApiKey) {
@@ -343,7 +377,9 @@ public class GeminiParser {
     public record ChatTurn(String role, String content) {}
 
     private void requireConfiguredApiKey() {
-        requireConfiguredApiKey(apiKey);
+        if (configuredApiKeys().isEmpty()) {
+            throw BusinessException.badRequest("Chưa cấu hình Gemini API key trên máy chủ");
+        }
     }
 
     private void requireConfiguredApiKey(String requestApiKey) {
@@ -438,8 +474,61 @@ public class GeminiParser {
     }
 
     private String callGemini(Map<String, Object> body) {
-        return callGemini(body, apiKey);
+        List<String> keys = configuredApiKeys();
+        if (keys.isEmpty()) {
+            throw BusinessException.badRequest("Chưa cấu hình Gemini API key trên máy chủ");
+        }
+        RuntimeException lastError = null;
+        for (int index = 0; index < keys.size(); index++) {
+            String key = keys.get(index);
+            try {
+                return callGemini(body, key);
+            } catch (RuntimeException error) {
+                lastError = error;
+                log.warn("Gemini API key slot {} failed; trying the next configured key",
+                        index == 0 && !apiKey.isBlank() ? "primary" : index);
+            }
+        }
+        throw lastError;
     }
+
+    static List<String> orderApiKeys(String primaryKey, Map<String, String> numberedKeys) {
+        List<String> ordered = new ArrayList<>();
+        if (isUsableApiKey(primaryKey)) ordered.add(primaryKey.trim());
+        numberedKeys.entrySet().stream()
+                .map(entry -> {
+                    Matcher matcher = NUMBERED_GEMINI_KEY.matcher(entry.getKey());
+                    return matcher.matches() && isUsableApiKey(entry.getValue())
+                            ? new NumberedApiKey(Integer.parseInt(matcher.group(1)), entry.getValue().trim())
+                            : null;
+                })
+                .filter(key -> key != null)
+                .sorted(Comparator.comparingInt(NumberedApiKey::number))
+                .map(NumberedApiKey::apiKey)
+                .forEach(ordered::add);
+        return ordered.stream().distinct().toList();
+    }
+
+    private List<String> configuredApiKeys() {
+        Map<String, String> numberedKeys = new LinkedHashMap<>();
+        if (environment != null) {
+            for (PropertySource<?> source : environment.getPropertySources()) {
+                if (!(source instanceof EnumerablePropertySource<?> enumerable)) continue;
+                for (String propertyName : enumerable.getPropertyNames()) {
+                    if (!NUMBERED_GEMINI_KEY.matcher(propertyName).matches()) continue;
+                    Object value = source.getProperty(propertyName);
+                    if (value != null) numberedKeys.putIfAbsent(propertyName, value.toString());
+                }
+            }
+        }
+        return orderApiKeys(apiKey, numberedKeys);
+    }
+
+    private static boolean isUsableApiKey(String value) {
+        return value != null && !value.isBlank() && !"your_gemini_api_key_here".equals(value.trim());
+    }
+
+    private record NumberedApiKey(int number, String apiKey) {}
 
     private String callGemini(Map<String, Object> body, String requestApiKey) {
         try {

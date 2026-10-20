@@ -14,7 +14,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -69,6 +71,7 @@ public class ImportProcessingService {
 
             GeminiParser.ParseResult result;
             String resultModel = aiModel;
+            Set<String> usedModels = new LinkedHashSet<>();
             if (imageFile) {
                 result = geminiParser.processImage(fileBytes, imageMimeType(fileType), subjectHint,
                         text, mode, questionCount, grade);
@@ -84,16 +87,24 @@ public class ImportProcessingService {
                 job.setExtractedText(text);
                 result = geminiParser.generateQuestionsFromText(
                         text, subjectHint, grade, questionCount, "COMPREHENSION",
-                        prompt -> geminiParser.parseGeneratedQuestions(
-                                chatbotService.generateWithDeepSeek(prompt)));
-                resultModel = chatbotService.deepSeekModelName();
+                        prompt -> {
+                            ChatbotService.ImportResponse response =
+                                    chatbotService.generateImportResponse(prompt);
+                            usedModels.add(response.modelName());
+                            return geminiParser.parseGeneratedQuestions(response.content());
+                        });
             } else if (text == null || text.isBlank()) {
                 fail(job, "Không đọc được nội dung file");
                 return;
             } else {
                 job.setExtractedText(text);
-                result = geminiParser.parse(text, subjectHint);
+                result = geminiParser.parse(text, subjectHint, prompt -> {
+                    ChatbotService.ImportResponse response = chatbotService.generateImportResponse(prompt);
+                    usedModels.add(response.modelName());
+                    return geminiParser.parseGeneratedQuestions(response.content());
+                });
             }
+            if (!usedModels.isEmpty()) resultModel = String.join(", ", usedModels);
             saveResult(job, result, resultModel);
         } catch (BusinessException error) {
             log.warn("Import job {} could not be processed: {}", jobId, error.getMessage());

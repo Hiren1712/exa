@@ -25,6 +25,25 @@ class GeminiParserTest {
     }
 
     @Test
+    void geminiImportKeysUsePrimaryThenNumberedSlotsInNumericOrder() {
+        assertThat(GeminiParser.orderApiKeys("primary-key", java.util.Map.of(
+                "gemini2", "second-key",
+                "gemini10", "tenth-key",
+                "GEMINI1", "first-key",
+                "deep1", "unrelated-key")))
+                .containsExactly("primary-key", "first-key", "second-key", "tenth-key");
+    }
+
+    @Test
+    void geminiImportKeysDeduplicateValuesAndIgnorePlaceholderKeys() {
+        assertThat(GeminiParser.orderApiKeys(" ", java.util.Map.of(
+                "gemini1", "same-key",
+                "gemini2", "same-key",
+                "gemini3", "your_gemini_api_key_here")))
+                .containsExactly("same-key");
+    }
+
+    @Test
     void invalidGeminiApiKeyErrorExplainsHowToFixRailwayConfiguration() {
         GeminiParser parser = new GeminiParser(WebClient.builder(), new ObjectMapper());
         String response = """

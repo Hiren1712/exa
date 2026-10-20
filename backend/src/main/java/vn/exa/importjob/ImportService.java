@@ -38,11 +38,15 @@ public class ImportService {
                                  ImportMode mode, Integer questionCount, Integer grade) {
         validateInput(file, content, mode, questionCount, grade);
         if (mode != ImportMode.GENERATE) {
-            geminiParser.validateConfiguration();
+            if (requiresGeminiVision(file)) {
+                geminiParser.validateConfiguration();
+            } else {
+                chatbotService.validateImportConfiguration();
+            }
         } else if (requiresGeminiVision(file)) {
             geminiParser.validateConfiguration();
         } else {
-            chatbotService.validateDeepSeekConfiguration();
+            chatbotService.validateImportConfiguration();
         }
 
         try {
