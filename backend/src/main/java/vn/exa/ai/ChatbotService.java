@@ -41,17 +41,11 @@ public class ChatbotService {
     @Value("${exa.gemini.api-key:}")
     private String geminiApiKey;
 
-    @Value("${exa.gemini.model:gemini-3.6-flash}")
-    private String geminiModel;
-
     @Value("${exa.chat.provider-order:" + DEFAULT_PROVIDER_ORDER + "}")
     private String providerOrder;
 
     @Value("${exa.chat.timeout-ms:45000}")
     private long timeoutMs;
-
-    @Value("${exa.import.timeout-ms:60000}")
-    private long importTimeoutMs;
 
     @Value("${exa.chat.openrouter.api-key:}")
     private String openRouterApiKey;
@@ -125,132 +119,9 @@ public class ChatbotService {
         throw BusinessException.badRequest("Không có nhà cung cấp AI nào được bật trong EXABOT_PROVIDER_ORDER.");
     }
 
-    public String generateWithDeepSeek(String prompt) {
-        List<ProviderConfig> configs = configsFor("deepseek");
-        if (configs.isEmpty()) {
-            throw BusinessException.badRequest(
-                    "Chưa cấu hình DEEPSEEK_API_KEY (hoặc deep1, deep2, ...) và DEEPSEEK_MODEL trên Railway.");
-        }
-        ChatProviderException lastError = null;
-        for (ProviderConfig config : configs) {
-            try {
-                return callCompatibleProvider(
-                        config,
-                        List.of(new GeminiParser.ChatTurn("user", prompt)),
-                        "Bạn là công cụ tạo câu hỏi. Hãy làm đúng yêu cầu và chỉ trả về JSON hợp lệ, không markdown.",
-                        8192,
-                        0.2,
-                        importTimeoutMs);
-            } catch (ChatProviderException error) {
-                lastError = error;
-                log.warn("DeepSeek import slot {} failed with HTTP {}; trying the next key",
-                        config.slot(), error.statusCode());
-            }
-        }
-        if (lastError != null && lastError.statusCode() == 402) {
-            throw BusinessException.badRequest(
-                    "DeepSeek đã từ chối yêu cầu vì tài khoản chưa có số dư hoặc chưa bật thanh toán. Kiểm tra Billing/Balance của DeepSeek rồi thử lại.");
-        }
-        if (lastError != null && (lastError.statusCode() == 401 || lastError.statusCode() == 403)) {
-            throw BusinessException.badRequest(
-                    "DeepSeek không chấp nhận API key. Kiểm tra lại các biến DEEPSEEK_API_KEY/deep1, deep2... trên Railway.");
-        }
-        if (lastError != null) {
-            throw BusinessException.badRequest(
-                    "Các API DeepSeek đã cấu hình hiện không phản hồi. Vui lòng thử lại hoặc kiểm tra model và trạng thái dịch vụ.");
-        }
-        throw BusinessException.badRequest("Không thể gửi yêu cầu tạo câu hỏi đến DeepSeek.");
-    }
-
-    public ImportResponse generateImportResponse(String prompt) {
-        RuntimeException lastError = null;
-        String lastProvider = null;
-        for (String provider : parseProviderOrder(providerOrder)) {
-            for (ProviderConfig config : configsFor(provider)) {
-                try {
-                    String response = "gemini".equals(provider)
-                            ? geminiParser.generateTextWithGemini(prompt, config.apiKey())
-                            : callCompatibleProvider(
-                                    config,
-                                    List.of(new GeminiParser.ChatTurn("user", prompt)),
-                                    "Bạn là công cụ xử lý đề thi. Chỉ trả về JSON hợp lệ, không markdown.",
-                                    8192,
-                                    0.2,
-                                    importTimeoutMs);
-                    String model = "gemini".equals(provider) ? geminiModel : config.model();
-                    log.info("AI import answered using provider {} slot {}", provider, config.slot());
-                    return new ImportResponse(response, provider + " (" + model + ")");
-                } catch (RuntimeException error) {
-                    lastError = error;
-                    lastProvider = provider;
-                    if (error instanceof ChatProviderException providerError) {
-                        log.warn("AI import provider {} slot {} failed with HTTP {}; trying the next provider/key",
-                                provider, config.slot(), providerError.statusCode());
-                    } else {
-                        log.warn("AI import provider {} slot {} failed; trying the next provider/key ({})",
-                                provider, config.slot(), error.getClass().getSimpleName());
-                    }
-                }
-            }
-        }
-        if (lastError instanceof ChatProviderException providerError) {
-            throw BusinessException.badRequest(importProviderErrorMessage(lastProvider, providerError.statusCode()));
-        }
-        if (lastError instanceof BusinessException businessException) {
-            throw businessException;
-        }
-        if (lastError != null) {
-            throw BusinessException.badRequest(
-                    "Các API AI đã cấu hình hiện không phản hồi. Kiểm tra quota/billing và thử lại.");
-        }
-        throw BusinessException.badRequest(
-                "Chưa cấu hình nhà cung cấp AI cho Import. Hãy cấu hình Gemini hoặc một nhà cung cấp trong ExaBot trên Railway.");
-    }
-
-    public void validateImportConfiguration() {
-        for (String provider : parseProviderOrder(providerOrder)) {
-            if (!configsFor(provider).isEmpty()) return;
-        }
-        throw BusinessException.badRequest(
-                "Chưa cấu hình nhà cung cấp AI cho Import. Hãy cấu hình Gemini hoặc một nhà cung cấp trong ExaBot trên Railway.");
-    }
-
-    private String importProviderErrorMessage(String provider, int statusCode) {
-        if (statusCode == 402) {
-            return provider + " đã từ chối yêu cầu vì tài khoản chưa có số dư hoặc chưa bật thanh toán. Kiểm tra Billing/Balance rồi thử lại.";
-        }
-        if (statusCode == 401 || statusCode == 403) {
-            return provider + " không chấp nhận API key. Kiểm tra lại khóa API và quyền truy cập của nhà cung cấp trên Railway.";
-        }
-        if (statusCode == 429) {
-            return provider + " đã hết quota hoặc đang giới hạn yêu cầu. Kiểm tra quota/billing rồi thử lại.";
-        }
-        if (statusCode == 0 || statusCode >= 500) {
-            return "Các API AI đã cấu hình hiện không phản hồi. Kiểm tra trạng thái dịch vụ và thử lại.";
-        }
-        return provider + " từ chối yêu cầu tạo câu hỏi (HTTP " + statusCode + "). Kiểm tra model và cấu hình API.";
-    }
-
-    public boolean isDeepSeekConfigured() {
-        return !configsFor("deepseek").isEmpty();
-    }
-
-    public void validateDeepSeekConfiguration() {
-        if (configsFor("deepseek").isEmpty()) {
-            throw BusinessException.badRequest(
-                    "Chưa cấu hình DEEPSEEK_API_KEY (hoặc deep1, deep2, ...) và DEEPSEEK_MODEL trên Railway.");
-        }
-    }
-
-    public String deepSeekModelName() {
-        return resolveDeepSeekModel(deepSeekModel);
-    }
-
     static String resolveDeepSeekModel(String model) {
         return model == null || model.isBlank() ? DEFAULT_DEEPSEEK_MODEL : model.trim();
     }
-
-    public record ImportResponse(String content, String modelName) {}
 
     static List<String> parseProviderOrder(String configuredOrder) {
         if (configuredOrder == null || configuredOrder.isBlank()) {

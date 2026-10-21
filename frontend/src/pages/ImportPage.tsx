@@ -26,7 +26,7 @@ const QUESTION_TYPES: Record<string, string> = {
   SHORT_ANSWER: 'Trả lời ngắn',
   ESSAY: 'Tự luận',
 };
-const SUPPORTED_EXTENSIONS = ['docx', 'pdf', 'xlsx', 'xls', 'png', 'jpg', 'jpeg', 'webp'];
+const SUPPORTED_EXTENSIONS = ['txt', 'docx', 'pdf', 'xlsx', 'xls', 'png', 'jpg', 'jpeg', 'webp'];
 
 export default function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -118,7 +118,7 @@ export default function ImportPage() {
     if (!candidate) return;
     const extension = candidate.name.split('.').pop()?.toLowerCase();
     if (!extension || !SUPPORTED_EXTENSIONS.includes(extension)) {
-      toast('Định dạng không hỗ trợ', 'Chỉ nhận DOCX, PDF, XLSX, XLS, PNG, JPG hoặc WEBP.', 'warn');
+      toast('Định dạng không hỗ trợ', 'Chỉ nhận TXT, DOCX, PDF, XLSX, XLS, PNG, JPG hoặc WEBP.', 'warn');
       return;
     }
     if (candidate.size > 20 * 1024 * 1024) {
@@ -300,7 +300,7 @@ export default function ImportPage() {
                 Tạo câu hỏi từ nội dung
               </span>
               <span className="mt-1 block text-xs text-slate-500">
-                Dùng được với ghi chú, đoạn văn, chủ đề ngắn hoặc yêu cầu tự nhiên; không cần có câu hỏi sẵn.
+                Gemini xử lý ghi chú, đoạn văn, bảng, dữ kiện, chủ đề ngắn hoặc yêu cầu tự nhiên; không cần theo mẫu đề thi hay có câu hỏi sẵn.
               </span>
             </button>
           </div>
@@ -358,7 +358,7 @@ export default function ImportPage() {
           >
             <input
               type="file"
-              accept=".docx,.pdf,.xlsx,.xls,.png,.jpg,.jpeg,.webp"
+              accept=".txt,.docx,.pdf,.xlsx,.xls,.png,.jpg,.jpeg,.webp"
               id="exa-import-file"
               aria-label="Chọn tệp để import"
               className="sr-only"
@@ -372,7 +372,7 @@ export default function ImportPage() {
               {file ? file.name : 'Kéo thả file vào đây hoặc bấm để chọn'}
             </div>
             <div className="text-xs text-slate-500">
-              Hỗ trợ DOCX, PDF (kể cả PDF scan), XLSX, XLS, PNG, JPG và WEBP. Tệp tối đa 20MB, ảnh tối đa 15MB.
+              Hỗ trợ TXT, DOCX, PDF (kể cả PDF scan), XLSX, XLS, PNG, JPG và WEBP. Tệp tối đa 20MB, ảnh tối đa 15MB.
             </div>
           </label>
 

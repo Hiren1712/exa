@@ -14,19 +14,19 @@ Reviewed the application structure, React pages/shared UI controls, import clien
 - AI Import uploads return to the UI without waiting for an extended blocking polling loop. Background status refresh is automatic, with an explicit refresh option and an actionable failure state.
 - AI Import persists **only** the current job ID and non-sensitive screen choices in **sessionStorage** so that reloading does not lose the active job. It does not persist uploaded files or pasted source text.
 - AI Import now validates selected questions before saving, makes upload mode states and file removal clearer, and increases the upload request timeout to accommodate larger files.
-- Backend text extraction and generation use the configured provider order, with fallback across configured AI providers. Image/OCR still requires Gemini; scanned-PDF-without-Gemini returns a clear failure message. No fake question output is introduced.
+- Every AI Import mode uses Gemini only, including text generation, extraction, image analysis, and scanned-PDF OCR. Generation accepts arbitrary notes, prose, tables, facts, short topics, and natural-language instructions; it does not require an exam template or existing questions.
 
 ## Verification performed
 
 - Frontend production build: `npm run build` — **PASS**.
 - Frontend ESLint: `npm run lint` — **PASS**.
-- Backend clean compile and test suite: `mvn clean test` — **PASS**, 36 tests with no failures or errors.
+- Backend clean compile and test suite: `mvn clean test` — **PASS**, 35 tests with no failures or errors.
 - Static color contrast calculations for key button pairs: primary light 6.70:1, primary dark 5.48:1, ghost light 14.63:1, ghost dark 13.35:1, danger light 7.30:1, success light 5.48:1, gold light 6.33:1.
 
 ## Remaining verification
 
 - Responsive browser QA and full end-to-end import/save/database verification have not been executed.
-- Live Google Gemini/DeepSeek calls and end-to-end import/save/database flow: no deployed API or test credentials/database were supplied.
+- Live Google Gemini calls and end-to-end import/save/database flow: no test API credentials/database were supplied.
 - Full screen-reader and manual device testing: not executed.
 
 ## Local smoke-test checklist (Windows / developer machine)
@@ -35,7 +35,7 @@ Reviewed the application structure, React pages/shared UI controls, import clien
 2. From `frontend`: run `npm ci`, `npm run build`, and `npm run lint`. From `backend`: run `mvn test` (Java 21).
 3. At widths 320, 375, 768, 1024, 1440px, check Login, Dashboard, Classes, Question Bank, Exams, Exam Room, AI Studio, Import AI in light and dark.
 4. Verify role selection, question selection, forms, modal focus and keyboard navigation; check no labels disappear on hover/disabled state.
-5. Import a short text question set in EXTRACT mode with Gemini; import again in EXTRACT mode using DeepSeek-only; generate text questions in GENERATE mode with DeepSeek; try an image with Gemini; try an unreadable PDF and confirm a meaningful error.
+5. Import existing questions in EXTRACT mode with Gemini; generate questions from unformatted notes and a short topic in GENERATE mode; try a TXT file, image, and scanned PDF; confirm a meaningful error for invalid Gemini credentials.
 6. Refresh the browser while import is processing, confirm that the job can be recovered; edit, select and save questions; confirm persisted DB results; simulate a provider timeout and invalid key.
 
 ## File hygiene

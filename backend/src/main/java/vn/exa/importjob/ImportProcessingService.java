@@ -8,15 +8,12 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import vn.exa.common.BusinessException;
-import vn.exa.ai.ChatbotService;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +23,6 @@ public class ImportProcessingService {
     private final ImportJobRepository importJobRepository;
     private final DocumentParser documentParser;
     private final GeminiParser geminiParser;
-    private final ChatbotService chatbotService;
     private final ObjectMapper objectMapper;
 
     @Value("${exa.gemini.model:gemini-3.6-flash}")
@@ -88,28 +84,14 @@ public class ImportProcessingService {
                     return;
                 }
                 job.setExtractedText(text);
-                Set<String> usedModels = new LinkedHashSet<>();
                 result = geminiParser.generateQuestionsFromText(
-                        text, subjectHint, grade, questionCount, "COMPREHENSION",
-                        prompt -> {
-                            ChatbotService.ImportResponse response =
-                                    chatbotService.generateImportResponse(prompt);
-                            usedModels.add(response.modelName());
-                            return geminiParser.parseGeneratedQuestions(response.content());
-                        });
-                if (!usedModels.isEmpty()) resultModel = String.join(", ", usedModels);
+                        text, subjectHint, grade, questionCount, "COMPREHENSION");
             } else if (text == null || text.isBlank()) {
                 fail(job, "Không đọc được nội dung file");
                 return;
             } else {
                 job.setExtractedText(text);
-                Set<String> usedModels = new LinkedHashSet<>();
-                result = geminiParser.parseTextWithProvider(text, subjectHint, prompt -> {
-                    ChatbotService.ImportResponse response = chatbotService.generateImportResponse(prompt);
-                    usedModels.add(response.modelName());
-                    return geminiParser.parseGeneratedQuestions(response.content());
-                });
-                if (!usedModels.isEmpty()) resultModel = String.join(", ", usedModels);
+                result = geminiParser.parse(text, subjectHint);
             }
             saveResult(job, result, resultModel);
         } catch (BusinessException error) {
