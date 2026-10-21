@@ -39,7 +39,7 @@ export const importApi = {
     formData.append('mode', mode);
     formData.append('questionCount', String(questionCount));
 
-    const res = await apiClient.post<ApiResponse<number>>('/v1/imports/upload', formData);
+    const res = await apiClient.post<ApiResponse<number>>('/v1/imports/upload', formData, { timeout: 120_000 });
     return res.data.data;
   },
 

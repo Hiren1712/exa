@@ -7,6 +7,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import vn.exa.common.BusinessException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -26,7 +27,7 @@ class GeminiParserTest {
 
     @Test
     void geminiImportKeysUsePrimaryThenNumberedSlotsInNumericOrder() {
-        assertThat(GeminiParser.orderApiKeys("primary-key", java.util.Map.of(
+        assertThat(GeminiParser.orderApiKeys("primary-key", Map.of(
                 "gemini2", "second-key",
                 "gemini10", "tenth-key",
                 "GEMINI1", "first-key",
@@ -36,7 +37,7 @@ class GeminiParserTest {
 
     @Test
     void geminiImportKeysDeduplicateValuesAndIgnorePlaceholderKeys() {
-        assertThat(GeminiParser.orderApiKeys(" ", java.util.Map.of(
+        assertThat(GeminiParser.orderApiKeys(" ", Map.of(
                 "gemini1", "same-key",
                 "gemini2", "same-key",
                 "gemini3", "your_gemini_api_key_here")))

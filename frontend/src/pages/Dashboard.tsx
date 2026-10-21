@@ -98,7 +98,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome Hero */}
-      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 text-white p-7 shadow-2xl shadow-blue-500/20">
+      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#123b79] via-[#1554a6] to-[#3668b8] text-white p-6 sm:p-8 shadow-xl shadow-blue-800/15">
         <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-white/10" />
         <div className="absolute -left-10 -bottom-10 w-48 h-48 rounded-full bg-white/10" />
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-5">
@@ -106,10 +106,10 @@ export default function Dashboard() {
             {isTeacher ? '👩‍🏫' : '🎓'}
           </div>
           <div className="flex-1">
-            <h1 className="text-2xl font-extrabold mb-1">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-1">
               Xin chào, {user?.fullName}!
             </h1>
-            <p className="text-white/85 text-sm">
+            <p className="text-blue-50 text-sm sm:text-base leading-relaxed">
               {isTeacher
                 ? 'Chào mừng trở lại. Hãy tạo đề thi và giao bài cho học sinh.'
                 : 'Bạn có bài tập đang chờ. Hãy hoàn thành nhé!'}
@@ -121,7 +121,7 @@ export default function Dashboard() {
                 variant="primary"
                 size="lg"
                 icon={<Icon name="plus" size={16} />}
-                className="!bg-white !text-blue-700 !shadow-lg !shadow-indigo-950/30 hover:!bg-blue-50 hover:!text-blue-800 focus-visible:!outline-white"
+                className="!bg-white !text-blue-700 !shadow-lg !shadow-indigo-950/30 hover:!bg-blue-50 hover:!text-blue-900 focus-visible:!outline-white"
               >
                 Tạo đề thi
               </Button>
@@ -155,7 +155,7 @@ export default function Dashboard() {
             <Icon name="file" size={18} className="text-blue-500" />
             <h3 className="font-bold text-slate-900 dark:text-white">{isTeacher ? 'Đề thi gần đây' : 'Bài tập được giao'}</h3>
           </div>
-          <Link to="/exams" className="text-xs font-semibold text-blue-500 hover:text-blue-600">
+          <Link to="/exams" className="text-sm font-semibold text-blue-700 dark:text-blue-300 hover:underline underline-offset-4">
             Xem tất cả →
           </Link>
         </div>
@@ -200,7 +200,7 @@ export default function Dashboard() {
                   return (
                     <Link
                       to={hasSubmitted ? `/exam/${exam.id}/result?submissionId=${submission.id}` : `/exam/${exam.id}`}
-                      className="text-xs font-semibold text-blue-600"
+                      className="text-sm font-semibold text-blue-700 dark:text-blue-300 hover:underline"
                     >
                       {hasSubmitted ? 'Xem kết quả' : submission ? 'Tiếp tục làm' : 'Làm bài'}
                     </Link>
@@ -215,7 +215,7 @@ export default function Dashboard() {
       {/* Quick actions */}
       {isTeacher ? (
         <div className="grid md:grid-cols-2 gap-4">
-          <Link to="/import" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 p-6 text-white shadow-xl shadow-purple-500/20 hover:shadow-purple-500/40 transition-all">
+          <Link to="/import" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#304a95] to-[#254f9c] p-6 text-white shadow-xl shadow-blue-700/15 hover:shadow-blue-500/25 transition-all">
             <div className="relative z-10">
               <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center mb-3">
                 <Icon name="wand" size={22} />

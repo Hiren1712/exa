@@ -231,6 +231,10 @@ public class ChatbotService {
         return provider + " từ chối yêu cầu tạo câu hỏi (HTTP " + statusCode + "). Kiểm tra model và cấu hình API.";
     }
 
+    public boolean isDeepSeekConfigured() {
+        return !configsFor("deepseek").isEmpty();
+    }
+
     public void validateDeepSeekConfiguration() {
         if (configsFor("deepseek").isEmpty()) {
             throw BusinessException.badRequest(

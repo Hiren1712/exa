@@ -258,8 +258,8 @@ export default function QuestionBank() {
                   {question.explanation && <p className="mt-3 text-xs text-slate-500"><strong>Lời giải:</strong> <MathText>{question.explanation}</MathText></p>}
                 </div>
                 <div className="flex gap-1">
-                  <button aria-label="Sửa câu hỏi" onClick={() => beginEdit(question)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-blue-600"><Icon name="edit" size={16} /></button>
-                  <button aria-label="Xóa câu hỏi" onClick={() => void handleDelete(question)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500"><Icon name="trash" size={16} /></button>
+                  <button aria-label="Sửa câu hỏi" onClick={() => beginEdit(question)} className="rounded-lg p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-200"><Icon name="edit" size={16} /></button>
+                  <button aria-label="Xóa câu hỏi" onClick={() => void handleDelete(question)} className="rounded-lg p-2 text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-rose-200"><Icon name="trash" size={16} /></button>
                 </div>
               </div>
             </article>

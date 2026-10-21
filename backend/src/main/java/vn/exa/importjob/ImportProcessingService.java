@@ -71,11 +71,14 @@ public class ImportProcessingService {
 
             GeminiParser.ParseResult result;
             String resultModel = aiModel;
-            Set<String> usedModels = new LinkedHashSet<>();
             if (imageFile) {
                 result = geminiParser.processImage(fileBytes, imageMimeType(fileType), subjectHint,
                         text, mode, questionCount, grade);
             } else if ("pdf".equals(fileType) && (extractedText == null || extractedText.isBlank())) {
+                if (!geminiParser.isConfigured()) {
+                    fail(job, "PDF scan cần GEMINI_API_KEY để đọc hình ảnh. Vui lòng cấu hình Gemini hoặc dùng PDF có thể chọn chữ.");
+                    return;
+                }
                 if (text != null && !text.isBlank()) job.setExtractedText(text);
                 result = geminiParser.processPdf(
                         fileBytes, subjectHint, text, mode, questionCount, grade);
@@ -85,6 +88,7 @@ public class ImportProcessingService {
                     return;
                 }
                 job.setExtractedText(text);
+                Set<String> usedModels = new LinkedHashSet<>();
                 result = geminiParser.generateQuestionsFromText(
                         text, subjectHint, grade, questionCount, "COMPREHENSION",
                         prompt -> {
@@ -93,18 +97,20 @@ public class ImportProcessingService {
                             usedModels.add(response.modelName());
                             return geminiParser.parseGeneratedQuestions(response.content());
                         });
+                if (!usedModels.isEmpty()) resultModel = String.join(", ", usedModels);
             } else if (text == null || text.isBlank()) {
                 fail(job, "Không đọc được nội dung file");
                 return;
             } else {
                 job.setExtractedText(text);
-                result = geminiParser.parse(text, subjectHint, prompt -> {
+                Set<String> usedModels = new LinkedHashSet<>();
+                result = geminiParser.parseTextWithProvider(text, subjectHint, prompt -> {
                     ChatbotService.ImportResponse response = chatbotService.generateImportResponse(prompt);
                     usedModels.add(response.modelName());
                     return geminiParser.parseGeneratedQuestions(response.content());
                 });
+                if (!usedModels.isEmpty()) resultModel = String.join(", ", usedModels);
             }
-            if (!usedModels.isEmpty()) resultModel = String.join(", ", usedModels);
             saveResult(job, result, resultModel);
         } catch (BusinessException error) {
             log.warn("Import job {} could not be processed: {}", jobId, error.getMessage());

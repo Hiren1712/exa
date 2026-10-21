@@ -367,7 +367,7 @@ export default function ExamRoom() {
                           className={cn(
                             'w-8 h-8 rounded-full border-2 flex items-center justify-center flex-none text-sm font-bold',
                             isSelected
-                              ? 'bg-blue-500 border-blue-500 text-white'
+                              ? 'bg-blue-700 border-blue-700 text-white dark:bg-blue-500 dark:border-blue-500 dark:text-slate-950'
                               : 'border-slate-300 text-slate-500',
                           )}
                         >
@@ -448,7 +448,7 @@ export default function ExamRoom() {
                   className={cn(
                     'aspect-square rounded-lg text-xs font-bold transition-all',
                     isCur
-                      ? 'bg-blue-500 text-white scale-110 shadow-lg shadow-blue-500/30'
+                      ? 'bg-blue-700 text-white dark:bg-blue-500 dark:text-slate-950 scale-110 shadow-lg shadow-blue-500/30'
                       : marked
                       ? 'bg-amber-100 text-amber-700 border-2 border-amber-300'
                       : answered

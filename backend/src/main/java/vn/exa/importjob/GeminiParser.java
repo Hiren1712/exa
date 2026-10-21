@@ -60,26 +60,43 @@ public class GeminiParser {
         requireConfiguredApiKey();
     }
 
+    public boolean isConfigured() {
+        return !configuredApiKeys().isEmpty();
+    }
+
+    /** Allow a configured text-only provider to extract existing questions too.
+     *  Never generate new questions in extraction mode. */
+    public ParseResult parseTextWithProvider(String rawText, String subjectHint,
+                                             Function<String, ParseResult> provider) {
+        if (rawText == null || rawText.isBlank()) {
+            throw BusinessException.badRequest("Không tìm thấy nội dung để trích xuất câu hỏi");
+        }
+        List<ParsedQuestion> all = new ArrayList<>();
+        int totalTokens = 0;
+        for (String chunk : chunkText(rawText, 6000)) {
+            ParseResult result = provider.apply(buildPrompt(chunk, subjectHint));
+            all.addAll(result.questions());
+            totalTokens += result.tokensUsed();
+        }
+        return new ParseResult(dedupe(all), totalTokens);
+    }
+
     /**
      * Parse text → danh sách câu hỏi có cấu trúc.
      */
     public ParseResult parse(String rawText, String subjectHint) {
         requireConfiguredApiKey();
-        return parse(rawText, subjectHint, prompt -> parseResponse(callGemini(prompt)));
-    }
-
-    public ParseResult parse(String rawText, String subjectHint,
-                             Function<String, ParseResult> parseWithProvider) {
         if (rawText == null || rawText.isBlank()) {
             throw BusinessException.badRequest("Không đọc được nội dung file");
         }
+
         List<String> chunks = chunkText(rawText, 6000);
         List<ParsedQuestion> all = new ArrayList<>();
         int totalTokens = 0;
 
         for (int i = 0; i < chunks.size(); i++) {
             log.info("Parsing chunk {}/{}", i + 1, chunks.size());
-            ParseResult r = parseWithProvider.apply(buildPrompt(chunks.get(i), subjectHint));
+            ParseResult r = parseChunk(chunks.get(i), subjectHint);
             all.addAll(r.questions());
             totalTokens += r.tokensUsed();
         }
@@ -187,17 +204,6 @@ public class GeminiParser {
         return new ParseResult(deduped, tokens);
     }
 
-    public ParseResult parseGeneratedQuestions(String responseText) {
-        try {
-            return new ParseResult(parseAiResponse(responseText), 0);
-        } catch (BusinessException error) {
-            throw error;
-        } catch (Exception error) {
-            log.warn("AI question provider returned invalid structured data");
-            throw BusinessException.badRequest("AI trả về dữ liệu câu hỏi không hợp lệ. Vui lòng thử lại.");
-        }
-    }
-
     public String generateTextWithGemini(String prompt, String requestApiKey) {
         requireConfiguredApiKey(requestApiKey);
         Map<String, Object> body = Map.of(
@@ -212,6 +218,17 @@ public class GeminiParser {
             throw error;
         } catch (Exception error) {
             throw BusinessException.badRequest("Gemini trả về dữ liệu không hợp lệ. Vui lòng thử lại.");
+        }
+    }
+
+    public ParseResult parseGeneratedQuestions(String responseText) {
+        try {
+            return new ParseResult(parseAiResponse(responseText), 0);
+        } catch (BusinessException error) {
+            throw error;
+        } catch (Exception error) {
+            log.warn("AI question provider returned invalid structured data");
+            throw BusinessException.badRequest("AI trả về dữ liệu câu hỏi không hợp lệ. Vui lòng thử lại.");
         }
     }
 
@@ -480,13 +497,12 @@ public class GeminiParser {
         }
         RuntimeException lastError = null;
         for (int index = 0; index < keys.size(); index++) {
-            String key = keys.get(index);
             try {
-                return callGemini(body, key);
+                return callGemini(body, keys.get(index));
             } catch (RuntimeException error) {
                 lastError = error;
                 log.warn("Gemini API key slot {} failed; trying the next configured key",
-                        index == 0 && !apiKey.isBlank() ? "primary" : index);
+                        index == 0 && apiKey != null && !apiKey.isBlank() ? "primary" : index);
             }
         }
         throw lastError;

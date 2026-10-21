@@ -37,13 +37,8 @@ public class ImportService {
     public Long uploadAndProcess(MultipartFile file, String content, Long userId, String subjectHint,
                                  ImportMode mode, Integer questionCount, Integer grade) {
         validateInput(file, content, mode, questionCount, grade);
-        if (mode != ImportMode.GENERATE) {
-            if (requiresGeminiVision(file)) {
-                geminiParser.validateConfiguration();
-            } else {
-                chatbotService.validateImportConfiguration();
-            }
-        } else if (requiresGeminiVision(file)) {
+        // Images require Gemini vision; text imports use the configured provider order.
+        if (requiresGeminiVision(file)) {
             geminiParser.validateConfiguration();
         } else {
             chatbotService.validateImportConfiguration();

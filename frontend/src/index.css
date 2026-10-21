@@ -77,3 +77,62 @@ body {
 .animate-slide-up {
   animation: slideUp 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
+/* EXA interface foundation — readable, consistent light and dark palettes. */
+:root {
+  color-scheme: light;
+  --bg: #f3f6fb;
+  --surface: #ffffff;
+  --surface-2: #f7f9fd;
+  --text: #17243b;
+  --text-2: #41536d;
+  --muted: #596982;
+  --border: #dbe3ef;
+  --primary: #1d4ed8;
+  --primary-ink: #1e40af;
+}
+.dark {
+  color-scheme: dark;
+  --bg: #0a1221;
+  --surface: #131e30;
+  --surface-2: #1a2940;
+  --text: #f1f6fd;
+  --text-2: #c1cee0;
+  --muted: #a1b2ca;
+  --border: #34435b;
+  --primary: #70a6ff;
+  --primary-ink: #93bdff;
+}
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); }
+::selection { background: #bfdbfe; color: #102b57; }
+.dark ::selection { background: #1d4ed8; color: #fff; }
+:where(button, a, input, textarea, select, summary, [role="checkbox"]):focus-visible {
+  outline: 3px solid #3b82f6;
+  outline-offset: 3px;
+}
+:where(input, textarea, select) { color: var(--text); caret-color: var(--primary); }
+:where(input, textarea)::placeholder { color: var(--muted); opacity: .85; }
+:where(button, input, textarea, select):disabled { cursor: not-allowed; }
+:where(button, a, input, textarea, select) { -webkit-tap-highlight-color: transparent; }
+button { touch-action: manipulation; }
+.exa-page-title { font-size: clamp(1.35rem, 1.2rem + .75vw, 1.85rem); font-weight: 800; letter-spacing: -.035em; line-height: 1.25; }
+.exa-page-subtitle { font-size: .94rem; line-height: 1.65; color: var(--text-2); }
+.exa-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 8px 28px -22px rgba(15, 40, 78, .38); }
+.exa-field { min-height: 44px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px; transition: border-color .2s, box-shadow .2s; }
+.exa-field:focus-visible { outline: none; border-color: #4386ee; box-shadow: 0 0 0 3px rgba(59,130,246,.2); }
+.exa-pill { border: 1px solid var(--border); border-radius: 999px; padding: .35rem .75rem; font-size: .8rem; font-weight: 650; }
+.exa-button { min-width: 0; text-decoration: none; }
+.exa-surface-gradient { background-image: radial-gradient(circle at 94% 3%, rgba(59,130,246,.065), transparent 37%), radial-gradient(circle at 5% 65%,rgba(14,165,233,.035),transparent 50%); }
+.dark .exa-surface-gradient { background-image: radial-gradient(circle at 100% 0%, rgba(58,116,212,.075), transparent 35%); }
+/* Improve legibility of quiet helper text throughout legacy screens. */
+main :where(.text-slate-400):not([class*="dark:text-"]) { color: #65758e; }
+.dark main :where(.text-slate-400):not([class*="dark:text-"]) { color: #adbed5; }
+main :where(.text-slate-500):not([class*="dark:text-"]) { color: #52637d; }
+.dark main :where(.text-slate-500):not([class*="dark:text-"]) { color: #b4c4d8; }
+main :where(.text-xs) { font-size: .8125rem; line-height: 1.5; }
+main :where(.text-\[10px\], .text-\[11px\]) { font-size: .75rem; line-height: 1.5; }
+main :where(.rounded-2xl.border) { box-shadow: 0 7px 24px -22px rgba(15,40,78,.5); }
+.dark main :where(.rounded-2xl.border) { box-shadow: 0 6px 28px -22px rgba(0,0,0,.65); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

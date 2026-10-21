@@ -10,11 +10,11 @@ import { fmtDate, EXAM_STATUS_LABELS } from '../lib/utils';
 import { useAuth } from '../hooks/useAuth';
 
 const STATUS_COLORS: Record<string, string> = {
-  DRAFT: 'bg-slate-100 text-slate-600',
-  SCHEDULED: 'bg-blue-50 text-blue-600',
-  OPEN: 'bg-emerald-50 text-emerald-600',
-  CLOSED: 'bg-amber-50 text-amber-600',
-  ARCHIVED: 'bg-slate-100 text-slate-400',
+  DRAFT: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-100',
+  SCHEDULED: 'bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-200',
+  OPEN: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200',
+  CLOSED: 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200',
+  ARCHIVED: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
 };
 
 export default function Exams() {
@@ -211,7 +211,7 @@ export default function Exams() {
                     )}
                     <button
                       onClick={() => handleDelete(exam.id, exam.title)}
-                      className="py-2 px-3 text-xs font-semibold rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-colors"
+                      className="py-2 px-3 text-xs font-semibold rounded-lg bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200 hover:bg-rose-700 hover:text-white dark:hover:bg-rose-600 transition-colors"
                     >
                       🗑️
                     </button>

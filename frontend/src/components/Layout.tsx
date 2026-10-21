@@ -47,11 +47,11 @@ export function Layout() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="flex min-h-screen bg-[#f3f6fb] dark:bg-[#0a1221] exa-surface-gradient">
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-transform lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 w-64 bg-white/95 dark:bg-[#111b2c] backdrop-blur-xl border-r border-slate-200 dark:border-slate-700 flex flex-col transition-transform lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
@@ -62,7 +62,7 @@ export function Layout() {
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">EXA</h3>
-            <span className="text-[10px] tracking-wider text-slate-400 font-semibold uppercase">
+            <span className="text-xs tracking-wider text-slate-500 dark:text-slate-400 font-semibold uppercase">
               Exam Extra
             </span>
           </div>
@@ -78,9 +78,9 @@ export function Layout() {
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all',
+                  'flex items-center gap-3 px-3.5 min-h-11 rounded-xl text-sm font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500',
                   isActive
-                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
+                    ? 'bg-blue-100/80 dark:bg-blue-500/15 text-blue-900 dark:text-blue-200 shadow-sm ring-1 ring-blue-200/80 dark:ring-blue-700/40'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white',
                 )
               }
@@ -100,7 +100,7 @@ export function Layout() {
                 <Icon name="crown" size={14} />
                 EXA Pro
               </h5>
-              <p className="text-[11px] opacity-90 mt-1 relative z-10 leading-snug">
+              <p className="text-xs opacity-95 mt-1 relative z-10 leading-snug">
                 AI soạn đề, giám sát camera &amp; báo cáo nâng cao.
               </p>
             </div>
@@ -113,15 +113,17 @@ export function Layout() {
         <div
           className="fixed inset-0 z-30 bg-slate-900/50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
+          aria-label="Đóng menu điều hướng"
         />
       )}
 
       {/* Main */}
       <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
         {/* Topbar */}
-        <header className="sticky top-0 z-20 h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center gap-3 px-5">
+        <header className="sticky top-0 z-20 h-[72px] bg-white/90 dark:bg-[#111b2c]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 flex items-center gap-3 px-4 sm:px-6">
           <button
             onClick={() => setSidebarOpen(true)}
+            aria-label="Mở menu điều hướng"
             className="lg:hidden w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <Icon name="menu" size={20} />
@@ -135,7 +137,8 @@ export function Layout() {
 
           <button
             onClick={toggleTheme}
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            aria-label="Chuyển chế độ sáng tối"
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             title="Đổi giao diện"
           >
             <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} />
@@ -143,7 +146,8 @@ export function Layout() {
 
           <button
             onClick={handleLogout}
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 transition-colors"
+            aria-label="Đăng xuất khỏi EXA"
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 transition-colors"
             title="Đăng xuất"
           >
             <Icon name="logout" size={18} />
@@ -163,7 +167,7 @@ export function Layout() {
         </header>
 
         {/* Content */}
-        <main className="flex-1 p-5 lg:p-7 max-w-[1400px] w-full mx-auto">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1440px] w-full mx-auto">
           <Outlet />
         </main>
       </div>

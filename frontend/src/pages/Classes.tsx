@@ -223,9 +223,9 @@ export default function Classes() {
                   </Button>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="danger"
                     size="sm"
-                    className="flex-1 text-red-500"
+                    className="flex-1"
                     icon={<Icon name="trash" size={14} />}
                     onClick={(event) => void handleDelete(event, classroom)}
                   >

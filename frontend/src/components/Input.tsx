@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, TextareaHTMLAttributes, forwardRef } from 'react';
+import { InputHTMLAttributes, TextareaHTMLAttributes, SelectHTMLAttributes, forwardRef, useId } from 'react';
 import { cn } from '../lib/utils';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -10,48 +10,38 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, helper, icon, rightElement, className, ...rest }, ref) => {
+  ({ label, error, helper, icon, rightElement, className, id, 'aria-describedby': describedBy, ...rest }, ref) => {
+    const generatedId = useId();
+    const fieldId = id || generatedId;
+    const feedbackId = `${fieldId}-feedback`;
     return (
-      <div className="w-full">
-        {label && (
-          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
-            {label}
-          </label>
-        )}
+      <div className="w-full space-y-1.5">
+        {label && <label htmlFor={fieldId} className="block text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</label>}
         <div className="relative">
-          {icon && (
-            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-              {icon}
-            </div>
-          )}
-          {rightElement && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              {rightElement}
-            </div>
-          )}
+          {icon && <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 pointer-events-none">{icon}</div>}
+          {rightElement && <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightElement}</div>}
           <input
+            {...rest}
+            id={fieldId}
             ref={ref}
+            aria-invalid={Boolean(error)}
+            aria-describedby={[describedBy, error || helper ? feedbackId : null].filter(Boolean).join(' ') || undefined}
             className={cn(
-              'w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm',
-              'focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all',
-              'disabled:bg-slate-50 disabled:cursor-not-allowed',
+              'exa-field w-full px-3.5 py-2.5 text-sm',
+              'disabled:bg-slate-100 dark:disabled:bg-slate-800',
               icon && 'pl-10',
               rightElement && 'pr-12',
-              error && 'border-red-500 focus:border-red-500 focus:ring-red-500/10',
+              error && 'border-rose-500 dark:border-rose-400',
               className,
             )}
-            {...rest}
           />
         </div>
-        {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
-        {!error && helper && (
-          <p className="text-xs text-slate-400 mt-1.5">{helper}</p>
-        )}
+        {error && <p id={feedbackId} role="alert" className="text-sm text-rose-700 dark:text-rose-300">{error}</p>}
+        {!error && helper && <p id={feedbackId} className="text-sm text-slate-500 dark:text-slate-400">{helper}</p>}
       </div>
     );
   },
 );
-
 Input.displayName = 'Input';
 
 interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -61,70 +51,54 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ label, error, helper, className, ...rest }, ref) => {
+  ({ label, error, helper, className, id, ...rest }, ref) => {
+    const generatedId = useId();
+    const fieldId = id || generatedId;
     return (
-      <div className="w-full">
-        {label && (
-          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
-            {label}
-          </label>
-        )}
+      <div className="w-full space-y-1.5">
+        {label && <label htmlFor={fieldId} className="block text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</label>}
         <textarea
-          ref={ref}
-          className={cn(
-            'w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm',
-            'focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all resize-y min-h-[88px]',
-            error && 'border-red-500',
-            className,
-          )}
           {...rest}
+          id={fieldId}
+          ref={ref}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error || helper ? `${fieldId}-feedback` : undefined}
+          className={cn('exa-field w-full px-3.5 py-3 text-sm resize-y min-h-28', error && 'border-rose-500', className)}
         />
-        {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
-        {!error && helper && (
-          <p className="text-xs text-slate-400 mt-1.5">{helper}</p>
-        )}
+        {error && <p id={`${fieldId}-feedback`} role="alert" className="text-sm text-rose-700 dark:text-rose-300">{error}</p>}
+        {!error && helper && <p id={`${fieldId}-feedback`} className="text-sm text-slate-500 dark:text-slate-400">{helper}</p>}
       </div>
     );
   },
 );
-
 Textarea.displayName = 'Textarea';
 
-interface SelectProps extends InputHTMLAttributes<HTMLSelectElement> {
+interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   error?: string;
   options: { value: string | number; label: string }[];
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, error, options, className, ...rest }, ref) => {
+  ({ label, error, options, className, id, ...rest }, ref) => {
+    const generatedId = useId();
+    const fieldId = id || generatedId;
     return (
-      <div className="w-full">
-        {label && (
-          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
-            {label}
-          </label>
-        )}
+      <div className="w-full space-y-1.5">
+        {label && <label htmlFor={fieldId} className="block text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</label>}
         <select
-          ref={ref}
-          className={cn(
-            'w-full px-3.5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm',
-            'focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all cursor-pointer',
-            error && 'border-red-500',
-            className,
-          )}
           {...rest}
+          id={fieldId}
+          ref={ref}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${fieldId}-error` : undefined}
+          className={cn('exa-field w-full px-3.5 py-2.5 text-sm cursor-pointer', error && 'border-rose-500', className)}
         >
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
+          {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
-        {error && <p className="text-xs text-red-500 mt-1.5">{error}</p>}
+        {error && <p id={`${fieldId}-error`} role="alert" className="text-sm text-rose-700 dark:text-rose-300">{error}</p>}
       </div>
     );
   },
 );
-
 Select.displayName = 'Select';
