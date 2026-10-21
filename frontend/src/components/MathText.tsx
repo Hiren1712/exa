@@ -9,8 +9,21 @@ interface MathTextProps {
 
 const MATH_SEGMENT = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\$[^$\n]+?\$|\\\([\s\S]+?\\\))/g;
 
+function decodeHtmlEntities(value: string): string {
+  if (typeof document === 'undefined' || !/[&][#A-Za-z]/.test(value)) return value;
+  const textarea = document.createElement('textarea');
+  let decoded = value;
+  for (let i = 0; i < 2; i++) {
+    textarea.innerHTML = decoded;
+    const next = textarea.value;
+    if (next === decoded) break;
+    decoded = next;
+  }
+  return decoded;
+}
+
 export function MathText({ children, className }: MathTextProps) {
-  const text = children ?? '';
+  const text = decodeHtmlEntities(children ?? '');
   const segments = text.split(MATH_SEGMENT);
 
   return (
