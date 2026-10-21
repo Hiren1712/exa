@@ -9,7 +9,7 @@ interface MathTextProps {
 
 const MATH_SEGMENT = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\$[^$\n]+?\$|\\\([\s\S]+?\\\))/g;
 
-function decodeHtmlEntities(value: string): string {
+export function decodeHtmlEntities(value: string): string {
   if (typeof document === 'undefined' || !/[&][#A-Za-z]/.test(value)) return value;
   const textarea = document.createElement('textarea');
   let decoded = value;

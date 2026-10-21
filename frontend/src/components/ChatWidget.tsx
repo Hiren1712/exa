@@ -1,9 +1,10 @@
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { ChatTurn } from '../api/ai';
 import { aiApi } from '../api/ai';
 import { extractError } from '../api/client';
 import { Icon } from './Icon';
-import { MathText } from './MathText';
+import { decodeHtmlEntities, MathText } from './MathText';
 
 interface StoredMessage extends ChatTurn {
   id: string;
@@ -24,6 +25,65 @@ interface ChatWidgetProps {
 const MAX_STORED_THREADS = 20;
 const MAX_STORED_MESSAGES = 80;
 const MAX_INPUT_LENGTH = 4000;
+const CHAT_INLINE_PART = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\$[^$\n]+?\$|\\\([\s\S]+?\\\)|\*\*[^*\n]+\*\*|__[^_\n]+__|~~[^~\n]+~~|\*[^*\n]+\*|_[^_\n]+_|`[^`\n]+`)/g;
+
+function renderInlineChatText(text: string): ReactNode[] {
+  return text.split(CHAT_INLINE_PART).map((part, index) => {
+    if (!part) return null;
+    const key = `${index}-${part}`;
+    if (/^(?:\$\$[\s\S]+\$\$|\\\[[\s\S]+\\\]|\$[^$\n]+\$|\\\([\s\S]+\\\))$/.test(part)) {
+      return <MathText key={key}>{part}</MathText>;
+    }
+    if (part.startsWith('**') || part.startsWith('__')) {
+      return <strong key={key}><MathText>{part.slice(2, -2)}</MathText></strong>;
+    }
+    if (part.startsWith('~~')) {
+      return <del key={key}><MathText>{part.slice(2, -2)}</MathText></del>;
+    }
+    if (part.startsWith('`')) {
+      return <code key={key} className="rounded bg-slate-100 px-1 dark:bg-slate-800">{part.slice(1, -1)}</code>;
+    }
+    if (part.startsWith('*') || part.startsWith('_')) {
+      return <em key={key}><MathText>{part.slice(1, -1)}</MathText></em>;
+    }
+    return <MathText key={key}>{part}</MathText>;
+  });
+}
+
+function ChatMessageContent({ content }: { content: string }) {
+  const lines = decodeHtmlEntities(content).split('\n');
+
+  return (
+    <div className="space-y-1">
+      {lines.map((line, index) => {
+        const key = `${index}-${line}`;
+        const heading = /^(#{1,6})\s+(.+)$/.exec(line);
+        const bullet = /^\s*[-*+]\s+(.+)$/.exec(line);
+        const numbered = /^\s*(\d+)[.)]\s+(.+)$/.exec(line);
+        const quote = /^\s*>\s?(.*)$/.exec(line);
+
+        if (!line.trim()) return <div key={key} aria-hidden="true" className="h-1" />;
+        if (/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+          return <hr key={key} className="my-2 border-slate-200 dark:border-slate-700" />;
+        }
+        if (heading) {
+          const size = heading[1].length <= 2 ? 'text-sm font-bold' : 'font-semibold';
+          return <p key={key} className={size}>{renderInlineChatText(heading[2])}</p>;
+        }
+        if (bullet) {
+          return <div key={key} className="flex gap-2 pl-2"><span aria-hidden="true">•</span><span>{renderInlineChatText(bullet[1])}</span></div>;
+        }
+        if (numbered) {
+          return <div key={key} className="flex gap-2 pl-2"><span>{numbered[1]}.</span><span>{renderInlineChatText(numbered[2])}</span></div>;
+        }
+        if (quote) {
+          return <blockquote key={key} className="border-l-2 border-blue-300 pl-2 text-slate-600 dark:border-blue-700 dark:text-slate-300">{renderInlineChatText(quote[1])}</blockquote>;
+        }
+        return <p key={key}>{renderInlineChatText(line)}</p>;
+      })}
+    </div>
+  );
+}
 
 function storageKey(userId: number) {
   return `exa-chat-history-${userId}`;
@@ -341,9 +401,15 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                             ? 'rounded-br-md bg-blue-600 text-white'
                             : 'rounded-bl-md border border-slate-200 bg-white text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
                         }`}>
-                          <MathText className="block whitespace-pre-wrap break-words text-sm leading-relaxed">
-                            {message.content}
-                          </MathText>
+                          {message.role === 'assistant' ? (
+                            <div className="break-words text-sm leading-relaxed">
+                              <ChatMessageContent content={message.content} />
+                            </div>
+                          ) : (
+                            <MathText className="block whitespace-pre-wrap break-words text-sm leading-relaxed">
+                              {message.content}
+                            </MathText>
+                          )}
                           <div className={`mt-1 flex items-center justify-end gap-1.5 text-[10px] ${
                             message.role === 'user' ? 'text-blue-100' : 'text-slate-400'
                           }`}>
