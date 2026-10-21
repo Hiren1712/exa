@@ -67,8 +67,12 @@ export const submissionApi = {
     return res.data.data;
   },
 
-  start: async (examId: number, password?: string): Promise<Submission> => {
-    const res = await apiClient.post<ApiResponse<Submission>>('/v1/submissions/start', { examId, password });
+  start: async (examId: number, password?: string, inviteCode?: string): Promise<Submission> => {
+    const res = await apiClient.post<ApiResponse<Submission>>('/v1/submissions/start', {
+      examId,
+      password,
+      inviteCode,
+    });
     return res.data.data;
   },
 

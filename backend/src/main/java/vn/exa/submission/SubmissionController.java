@@ -29,7 +29,8 @@ public class SubmissionController {
     public ResponseEntity<ApiResponse<Submission>> start(
             @RequestBody StartRequest req,
             @AuthenticationPrincipal CurrentUser user) {
-        Submission sub = submissionService.start(req.getExamId(), user.getId(), req.getPassword());
+        Submission sub = submissionService.start(
+                req.getExamId(), user.getId(), req.getPassword(), req.getInviteCode());
         return ResponseEntity.ok(ApiResponse.ok(sub, "Bắt đầu làm bài"));
     }
 
@@ -125,6 +126,7 @@ public class SubmissionController {
     public static class StartRequest {
         private Long examId;
         private String password;
+        private String inviteCode;
     }
 
     @Data

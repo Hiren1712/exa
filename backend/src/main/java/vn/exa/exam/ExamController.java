@@ -47,7 +47,9 @@ public class ExamController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ExamDetail>> detail(
-            @PathVariable Long id, @AuthenticationPrincipal CurrentUser user) {
+            @PathVariable Long id,
+            @RequestParam(required = false) String inviteCode,
+            @AuthenticationPrincipal CurrentUser user) {
         Exam exam = examService.getById(id);
         boolean isOwner = exam.getOwnerId().equals(user.getId());
         if (user.isTeacher() && !isOwner && !user.isAdmin()) {
@@ -59,7 +61,8 @@ public class ExamController {
             }
             if (exam.getClassroomId() != null
                     && !classroomMemberRepository.existsByClassroomIdAndStudentIdAndStatus(
-                    exam.getClassroomId(), user.getId(), ClassroomMember.Status.ACTIVE)) {
+                    exam.getClassroomId(), user.getId(), ClassroomMember.Status.ACTIVE)
+                    && !examService.inviteCodeMatches(exam, inviteCode)) {
                 throw BusinessException.forbidden("Bạn chưa tham gia lớp được giao đề thi này");
             }
         }
@@ -76,6 +79,26 @@ public class ExamController {
                 exam.getMaxAttempts(), exam.getShowAnswerAfter(), exam.getCreatedAt(),
                 exam.getPasswordHash() != null, questions);
         return ResponseEntity.ok(ApiResponse.ok(result));
+    }
+
+    @GetMapping("/{id}/invite")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public ResponseEntity<ApiResponse<ExamInvite>> createInvite(
+            @PathVariable Long id, @AuthenticationPrincipal CurrentUser user) {
+        Exam exam = examService.getOrCreateInvite(id, user.getId());
+        return ResponseEntity.ok(ApiResponse.ok(new ExamInvite(exam.getId(), exam.getTitle(),
+                exam.getStatus().name(), exam.getInviteCode())));
+    }
+
+    @GetMapping("/join/{code}")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<ExamInvite>> resolveInvite(@PathVariable String code) {
+        Exam exam = examService.getByInviteCode(code);
+        if (exam.getStatus() != Exam.Status.OPEN) {
+            throw BusinessException.badRequest("Phòng chưa mở hoặc đã đóng");
+        }
+        return ResponseEntity.ok(ApiResponse.ok(new ExamInvite(exam.getId(), exam.getTitle(),
+                exam.getStatus().name(), exam.getInviteCode())));
     }
 
     @PostMapping
@@ -163,6 +186,8 @@ public class ExamController {
             Long id, String title, String subject, Long classroomId, String status,
             Integer durationMin, Integer questionCount, long submissionCount, java.time.LocalDateTime createdAt,
             boolean proctorEnabled, boolean lockScreen, Integer maxAttempts, String showAnswerAfter) {}
+
+    public record ExamInvite(Long examId, String title, String status, String code) {}
 
     public record ExamDetail(
             Long id, String title, String description, String subject, Long classroomId,

@@ -16,4 +16,8 @@ public interface ExamRepository extends JpaRepository<Exam, Long> {
     List<Exam> findByStatusAndDeletedAtIsNull(Exam.Status status);
 
     Optional<Exam> findByIdAndDeletedAtIsNull(Long id);
+
+    Optional<Exam> findByInviteCodeAndDeletedAtIsNull(String inviteCode);
+
+    boolean existsByInviteCode(String inviteCode);
 }

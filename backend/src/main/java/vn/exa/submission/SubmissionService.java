@@ -43,6 +43,11 @@ public class SubmissionService {
      */
     @Transactional
     public Submission start(Long examId, Long studentId, String password) {
+        return start(examId, studentId, password, null);
+    }
+
+    @Transactional
+    public Submission start(Long examId, Long studentId, String password, String inviteCode) {
         Exam exam = examRepository.findByIdAndDeletedAtIsNull(examId)
                 .orElseThrow(() -> BusinessException.notFound("Đề thi không tồn tại"));
 
@@ -51,7 +56,8 @@ public class SubmissionService {
         }
         if (exam.getClassroomId() != null
                 && !classroomMemberRepository.existsByClassroomIdAndStudentIdAndStatus(
-                        exam.getClassroomId(), studentId, ClassroomMember.Status.ACTIVE)) {
+                        exam.getClassroomId(), studentId, ClassroomMember.Status.ACTIVE)
+                && !examInviteCodeMatches(exam, inviteCode)) {
             throw BusinessException.forbidden("Bạn chưa tham gia lớp được giao đề thi này");
         }
         if (exam.getPasswordHash() != null
@@ -85,6 +91,11 @@ public class SubmissionService {
         log.info("Submission started: examId={}, studentId={}, submissionId={}",
                 examId, studentId, sub.getId());
         return sub;
+    }
+
+    private boolean examInviteCodeMatches(Exam exam, String inviteCode) {
+        return inviteCode != null && exam.getInviteCode() != null
+                && exam.getInviteCode().equalsIgnoreCase(inviteCode.trim());
     }
 
     /**

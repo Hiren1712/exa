@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../components/Toast';
 import { Button } from '../components/Button';
@@ -24,6 +24,11 @@ export default function Login() {
   const { login, register, googleLogin } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = (location.state as { from?: { pathname?: string; search?: string; hash?: string } } | null)?.from;
+  const destination = returnTo
+    ? `${returnTo.pathname || '/'}${returnTo.search || ''}${returnTo.hash || ''}`
+    : '/';
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -36,7 +41,7 @@ export default function Login() {
         const user = await register({ email, password, fullName, role });
         toast('Đăng ký thành công', `Chào mừng ${user.fullName}`, 'success');
       }
-      navigate('/');
+      navigate(destination, { replace: true });
     } catch (err) {
       toast('Lỗi', extractError(err), 'error');
     } finally {
@@ -55,7 +60,7 @@ export default function Login() {
       });
       setPendingGoogleToken(null);
       toast('Đăng nhập thành công', `Xin chào ${user.fullName}`, 'success');
-      navigate('/');
+      navigate(destination, { replace: true });
     } catch (err) {
       if (
         axios.isAxiosError<{ code?: string }>(err)

@@ -34,6 +34,9 @@ public class Exam {
     @Column(name = "classroom_id")
     private Long classroomId;
 
+    @Column(name = "invite_code", length = 12, unique = true)
+    private String inviteCode;
+
     @Column(nullable = false, length = 200)
     private String title;
 

@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { Layout } from './components/Layout';
 
@@ -17,9 +17,11 @@ import Settings from './pages/Settings';
 import Grading from './pages/Grading';
 import Proctor from './pages/Proctor';
 import AIStudio from './pages/AIStudio';
+import ExamJoin from './pages/ExamJoin';
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -30,7 +32,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return children;
@@ -65,6 +67,7 @@ export function AppRouter() {
         <Route path="exams/:id/edit" element={<RequireTeacher><ExamBuilder /></RequireTeacher>} />
         <Route path="exam/:id" element={<ExamRoom />} />
         <Route path="exam/:id/result" element={<ExamResult />} />
+        <Route path="join/:code" element={<ExamJoin />} />
         <Route path="questions" element={<RequireTeacher><QuestionBank /></RequireTeacher>} />
         <Route path="classes" element={<Classes />} />
         <Route path="classes/:id" element={<ClassDetail />} />

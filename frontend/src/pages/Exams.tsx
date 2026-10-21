@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
 import { useToast } from '../components/Toast';
-import { examApi, ExamSummary } from '../api/exam';
+import { examApi, ExamInvite, ExamSummary } from '../api/exam';
 import { submissionApi, Submission } from '../api/submission';
 import { extractError } from '../api/client';
 import { fmtDate, EXAM_STATUS_LABELS } from '../lib/utils';
@@ -23,6 +23,10 @@ export default function Exams() {
   const [exams, setExams] = useState<ExamSummary[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [roomCode, setRoomCode] = useState('');
+  const [joiningRoom, setJoiningRoom] = useState(false);
+  const [inviteByExam, setInviteByExam] = useState<Record<number, ExamInvite>>({});
+  const [loadingInviteId, setLoadingInviteId] = useState<number | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -67,6 +71,50 @@ export default function Exams() {
     }
   };
 
+  const handleJoinRoom = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!roomCode.trim() || joiningRoom) return;
+    setJoiningRoom(true);
+    try {
+      const invite = await examApi.resolveInvite(roomCode);
+      navigate(`/exam/${invite.examId}?invite=${encodeURIComponent(invite.code)}`);
+    } catch (err) {
+      toast('Không vào được phòng', extractError(err), 'error');
+    } finally {
+      setJoiningRoom(false);
+    }
+  };
+
+  const handleShowInvite = async (id: number) => {
+    const existing = inviteByExam[id];
+    if (existing) {
+      setInviteByExam((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+      return;
+    }
+    setLoadingInviteId(id);
+    try {
+      const invite = await examApi.getInvite(id);
+      setInviteByExam((current) => ({ ...current, [id]: invite }));
+    } catch (err) {
+      toast('Không tạo được mã phòng', extractError(err), 'error');
+    } finally {
+      setLoadingInviteId(null);
+    }
+  };
+
+  const copyInviteValue = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast('Đã sao chép', label, 'success');
+    } catch {
+      toast('Không sao chép được', 'Trình duyệt không cho phép truy cập clipboard. Hãy chọn và sao chép nội dung.', 'error');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -86,6 +134,25 @@ export default function Exams() {
           </Link>
         )}
       </div>
+
+      {isStudent && (
+        <form onSubmit={(event) => void handleJoinRoom(event)} className="flex flex-wrap items-end gap-3 rounded-2xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/20">
+          <label className="min-w-48 flex-1 text-xs font-semibold text-slate-700 dark:text-slate-200">
+            Mã phòng thi
+            <input
+              value={roomCode}
+              onChange={(event) => setRoomCode(event.target.value.toUpperCase().replace(/[^2-9A-HJ-NP-Z]/g, '').slice(0, 10))}
+              placeholder="Nhập mã 10 ký tự"
+              maxLength={10}
+              autoComplete="off"
+              className="exa-field mt-1 w-full px-3 py-2.5 text-sm uppercase tracking-wider"
+            />
+          </label>
+          <Button type="submit" variant="primary" disabled={roomCode.length !== 10 || joiningRoom}>
+            {joiningRoom ? 'Đang vào...' : 'Vào phòng thi'}
+          </Button>
+        </form>
+      )}
 
       {loading ? (
         <div className="p-16 text-center">
@@ -210,6 +277,15 @@ export default function Exams() {
                       </button>
                     )}
                     <button
+                      onClick={() => void handleShowInvite(exam.id)}
+                      disabled={loadingInviteId === exam.id}
+                      className="w-full rounded-lg bg-indigo-50 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 dark:bg-indigo-950/40 dark:text-indigo-200 dark:hover:bg-indigo-950"
+                    >
+                      {loadingInviteId === exam.id
+                        ? 'Đang tạo mã...'
+                        : inviteByExam[exam.id] ? 'Ẩn mã phòng & link mời' : 'Mã phòng & link mời'}
+                    </button>
+                    <button
                       onClick={() => handleDelete(exam.id, exam.title)}
                       className="py-2 px-3 text-xs font-semibold rounded-lg bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200 hover:bg-rose-700 hover:text-white dark:hover:bg-rose-600 transition-colors"
                     >
@@ -218,6 +294,47 @@ export default function Exams() {
                   </>
                 )}
               </div>
+              {!isStudent && inviteByExam[exam.id] && (
+                <div className="space-y-3 border-t border-slate-100 bg-indigo-50/60 p-4 dark:border-slate-800 dark:bg-indigo-950/20">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Mã phòng</p>
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <code className="text-lg font-extrabold tracking-[.18em] text-indigo-800 dark:text-indigo-200">{inviteByExam[exam.id].code}</code>
+                      <button
+                        type="button"
+                        onClick={() => void copyInviteValue(inviteByExam[exam.id].code, 'Mã phòng')}
+                        className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm dark:bg-slate-900 dark:text-indigo-200"
+                      >
+                        Sao chép mã
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Link mời học sinh</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        readOnly
+                        aria-label={`Link mời vào bài ${exam.title}`}
+                        value={`${window.location.origin}/join/${inviteByExam[exam.id].code}`}
+                        onFocus={(event) => event.currentTarget.select()}
+                        className="exa-field min-w-0 flex-1 px-2 py-2 text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void copyInviteValue(`${window.location.origin}/join/${inviteByExam[exam.id].code}`, 'Link mời')}
+                        className="shrink-0 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+                      >
+                        Sao chép link
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    {exam.status === 'OPEN'
+                      ? 'Học sinh đăng nhập tài khoản EXA rồi mở link hoặc nhập mã để làm bài.'
+                      : 'Mở đề thi trước để học sinh có thể vào bằng mã hoặc link.'}
+                  </p>
+                </div>
+              )}
             </div>
           ))}
         </div>

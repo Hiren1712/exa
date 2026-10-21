@@ -69,7 +69,8 @@ export default function ExamRoom() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    examApi.get(Number(id))
+    const inviteCode = searchParams.get('invite') ?? undefined;
+    examApi.get(Number(id), inviteCode)
       .then((data) => {
         const sourceQuestions = data.questions || [];
         const questionOrder = data.shuffleQuestions
@@ -98,7 +99,7 @@ export default function ExamRoom() {
         navigate('/');
       })
       .finally(() => setLoading(false));
-  }, [id, navigate, resetTimer, toast]);
+  }, [id, navigate, resetTimer, searchParams, toast]);
 
   const handleStart = async () => {
     if (!exam || !id) return;
@@ -123,7 +124,11 @@ export default function ExamRoom() {
           toast('Không bật được toàn màn hình', 'Bạn vẫn có thể tiếp tục, nhưng sự kiện này có thể được ghi nhận.', 'warn');
         }
       }
-      const submission = await submissionApi.start(Number(id), examPassword || undefined);
+      const submission = await submissionApi.start(
+        Number(id),
+        examPassword || undefined,
+        searchParams.get('invite') ?? undefined,
+      );
       if (!submission.id) throw new Error('Máy chủ không trả về mã bài thi');
       const savedAnswers = typeof submission.answers === 'string'
         ? JSON.parse(submission.answers) as Record<string, string>

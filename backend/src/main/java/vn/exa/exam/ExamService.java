@@ -13,12 +13,13 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import vn.exa.common.BusinessException;
+import vn.exa.question.Question;
 import vn.exa.question.QuestionRepository;
 import vn.exa.submission.SubmissionRepository;
-import vn.exa.question.Question;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -29,6 +30,9 @@ import java.util.List;
 @Slf4j
 public class ExamService {
 
+    private static final String INVITE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+    private static final SecureRandom INVITE_RANDOM = new SecureRandom();
+
     private final ExamRepository examRepository;
     private final ExamQuestionRepository examQuestionRepository;
     private final QuestionRepository questionRepository;
@@ -37,6 +41,43 @@ public class ExamService {
 
     public List<Exam> listByOwner(Long ownerId) {
         return examRepository.findByOwnerIdAndDeletedAtIsNullOrderByCreatedAtDesc(ownerId);
+    }
+
+    @Transactional
+    public Exam getOrCreateInvite(Long id, Long ownerId) {
+        Exam exam = getById(id);
+        requireOwner(exam, ownerId);
+        if (exam.getInviteCode() == null || exam.getInviteCode().isBlank()) {
+            exam.setInviteCode(generateInviteCode());
+            exam = examRepository.save(exam);
+        }
+        return exam;
+    }
+
+    public Exam getByInviteCode(String inviteCode) {
+        String normalizedCode = inviteCode == null ? "" : inviteCode.trim().toUpperCase();
+        if (!normalizedCode.matches("[2-9A-HJ-NP-Z]{10}")) {
+            throw BusinessException.notFound("Mã phòng không hợp lệ hoặc không tồn tại");
+        }
+        return examRepository.findByInviteCodeAndDeletedAtIsNull(normalizedCode)
+                .orElseThrow(() -> BusinessException.notFound("Mã phòng không hợp lệ hoặc không tồn tại"));
+    }
+
+    public boolean inviteCodeMatches(Exam exam, String inviteCode) {
+        return inviteCode != null && exam.getInviteCode() != null
+                && exam.getInviteCode().equalsIgnoreCase(inviteCode.trim());
+    }
+
+    private String generateInviteCode() {
+        String code;
+        do {
+            StringBuilder candidate = new StringBuilder(10);
+            for (int index = 0; index < 10; index++) {
+                candidate.append(INVITE_ALPHABET.charAt(INVITE_RANDOM.nextInt(INVITE_ALPHABET.length())));
+            }
+            code = candidate.toString();
+        } while (examRepository.existsByInviteCode(code));
+        return code;
     }
 
     public List<Exam> listAvailableForStudent(List<Long> classroomIds) {
@@ -59,6 +100,7 @@ public class ExamService {
     public Exam create(Long ownerId, ExamRequest req) {
         Exam exam = Exam.builder()
                 .ownerId(ownerId)
+                .inviteCode(generateInviteCode())
                 .classroomId(req.getClassroomId())
                 .title(req.getTitle())
                 .description(req.getDescription())

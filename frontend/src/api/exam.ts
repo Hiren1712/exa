@@ -36,14 +36,23 @@ export interface ExamSummary {
   createdAt: string;
 }
 
+export interface ExamInvite {
+  examId: number;
+  title: string;
+  status: string;
+  code: string;
+}
+
 export const examApi = {
   list: async (): Promise<ExamSummary[]> => {
     const res = await apiClient.get<ApiResponse<ExamSummary[]>>('/v1/exams');
     return res.data.data;
   },
 
-  get: async (id: number): Promise<Exam> => {
-    const res = await apiClient.get<ApiResponse<Exam>>(`/v1/exams/${id}`);
+  get: async (id: number, inviteCode?: string): Promise<Exam> => {
+    const res = await apiClient.get<ApiResponse<Exam>>(`/v1/exams/${id}`, {
+      params: inviteCode ? { inviteCode } : undefined,
+    });
     const exam = res.data.data;
     return {
       ...exam,
@@ -70,6 +79,18 @@ export const examApi = {
 
   publish: async (id: number): Promise<void> => {
     await apiClient.patch(`/v1/exams/${id}/publish`);
+  },
+
+  getInvite: async (id: number): Promise<ExamInvite> => {
+    const res = await apiClient.get<ApiResponse<ExamInvite>>(`/v1/exams/${id}/invite`);
+    return res.data.data;
+  },
+
+  resolveInvite: async (code: string): Promise<ExamInvite> => {
+    const res = await apiClient.get<ApiResponse<ExamInvite>>(
+      `/v1/exams/join/${encodeURIComponent(code.trim().toUpperCase())}`,
+    );
+    return res.data.data;
   },
 
   delete: async (id: number): Promise<void> => {
