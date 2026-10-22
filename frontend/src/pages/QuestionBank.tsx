@@ -199,6 +199,7 @@ export default function QuestionBank() {
           aria-label="Môn học"
           label="Lọc môn học"
           showHint={false}
+          emptyLabel="Tất cả môn"
           value={filter.subject || ''}
           onChange={(subject) => updateFilter({ subject: subject || undefined })}
         />

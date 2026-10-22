@@ -97,11 +97,6 @@ export const QUESTION_TYPE_LABELS: Record<string, string> = {
 export const SUBJECTS = [
   'Toán', 'Vật Lý', 'Hoá Học', 'Tiếng Anh',
   'Ngữ Văn', 'Sinh Học', 'Lịch Sử', 'Địa Lý',
-  'Tin Học', 'Công Nghệ', 'Giáo dục công dân', 'Giáo dục kinh tế và pháp luật',
-  'Giáo dục quốc phòng và an ninh', 'Khoa học tự nhiên', 'Khoa học xã hội',
-  'Giáo dục địa phương', 'Mỹ Thuật', 'Âm Nhạc', 'Thể Dục',
-  'Tiếng Nhật', 'Tiếng Trung', 'Tiếng Hàn', 'Tiếng Pháp',
-  'Tiếng Đức', 'Tiếng Nga', 'Kỹ năng sống', 'STEM',
 ];
 
 export const EXAM_STATUS_LABELS: Record<string, string> = {
