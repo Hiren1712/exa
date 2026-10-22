@@ -4,12 +4,13 @@ import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { MathText } from '../components/MathText';
 import { Input, Select, Textarea } from '../components/Input';
+import { SubjectInput } from '../components/SubjectInput';
 import { Modal } from '../components/Modal';
 import { useToast } from '../components/Toast';
 import { examApi, Exam } from '../api/exam';
 import { Difficulty, Question, QuestionFilter, questionApi } from '../api/question';
 import { extractError } from '../api/client';
-import { DIFFICULTY_LABELS, QUESTION_TYPE_LABELS, SUBJECTS } from '../lib/utils';
+import { DIFFICULTY_LABELS, QUESTION_TYPE_LABELS } from '../lib/utils';
 
 interface ExamForm {
   title: string;
@@ -109,12 +110,13 @@ export default function ExamBuilder() {
 
   const persistDraft = useCallback(async (notify: boolean) => {
     const current = formRef.current;
-    if (!current.title.trim() || savingRef.current) return false;
+    if (!current.title.trim() || !current.subject.trim() || savingRef.current) return false;
     savingRef.current = true;
     setSaving(true);
     const payload: Exam = {
       ...current,
       title: current.title.trim(),
+      subject: current.subject.trim(),
       status: 'DRAFT',
       questionIds: questionsRef.current.flatMap((question) => question.id ? [question.id] : []),
     };
@@ -209,6 +211,10 @@ export default function ExamBuilder() {
       toast('Thiếu tiêu đề', 'Vui lòng nhập tiêu đề đề thi', 'warn');
       return;
     }
+    if (!form.subject.trim()) {
+      toast('Thiếu môn học', 'Vui lòng nhập môn học cho đề thi', 'warn');
+      return;
+    }
     if (publish && !questions.length) {
       toast('Chưa có câu hỏi', 'Thêm ít nhất một câu hỏi trước khi công khai đề thi', 'warn');
       return;
@@ -264,7 +270,7 @@ export default function ExamBuilder() {
             <Input label="Tiêu đề *" required maxLength={200} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Ví dụ: Kiểm tra giữa kỳ Toán 12" />
             <Textarea label="Mô tả" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
             <div className="grid sm:grid-cols-2 gap-4">
-              <Select label="Môn học" value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} options={SUBJECTS.map((subject) => ({ value: subject, label: subject }))} />
+              <SubjectInput value={form.subject} onChange={(subject) => setForm({ ...form, subject })} required />
               <Input label="Thời gian (phút)" type="number" min={1} max={600} value={form.durationMin} onChange={(event) => setForm({ ...form, durationMin: Number(event.target.value) })} />
               <Input label="Thang điểm" type="number" min={1} max={100} step={0.5} value={form.totalPoints} onChange={(event) => setForm({ ...form, totalPoints: Number(event.target.value) })} />
               <Input label="Số lần làm tối đa" type="number" min={1} max={20} value={form.maxAttempts} onChange={(event) => setForm({ ...form, maxAttempts: Number(event.target.value) })} />
@@ -344,7 +350,13 @@ export default function ExamBuilder() {
           <div className="grid sm:grid-cols-3 gap-3">
             <Input placeholder="Tìm câu hỏi" value={pickerFilter.keyword || ''} onChange={(event) => setPickerFilter({ ...pickerFilter, keyword: event.target.value || undefined, page: 0 })} />
             <Select aria-label="Lọc độ khó" value={pickerFilter.difficulty || ''} onChange={(event) => setPickerFilter({ ...pickerFilter, difficulty: (event.target.value || undefined) as Difficulty | undefined, page: 0 })} options={[{ value: '', label: 'Mọi độ khó' }, ...Object.entries(DIFFICULTY_LABELS).map(([value, label]) => ({ value, label }))]} />
-            <Select aria-label="Lọc môn học" value={pickerFilter.subject || form.subject} onChange={(event) => setPickerFilter({ ...pickerFilter, subject: event.target.value || undefined, page: 0 })} options={[{ value: '', label: 'Mọi môn' }, ...SUBJECTS.map((subject) => ({ value: subject, label: subject }))]} />
+            <SubjectInput
+              aria-label="Lọc môn học"
+              label="Lọc môn học"
+              showHint={false}
+              value={pickerFilter.subject ?? form.subject}
+              onChange={(subject) => setPickerFilter({ ...pickerFilter, subject: subject || undefined, page: 0 })}
+            />
           </div>
           {pickerLoading ? <div className="p-8 text-center"><div className="inline-block w-7 h-7 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div> : bankQuestions.length === 0 ? <p className="p-8 text-center text-sm text-slate-500">Không tìm thấy câu hỏi phù hợp.</p> : (
             <div className="max-h-[50vh] overflow-y-auto space-y-2">

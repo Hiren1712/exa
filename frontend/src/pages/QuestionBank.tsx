@@ -4,11 +4,12 @@ import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { MathText } from '../components/MathText';
 import { Input, Select, Textarea } from '../components/Input';
+import { SubjectInput } from '../components/SubjectInput';
 import { Modal } from '../components/Modal';
 import { useToast } from '../components/Toast';
 import { extractError } from '../api/client';
 import { Difficulty, Question, QuestionFilter, QuestionType, questionApi } from '../api/question';
-import { DIFFICULTY_LABELS, QUESTION_TYPE_LABELS, SUBJECTS } from '../lib/utils';
+import { DIFFICULTY_LABELS, QUESTION_TYPE_LABELS } from '../lib/utils';
 
 const emptyQuestion: Question = {
   subject: 'Toán',
@@ -75,6 +76,10 @@ export default function QuestionBank() {
 
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
+    if (!form.subject.trim()) {
+      toast('Thiếu môn học', 'Vui lòng nhập môn học cho câu hỏi', 'warn');
+      return;
+    }
     if (!form.content.trim()) {
       toast('Thiếu nội dung', 'Vui lòng nhập nội dung câu hỏi', 'warn');
       return;
@@ -90,6 +95,7 @@ export default function QuestionBank() {
     try {
       const payload: Question = {
         ...form,
+        subject: form.subject.trim(),
         options,
         correctAnswer: form.type === 'MCQ' || form.type === 'TRUE_FALSE' ? form.correctAnswer : undefined,
       };
@@ -189,11 +195,12 @@ export default function QuestionBank() {
           onChange={(event) => updateFilter({ keyword: event.target.value || undefined })}
           icon={<Icon name="search" size={16} />}
         />
-        <Select
+        <SubjectInput
           aria-label="Môn học"
+          label="Lọc môn học"
+          showHint={false}
           value={filter.subject || ''}
-          onChange={(event) => updateFilter({ subject: event.target.value || undefined })}
-          options={[{ value: '', label: 'Tất cả môn' }, ...SUBJECTS.map((subject) => ({ value: subject, label: subject }))]}
+          onChange={(subject) => updateFilter({ subject: subject || undefined })}
         />
         <Select
           aria-label="Khối lớp"
@@ -280,7 +287,7 @@ export default function QuestionBank() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Sửa câu hỏi' : 'Tạo câu hỏi'} size="lg">
         <form id="question-form" onSubmit={handleSave} className="space-y-4">
           <div className="grid sm:grid-cols-2 gap-4">
-            <Select label="Môn học" value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} options={SUBJECTS.map((subject) => ({ value: subject, label: subject }))} />
+            <SubjectInput value={form.subject} onChange={(subject) => setForm({ ...form, subject })} required />
             <Select label="Khối" value={form.grade || 12} onChange={(event) => setForm({ ...form, grade: Number(event.target.value) })} options={[6, 7, 8, 9, 10, 11, 12].map((grade) => ({ value: grade, label: `Khối ${grade}` }))} />
             <Input label="Đơn vị kiến thức" value={form.unit || ''} onChange={(event) => setForm({ ...form, unit: event.target.value })} placeholder="Ví dụ: Hàm số" />
             <Select label="Độ khó" value={form.difficulty} onChange={(event) => setForm({ ...form, difficulty: event.target.value as Difficulty })} options={difficultyOptions} />

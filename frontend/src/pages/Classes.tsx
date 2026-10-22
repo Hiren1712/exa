@@ -3,12 +3,12 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { Input, Select, Textarea } from '../components/Input';
+import { SubjectInput } from '../components/SubjectInput';
 import { Modal } from '../components/Modal';
 import { useToast } from '../components/Toast';
 import { classroomApi, Classroom, ClassroomRequest } from '../api/classroom';
 import { extractError } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
-import { SUBJECTS } from '../lib/utils';
 
 const emptyForm: ClassroomRequest = { name: '', subject: 'Toán', grade: 12, description: '' };
 
@@ -67,13 +67,17 @@ export default function Classes() {
 
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
+    if (!form.subject?.trim()) {
+      toast('Thiếu môn học', 'Vui lòng nhập môn học cho lớp', 'warn');
+      return;
+    }
     setSaving(true);
     try {
       if (editing) {
-        await classroomApi.update(editing.id, form);
+        await classroomApi.update(editing.id, { ...form, subject: form.subject?.trim() });
         toast('Đã cập nhật lớp', form.name, 'success');
       } else {
-        await classroomApi.create(form);
+        await classroomApi.create({ ...form, subject: form.subject?.trim() });
         toast('Đã tạo lớp', form.name, 'success');
       }
       setModalOpen(false);
@@ -262,11 +266,10 @@ export default function Classes() {
             placeholder="Ví dụ: 12A1"
           />
           <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Môn học"
-              value={form.subject}
-              onChange={(event) => setForm({ ...form, subject: event.target.value })}
-              options={SUBJECTS.map((subject) => ({ value: subject, label: subject }))}
+            <SubjectInput
+              value={form.subject || ''}
+              onChange={(subject) => setForm({ ...form, subject })}
+              required
             />
             <Select
               label="Khối"

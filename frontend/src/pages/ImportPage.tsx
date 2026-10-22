@@ -4,13 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
 import { Select } from '../components/Input';
+import { SubjectInput } from '../components/SubjectInput';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../hooks/useAuth';
 import { MathText } from '../components/MathText';
 import { importApi } from '../api/import';
 import type { ImportMode, ImportPreview, ParsedQuestion } from '../api/import';
 import { extractError } from '../api/client';
-import { SUBJECTS, DIFFICULTY_LABELS } from '../lib/utils';
+import { DIFFICULTY_LABELS } from '../lib/utils';
 
 const IMPORT_POLL_INTERVAL_MS = 2_000;
 const STATUS_LABELS: Record<string, string> = {
@@ -141,6 +142,10 @@ export default function ImportPage() {
   };
 
   const handleUpload = async () => {
+    if (!subject.trim()) {
+      toast('Thiếu môn học', 'Hãy nhập môn học cho câu hỏi cần import.', 'warn');
+      return;
+    }
     if (!file && !content.trim()) {
       toast('Chưa có nội dung', 'Hãy chọn tệp hoặc nhập nội dung cần xử lý.', 'warn');
       return;
@@ -148,7 +153,7 @@ export default function ImportPage() {
     if (uploading) return;
     setUploading(true);
     try {
-      const jobId = await importApi.upload(file, content, subject, grade, importMode, questionCount);
+      const jobId = await importApi.upload(file, content, subject.trim(), grade, importMode, questionCount);
       setPreview({
         jobId,
         originalName: file?.name || 'Nội dung nhập tay',
@@ -243,12 +248,7 @@ export default function ImportPage() {
       {!preview && (
         <div className="exa-card p-4 sm:p-6 space-y-6">
           <div className="grid md:grid-cols-3 gap-4">
-            <Select
-              label="Môn học"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              options={SUBJECTS.map((s) => ({ value: s, label: s }))}
-            />
+            <SubjectInput value={subject} onChange={setSubject} required />
             <Select
               label="Khối lớp"
               value={String(grade)}

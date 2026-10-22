@@ -5,9 +5,10 @@ import { extractError } from '../api/client';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { MathText } from '../components/MathText';
+import { SubjectInput } from '../components/SubjectInput';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../hooks/useAuth';
-import { SUBJECTS, DIFFICULTY_LABELS } from '../lib/utils';
+import { DIFFICULTY_LABELS } from '../lib/utils';
 
 export default function AIStudio() {
   const { user } = useAuth();
@@ -30,13 +31,17 @@ export default function AIStudio() {
   const isPro = user?.plan === 'PRO' || user?.plan === 'ENTERPRISE';
 
   const generate = async () => {
+    if (!subject.trim()) {
+      toast('Thiếu môn học', 'Hãy nhập môn học cần tạo câu hỏi.', 'warn');
+      return;
+    }
     if (!topic.trim()) {
       toast('Thiếu chủ đề', 'Hãy nhập chủ đề cần tạo câu hỏi.', 'warn');
       return;
     }
     setGenerating(true);
     try {
-      const result = await aiApi.generateQuestions({ subject, grade, topic: topic.trim(), count, difficulty });
+      const result = await aiApi.generateQuestions({ subject: subject.trim(), grade, topic: topic.trim(), count, difficulty });
       setQuestions(result);
       toast('Đã lưu câu hỏi', `${result.length} câu đã được thêm vào ngân hàng câu hỏi.`, 'success');
     } catch (error) {
@@ -90,9 +95,7 @@ export default function AIStudio() {
       {tool === 'generate' ? (
         <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-4">
           <div className="grid sm:grid-cols-2 gap-4">
-            <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">Môn học
-              <select value={subject} onChange={(event) => setSubject(event.target.value)} className="exa-field mt-2 w-full px-3 py-2.5 text-sm">{SUBJECTS.map((item) => <option key={item}>{item}</option>)}</select>
-            </label>
+            <SubjectInput value={subject} onChange={setSubject} required />
             <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">Khối lớp
               <select value={grade} onChange={(event) => setGrade(Number(event.target.value))} className="exa-field mt-2 w-full px-3 py-2.5 text-sm">{[6, 7, 8, 9, 10, 11, 12].map((item) => <option key={item} value={item}>Khối {item}</option>)}</select>
             </label>
