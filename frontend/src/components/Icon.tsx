@@ -6,6 +6,17 @@ interface IconProps {
 
 const ICONS: Record<string, string> = {
   logo: '<path d="M12 2 4 6v6c0 5 3.5 9.5 8 10 4.5-.5 8-5 8-10V6l-8-4z"/><path d="m9 12 2 2 4-4"/>',
+  exaDashboard: '<path d="M4 4.5h6.5v6.5H4zM13.5 4.5H20v4h-6.5zM13.5 11.5H20v8h-6.5zM4 13.5h6.5v6H4z"/><path d="M6.2 7h2.1M15.7 6.5h1.6M15.7 14.2h1.6M6.2 16.2h2.1"/>',
+  exaExam: '<path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 20V5a1.5 1.5 0 0 1 1-1.5z"/><path d="M14 3.8V8h4M9 11h5M9 14h2"/><path d="m12.5 18 1.8 1.8 3.8-4.1"/>',
+  exaQuestions: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H12l-4.5 4v-4h-1A2.5 2.5 0 0 1 4 13.5z"/><path d="M9.7 8.2a2.4 2.4 0 1 1 4.1 1.7c-1 .9-1.8 1-1.8 2.1M12 14.3h.01"/>',
+  exaClassroom: '<circle cx="12" cy="7" r="3"/><circle cx="5.5" cy="9" r="2"/><circle cx="18.5" cy="9" r="2"/><path d="M6.5 20v-1.5a5.5 5.5 0 0 1 11 0V20zM1.5 19v-1a4 4 0 0 1 3-3.9M22.5 19v-1a4 4 0 0 0-3-3.9"/>',
+  exaImport: '<path d="M6.5 3.5h7l4 4v5M13.5 3.8V8h4"/><path d="M6.5 3.5A1.5 1.5 0 0 0 5 5v14a2 2 0 0 0 2 2h5"/><path d="M8.5 11h5M8.5 14h3"/><path d="M17 14v7M14.5 16.5 17 14l2.5 2.5M21 12.5l.7 1.8 1.8.7-1.8.7L21 17.5l-.7-1.8-1.8-.7 1.8-.7z"/>',
+  exaReports: '<path d="M4 20V11h3v9M10.5 20V5h3v15M17 20v-6h3v6M2.5 20.5h19"/><path d="m4 8 5-3 4 2 6-4M16.5 3H19v2.5"/>',
+  exaGrading: '<path d="M4 5.5 6.5 8 11 3.5M13 6h7M4 13.5 6.5 16 11 11.5M13 14h7M4 21h16"/>',
+  exaProctor: '<path d="M12 3 5 6v5c0 4.2 2.8 7.8 7 10 4.2-2.2 7-5.8 7-10V6z"/><path d="M8 11.5s1.4-2 4-2 4 2 4 2-1.4 2-4 2-4-2-4-2z"/><circle cx="12" cy="11.5" r="1"/>',
+  exaAi: '<path d="m12 2 1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/><path d="m19 15 .9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9zM5 2v3M3.5 3.5h3"/>',
+  exaSettings: '<path d="M12 3.2v2M12 18.8v2M3.2 12h2M18.8 12h2M5.8 5.8l1.4 1.4M16.8 16.8l1.4 1.4M18.2 5.8l-1.4 1.4M7.2 16.8l-1.4 1.4"/><path d="M16.8 12a4.8 4.8 0 1 1-9.6 0 4.8 4.8 0 0 1 9.6 0z"/><circle cx="12" cy="12" r="1.5"/>',
+  exaHome: '<path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9M9 20v-6h6v6"/><path d="M2 10.5 12 3l10 7.5"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/>',
   layers: '<path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/>',

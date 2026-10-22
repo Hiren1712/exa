@@ -14,23 +14,23 @@ interface NavItem {
 }
 
 const NAV_TEACHER: NavItem[] = [
-  { to: '/', icon: 'grid', label: 'Bảng điều khiển' },
-  { to: '/exams', icon: 'file', label: 'Đề thi & Bài tập' },
-  { to: '/questions', icon: 'layers', label: 'Ngân hàng câu hỏi' },
-  { to: '/classes', icon: 'building', label: 'Lớp học' },
-  { to: '/import', icon: 'wand', label: 'Import AI' },
-  { to: '/reports', icon: 'chart', label: 'Báo cáo' },
-  { to: '/grading', icon: 'check', label: 'Chấm bài tự luận' },
-  { to: '/proctor', icon: 'shield', label: 'Giám sát phòng thi' },
-  { to: '/ai-studio', icon: 'sparkle', label: 'AI Studio Pro' },
-  { to: '/settings', icon: 'settings', label: 'Cài đặt' },
+  { to: '/', icon: 'exaDashboard', label: 'Bảng điều khiển' },
+  { to: '/exams', icon: 'exaExam', label: 'Đề thi & Bài tập' },
+  { to: '/questions', icon: 'exaQuestions', label: 'Ngân hàng câu hỏi' },
+  { to: '/classes', icon: 'exaClassroom', label: 'Lớp học' },
+  { to: '/import', icon: 'exaImport', label: 'Import AI' },
+  { to: '/reports', icon: 'exaReports', label: 'Báo cáo' },
+  { to: '/grading', icon: 'exaGrading', label: 'Chấm bài tự luận' },
+  { to: '/proctor', icon: 'exaProctor', label: 'Giám sát phòng thi' },
+  { to: '/ai-studio', icon: 'exaAi', label: 'AI Studio Pro' },
+  { to: '/settings', icon: 'exaSettings', label: 'Cài đặt' },
 ];
 
 const NAV_STUDENT: NavItem[] = [
-  { to: '/', icon: 'home', label: 'Trang chủ' },
-  { to: '/exams', icon: 'file', label: 'Bài tập' },
-  { to: '/classes', icon: 'building', label: 'Lớp học' },
-  { to: '/settings', icon: 'settings', label: 'Cài đặt' },
+  { to: '/', icon: 'exaHome', label: 'Trang chủ' },
+  { to: '/exams', icon: 'exaExam', label: 'Bài tập' },
+  { to: '/classes', icon: 'exaClassroom', label: 'Lớp học' },
+  { to: '/settings', icon: 'exaSettings', label: 'Cài đặt' },
 ];
 
 export function Layout() {
