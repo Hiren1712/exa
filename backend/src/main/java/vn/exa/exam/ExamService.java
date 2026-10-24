@@ -262,6 +262,7 @@ public class ExamService {
             throw BusinessException.forbidden("Một hoặc nhiều câu hỏi không tồn tại hoặc không thuộc quyền của bạn");
         }
         examQuestionRepository.deleteByExamId(exam.getId());
+        examQuestionRepository.flush();
         if (questions.isEmpty()) return;
 
         BigDecimal totalPoints = exam.getTotalPoints() == null ? BigDecimal.TEN : exam.getTotalPoints();
