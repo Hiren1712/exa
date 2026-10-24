@@ -273,7 +273,21 @@ export default function ExamBuilder() {
               <SubjectInput value={form.subject} onChange={(subject) => setForm({ ...form, subject })} required />
               <Input label="Thời gian (phút)" type="number" min={1} max={600} value={form.durationMin} onChange={(event) => setForm({ ...form, durationMin: Number(event.target.value) })} />
               <Input label="Thang điểm" type="number" min={1} max={100} step={0.5} value={form.totalPoints} onChange={(event) => setForm({ ...form, totalPoints: Number(event.target.value) })} />
-              <Input label="Số lần làm tối đa" type="number" min={1} max={20} value={form.maxAttempts} onChange={(event) => setForm({ ...form, maxAttempts: Number(event.target.value) })} />
+              <div>
+                <Select
+                  label="Số lần làm tối đa"
+                  value={form.maxAttempts}
+                  onChange={(event) => setForm({ ...form, maxAttempts: Number(event.target.value) })}
+                  options={[
+                    ...Array.from({ length: 20 }, (_, index) => ({
+                      value: index + 1,
+                      label: `${index + 1} lần`,
+                    })),
+                    { value: 0, label: 'Vô hạn' },
+                  ]}
+                />
+                <p className="mt-1.5 text-xs text-slate-500">Chọn “Vô hạn” để học sinh có thể làm bài không giới hạn số lượt.</p>
+              </div>
             </div>
           </section>
 

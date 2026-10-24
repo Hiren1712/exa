@@ -75,7 +75,7 @@ public class SubmissionService {
         int currentAttempts = Math.toIntExact(
                 submissionRepository.countByExamIdAndStudentId(examId, studentId));
 
-        if (currentAttempts >= exam.getMaxAttempts()) {
+        if (exam.getMaxAttempts() > 0 && currentAttempts >= exam.getMaxAttempts()) {
             throw BusinessException.badRequest("Bạn đã hết số lần làm bài");
         }
 

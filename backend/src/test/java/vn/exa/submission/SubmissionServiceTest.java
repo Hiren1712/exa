@@ -121,4 +121,36 @@ class SubmissionServiceTest {
                 .isInstanceOf(vn.exa.common.BusinessException.class);
         verify(submissionRepository, never()).save(any(Submission.class));
     }
+
+    @Test
+    void unlimitedAttemptsAllowStudentToStartAnotherAttempt() {
+        SubmissionRepository submissionRepository = mock(SubmissionRepository.class);
+        Exam exam = Exam.builder()
+                .id(7L)
+                .status(Exam.Status.OPEN)
+                .maxAttempts(0)
+                .build();
+        ExamRepository examRepository = mock(ExamRepository.class);
+        when(examRepository.findByIdAndDeletedAtIsNull(7L)).thenReturn(Optional.of(exam));
+        when(submissionRepository.findFirstByExamIdAndStudentIdAndStatusOrderByStartedAtDesc(
+                7L, 23L, Submission.Status.IN_PROGRESS)).thenReturn(Optional.empty());
+        when(submissionRepository.countByExamIdAndStudentId(7L, 23L)).thenReturn(20L);
+        when(submissionRepository.save(any(Submission.class))).thenAnswer(call -> call.getArgument(0));
+
+        SubmissionService service = new SubmissionService(
+                submissionRepository,
+                mock(ProctorEventRepository.class),
+                examRepository,
+                mock(QuestionRepository.class),
+                new AutoGradeService(),
+                new ObjectMapper(),
+                mock(PasswordEncoder.class),
+                mock(ExamQuestionRepository.class),
+                mock(ClassroomMemberRepository.class));
+
+        Submission result = service.start(7L, 23L, null);
+
+        assertThat(result.getAttemptNumber()).isEqualTo(21);
+        verify(submissionRepository).save(any(Submission.class));
+    }
 }

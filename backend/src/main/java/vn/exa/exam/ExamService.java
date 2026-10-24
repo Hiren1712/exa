@@ -306,7 +306,7 @@ public class ExamService {
         private Boolean shuffleOptions;
         private Boolean proctorEnabled;
         private Boolean lockScreen;
-        @Min(1)
+        @Min(0)
         @Max(20)
         private Integer maxAttempts;
         @Size(max = 128)
