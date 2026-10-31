@@ -45,7 +45,7 @@ class GeminiParserTest {
     }
 
     @Test
-    void invalidGeminiApiKeyErrorExplainsHowToFixRailwayConfiguration() {
+    void invalidGeminiApiKeyErrorExplainsHowToFixBackendConfiguration() {
         GeminiParser parser = new GeminiParser(WebClient.builder(), new ObjectMapper());
         String response = """
                 {"error":{"code":400,"status":"INVALID_ARGUMENT","details":[

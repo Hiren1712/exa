@@ -1,0 +1,11 @@
+#cloud-config
+package_update: true
+packages:
+  - ca-certificates
+  - curl
+  - git
+
+runcmd:
+  - [git, clone, --depth, "1", "${repository_url}", /opt/exa]
+  - [bash, /opt/exa/scripts/oci-bootstrap.sh]
+  - [install, -m, "0755", /opt/exa/scripts/oci-deploy.sh, /usr/local/bin/exa-deploy]

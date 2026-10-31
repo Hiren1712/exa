@@ -721,16 +721,16 @@ public class GeminiParser {
 
         if (statusCode == 401 || statusCode == 403 || "API_KEY_INVALID".equals(reason)) {
             if ("API_KEY_HTTP_REFERRER_BLOCKED".equals(reason)) {
-                return "API key Gemini bị giới hạn theo website. Backend Railway cần key không giới hạn HTTP referrer; cập nhật giới hạn key rồi thử lại.";
+                return "API key Gemini bị giới hạn theo website. Backend cần key không giới hạn HTTP referrer; cập nhật giới hạn key rồi thử lại.";
             }
             if ("API_KEY_SERVICE_BLOCKED".equals(reason)) {
                 return "API key chưa được phép gọi Gemini. Cho phép Generative Language API trong phần giới hạn API key của Google Cloud.";
             }
             if ("API_KEY_INVALID".equals(reason)) {
-                return "Gemini không chấp nhận API key. Kiểm tra lại biến GEMINI_API_KEY trên Railway rồi redeploy backend.";
+                return "Gemini không chấp nhận API key. Kiểm tra biến GEMINI_API_KEY trong cấu hình backend rồi redeploy backend.";
             }
             if (statusCode == 401) {
-                return "Gemini không xác thực được API key. Kiểm tra lại biến GEMINI_API_KEY trên Railway rồi redeploy backend.";
+                return "Gemini không xác thực được API key. Kiểm tra biến GEMINI_API_KEY trong cấu hình backend rồi redeploy backend.";
             }
             return "Gemini từ chối quyền của API key. Kiểm tra giới hạn API key và quyền dùng Generative Language API.";
         }

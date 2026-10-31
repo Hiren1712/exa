@@ -26,6 +26,13 @@ frontend/.vite/
 .env
 .env.local
 .env.*.local
+.env.oci
+.cloudflare-tunnel-token
+exa-backup*.sql
+infra/oci/.terraform/
+infra/oci/*.tfstate
+infra/oci/*.tfstate.*
+infra/oci/terraform.tfvars
 application-local.yml
 application-local.properties
 frontend/.env.local

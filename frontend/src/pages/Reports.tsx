@@ -6,6 +6,7 @@ import { useToast } from '../components/Toast';
 import { examApi, ExamSummary } from '../api/exam';
 import { ExamReport, reportApi } from '../api/report';
 import { extractError } from '../api/client';
+import { LatexText } from '../components/LatexText';
 
 export default function Reports() {
   const { toast } = useToast();
@@ -169,7 +170,7 @@ export default function Reports() {
                   <div key={question.questionId} className="p-4 flex flex-wrap items-center gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Câu {index + 1} · {question.type}</p>
-                      <p className="mt-1 text-xs text-slate-500 line-clamp-2">{question.content}</p>
+                      <p className="mt-1 text-xs text-slate-500 line-clamp-2"><LatexText text={question.content} /></p>
                     </div>
                     <span className="text-xs text-slate-500">{question.responses} lượt trả lời</span>
                     {question.accuracyRate == null
