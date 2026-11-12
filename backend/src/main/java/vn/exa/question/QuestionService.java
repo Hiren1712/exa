@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.exa.common.BusinessException;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +21,7 @@ import java.util.List;
 public class QuestionService {
 
     private final QuestionRepository questionRepository;
+    private final QuestionMediaRepository questionMediaRepository;
     private final ObjectMapper objectMapper;
 
     public Page<Question> search(Long ownerId, String subject, Integer grade,
@@ -39,6 +41,10 @@ public class QuestionService {
 
     @Transactional
     public Question create(Long ownerId, QuestionRequest req) {
+        validateMedia(ownerId, req.getImageUrl());
+        if (req.getOptionImages() != null) {
+            req.getOptionImages().forEach(url -> validateMedia(ownerId, url));
+        }
         Question q = Question.builder()
                 .ownerId(ownerId)
                 .subject(req.getSubject())
@@ -49,6 +55,8 @@ public class QuestionService {
                 .content(req.getContent())
                 .contentHtml(req.getContent())
                 .options(toJson(req.getOptions()))
+                .imageUrl(req.getImageUrl())
+                .optionImages(toJson(req.getOptionImages()))
                 .correctAnswer(req.getCorrectAnswer())
                 .answerText(req.getAnswerText())
                 .explanation(req.getExplanation())
@@ -63,6 +71,10 @@ public class QuestionService {
     @Transactional
     public Question update(Long id, Long ownerId, QuestionRequest req) {
         Question q = getById(id, ownerId);
+        validateMedia(ownerId, req.getImageUrl());
+        if (req.getOptionImages() != null) {
+            req.getOptionImages().forEach(url -> validateMedia(ownerId, url));
+        }
 
         q.setSubject(req.getSubject());
         q.setGrade(req.getGrade());
@@ -72,6 +84,8 @@ public class QuestionService {
         q.setContent(req.getContent());
         q.setContentHtml(req.getContent());
         q.setOptions(toJson(req.getOptions()));
+        q.setImageUrl(req.getImageUrl());
+        q.setOptionImages(toJson(req.getOptionImages()));
         q.setCorrectAnswer(req.getCorrectAnswer());
         q.setAnswerText(req.getAnswerText());
         q.setExplanation(req.getExplanation());
@@ -120,6 +134,28 @@ public class QuestionService {
         }
     }
 
+    private void validateMedia(Long ownerId, String url) {
+        if (url == null || url.isBlank()) return;
+        String prefix = "/api/v1/question-media/";
+        if (!url.startsWith(prefix)) {
+            throw BusinessException.badRequest("Ảnh câu hỏi phải được tải lên EXA");
+        }
+        String id = url.substring(prefix.length());
+        try {
+            if (!UUID.fromString(id).toString().equalsIgnoreCase(id)) {
+                throw BusinessException.badRequest("Đường dẫn ảnh không hợp lệ");
+            }
+            id = UUID.fromString(id).toString();
+        } catch (IllegalArgumentException ex) {
+            throw BusinessException.badRequest("Đường dẫn ảnh không hợp lệ");
+        }
+        QuestionMedia media = questionMediaRepository.findById(id)
+                .orElseThrow(() -> BusinessException.badRequest("Không tìm thấy ảnh câu hỏi"));
+        if (!media.getOwnerId().equals(ownerId)) {
+            throw BusinessException.forbidden("Bạn không có quyền sử dụng ảnh này");
+        }
+    }
+
     // ===== DTO =====
     @lombok.Data
     public static class QuestionRequest {
@@ -134,6 +170,8 @@ public class QuestionService {
         @NotBlank
         private String content;
         private List<String> options;
+        private String imageUrl;
+        private List<String> optionImages;
         private String correctAnswer;
         private String answerText;
         private String explanation;

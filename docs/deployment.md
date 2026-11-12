@@ -104,5 +104,6 @@ This Oracle setup replaces both the external backend host and database host. The
 
 AI import accepts TXT, DOCX, PDF, XLSX, XLS, PNG, JPG/JPEG, and WEBP files up to 20MB; images and scanned PDFs are limited to 15MB. The import flow supports extracting existing questions and generating questions from arbitrary source content, notes, short topics, tables, facts, or natural-language requests. Generated questions do not require a preformatted exam or existing questions; teachers can paste plain text directly.
 Question formulas render in previews, the question bank, and exams using `$...$` or `\(...\)` for mathematics and KaTeX mhchem syntax such as `$\ce{H2O}$` for chemistry.
+Teachers can attach PNG, JPEG, or WEBP images of up to 5MB to questions and multiple-choice options. These media are stored in the MySQL database by the `V7__question_images.sql` migration; include them in normal database backup and retention procedures.
 
 Never add real credentials to `.env.example`, frontend variables, source code, or deployment manifests committed to the repository. Rotate any credential that has been exposed.

@@ -54,6 +54,12 @@ public class Question {
     @Column(columnDefinition = "JSON")
     private String options;
 
+    @Column(name = "image_url", length = 255)
+    private String imageUrl;
+
+    @Column(name = "option_images", columnDefinition = "JSON")
+    private String optionImages;
+
     @Column(name = "correct_answer", length = 10)
     private String correctAnswer;
 

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { MathText } from '../components/MathText';
+import { QuestionImage } from '../components/QuestionImage';
 import { Input, Select, Textarea } from '../components/Input';
 import { SubjectInput } from '../components/SubjectInput';
 import { Modal } from '../components/Modal';
@@ -18,6 +19,8 @@ const emptyQuestion: Question = {
   difficulty: 'RECOGNITION',
   type: 'MCQ',
   content: '',
+  imageUrl: '',
+  optionImages: ['', '', '', ''],
   options: ['', '', '', ''],
   correctAnswer: 'A',
   answerText: '',
@@ -33,6 +36,7 @@ export default function QuestionBank() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [filter, setFilter] = useState<QuestionFilter>({ page: 0, size: 20 });
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -70,6 +74,7 @@ export default function QuestionBank() {
       ...emptyQuestion,
       ...question,
       options: question.options?.length ? [...question.options] : ['', '', '', ''],
+      optionImages: question.optionImages?.length ? [...question.optionImages] : ['', '', '', ''],
     });
     setModalOpen(true);
   };
@@ -84,20 +89,29 @@ export default function QuestionBank() {
       toast('Thiếu nội dung', 'Vui lòng nhập nội dung câu hỏi', 'warn');
       return;
     }
-    const options = form.type === 'MCQ'
-      ? (form.options || []).map((option) => option.trim()).filter(Boolean)
-      : undefined;
+    const validOptions = (form.options || []).map((option, index) => ({
+      text: option.trim(),
+      image: form.optionImages?.[index] || '',
+      originalIndex: index,
+    })).filter((option) => option.text || option.image);
+    const options = form.type === 'MCQ' ? validOptions.map((option) => option.text) : undefined;
+    const optionImages = form.type === 'MCQ' ? validOptions.map((option) => option.image) : undefined;
     if (form.type === 'MCQ' && (options?.length ?? 0) < 2) {
       toast('Thiếu phương án', 'Câu trắc nghiệm cần ít nhất hai phương án', 'warn');
       return;
     }
+    if (uploading) return;
     setSaving(true);
     try {
       const payload: Question = {
         ...form,
         subject: form.subject.trim(),
         options,
-        correctAnswer: form.type === 'MCQ' || form.type === 'TRUE_FALSE' ? form.correctAnswer : undefined,
+        optionImages,
+        correctAnswer: form.type === 'MCQ'
+          ? String.fromCharCode(65 + Math.max(0, validOptions.findIndex((option) =>
+            String.fromCharCode(65 + option.originalIndex) === form.correctAnswer)))
+          : form.type === 'TRUE_FALSE' ? form.correctAnswer : undefined,
       };
       if (editing?.id) {
         await questionApi.update(editing.id, payload);
@@ -168,8 +182,28 @@ export default function QuestionBank() {
       ...current,
       type,
       options: type === 'MCQ' ? ['', '', '', ''] : undefined,
+      optionImages: type === 'MCQ' ? ['', '', '', ''] : undefined,
       correctAnswer: type === 'TRUE_FALSE' ? 'Đúng' : '',
     }));
+  };
+
+  const uploadImage = async (file: File, optionIndex?: number) => {
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      toast('Ảnh không hợp lệ', 'Chọn PNG, JPEG hoặc WebP, tối đa 5 MB', 'warn');
+      return;
+    }
+    setUploading(true);
+    try {
+      const url = await questionApi.uploadImage(file);
+      setForm((current) => optionIndex === undefined
+        ? { ...current, imageUrl: url }
+        : { ...current, optionImages: (current.options || []).map((_, index) =>
+          index === optionIndex ? url : current.optionImages?.[index] || '') });
+    } catch (err) {
+      toast('Không tải được ảnh', extractError(err), 'error');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const page = filter.page || 0;
@@ -254,12 +288,13 @@ export default function QuestionBank() {
                     {question.unit && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">{question.unit}</span>}
                   </div>
                   <MathText className="whitespace-pre-wrap text-sm font-semibold leading-relaxed text-slate-900 dark:text-white">{question.content}</MathText>
+                  <div className="mt-2"><QuestionImage src={question.imageUrl} alt="Hình minh họa câu hỏi" /></div>
                   {question.options && (
                     <div className="mt-3 grid sm:grid-cols-2 gap-2">
                       {question.options.map((option, index) => {
                         const answerLabel = String.fromCharCode(65 + index);
                         const correct = question.correctAnswer === answerLabel;
-                        return <div key={`${question.id}-${index}`} className={`rounded-lg px-3 py-2 text-xs ${correct ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>{answerLabel}. <MathText>{option}</MathText></div>;
+                        return <div key={`${question.id}-${index}`} className={`rounded-lg px-3 py-2 text-xs ${correct ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>{answerLabel}. <MathText>{option}</MathText><div className="mt-1"><QuestionImage src={question.optionImages?.[index]} alt={`Hình đáp án ${answerLabel}`} /></div></div>;
                       })}
                     </div>
                   )}
@@ -295,11 +330,27 @@ export default function QuestionBank() {
           </div>
           <Select label="Loại câu hỏi" value={form.type} onChange={(event) => updateType(event.target.value as QuestionType)} options={typeOptions} />
           <Textarea label="Nội dung (có thể nhập ký hiệu LaTeX dạng văn bản)" required rows={5} value={form.content} onChange={(event) => setForm({ ...form, content: event.target.value })} />
+          <div className="rounded-xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
+            <label className="mb-2 block text-sm font-semibold">Hình minh họa câu hỏi (tùy chọn)</label>
+            <input aria-label="Chọn ảnh câu hỏi" type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading || saving}
+              onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file); event.target.value = ''; }}
+              className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-blue-700" />
+            <p className="mt-1 text-xs text-slate-500">PNG / JPG / WebP · Tối đa 5 MB · Nhấn vào ảnh để xem lớn</p>
+            <div className="mt-2"><QuestionImage src={form.imageUrl} alt="Xem trước hình câu hỏi" /></div>
+            {form.imageUrl && <button type="button" className="text-sm text-rose-600" onClick={() => setForm({ ...form, imageUrl: '' })}>Gỡ ảnh câu hỏi</button>}
+          </div>
           {form.type === 'MCQ' && (
             <div className="space-y-3">
               <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">Phương án trả lời</p>
               {(form.options || []).map((option, index) => (
-                <Input key={index} label={`Phương án ${String.fromCharCode(65 + index)}`} value={option} onChange={(event) => setOption(index, event.target.value)} />
+                <div key={index} className="space-y-2 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                  <Input label={`Phương án ${String.fromCharCode(65 + index)}`} value={option} onChange={(event) => setOption(index, event.target.value)} />
+                  <label className="block text-xs font-semibold">Ảnh phương án {String.fromCharCode(65 + index)} (tùy chọn)</label>
+                  <input aria-label={`Chọn ảnh phương án ${String.fromCharCode(65 + index)}`} type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading || saving}
+                    onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file, index); event.target.value = ''; }} className="block w-full text-xs" />
+                  <QuestionImage src={form.optionImages?.[index]} alt={`Xem trước hình phương án ${String.fromCharCode(65 + index)}`} />
+                  {form.optionImages?.[index] && <button type="button" className="text-xs text-rose-600" onClick={() => setForm((current) => ({ ...current, optionImages: (current.optionImages || []).map((url, i) => i === index ? '' : url) }))}>Gỡ ảnh</button>}
+                </div>
               ))}
               <Select label="Đáp án đúng" value={form.correctAnswer || 'A'} onChange={(event) => setForm({ ...form, correctAnswer: event.target.value })} options={(form.options || []).map((_, index) => ({ value: String.fromCharCode(65 + index), label: `Phương án ${String.fromCharCode(65 + index)}` }))} />
             </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
 import { ChatWidget } from './ChatWidget';
@@ -35,11 +35,48 @@ const NAV_STUDENT: NavItem[] = [
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches,
+  );
+  const sidebarRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const { user, logout, theme, toggleTheme } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const navItems = user?.role === 'STUDENT' ? NAV_STUDENT : NAV_TEACHER;
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 1023px)');
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
+    updateViewport();
+    mediaQuery.addEventListener('change', updateViewport);
+    return () => mediaQuery.removeEventListener('change', updateViewport);
+  }, []);
+
+  useEffect(() => {
+    sidebarRef.current?.toggleAttribute('inert', isMobileViewport && !sidebarOpen);
+  }, [isMobileViewport, sidebarOpen]);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  const closeSidebar = useCallback(() => {
+    setSidebarOpen(false);
+    if (isMobileViewport) menuButtonRef.current?.focus();
+  }, [isMobileViewport]);
+
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    closeButtonRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeSidebar();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [closeSidebar, sidebarOpen]);
 
   const handleLogout = () => {
     logout();
@@ -50,6 +87,10 @@ export function Layout() {
     <div className="flex min-h-screen bg-[#f3f6fb] dark:bg-[#0a1221] exa-surface-gradient">
       {/* Sidebar */}
       <aside
+        ref={sidebarRef}
+        id="exa-sidebar"
+        aria-label="Điều hướng chính"
+        aria-hidden={isMobileViewport && !sidebarOpen}
         className={cn(
           'fixed inset-y-0 left-0 z-40 w-64 bg-white/95 dark:bg-[#111b2c] backdrop-blur-xl border-r border-slate-200 dark:border-slate-700 flex flex-col transition-transform lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
@@ -66,6 +107,9 @@ export function Layout() {
               Exam Extra
             </span>
           </div>
+          <button ref={closeButtonRef} type="button" onClick={closeSidebar} aria-label="Đóng điều hướng" className="ml-auto flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 lg:hidden">
+            <Icon name="x" size={19} />
+          </button>
         </div>
 
         {/* Nav */}
@@ -75,7 +119,7 @@ export function Layout() {
               key={item.to}
               to={item.to}
               end={item.to === '/'}
-              onClick={() => setSidebarOpen(false)}
+              onClick={closeSidebar}
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-3 px-3.5 min-h-11 rounded-xl text-sm font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500',
@@ -112,8 +156,8 @@ export function Layout() {
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-slate-900/50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-label="Đóng menu điều hướng"
+          onClick={closeSidebar}
+          aria-hidden="true"
         />
       )}
 
@@ -122,8 +166,11 @@ export function Layout() {
         {/* Topbar */}
         <header className="sticky top-0 z-20 h-[72px] bg-white/90 dark:bg-[#111b2c]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 flex items-center gap-3 px-4 sm:px-6">
           <button
+            ref={menuButtonRef}
             onClick={() => setSidebarOpen(true)}
             aria-label="Mở menu điều hướng"
+            aria-controls="exa-sidebar"
+            aria-expanded={sidebarOpen}
             className="lg:hidden w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <Icon name="menu" size={20} />

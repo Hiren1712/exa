@@ -57,12 +57,16 @@ export const examApi = {
     return {
       ...exam,
       questions: exam.questions?.map((question) => {
-        if (typeof question.options !== 'string') return question;
-        try {
-          return { ...question, options: JSON.parse(question.options) as string[] };
-        } catch {
-          throw new Error(`Danh sách đáp án của đề "${exam.title}" không hợp lệ`);
-        }
+        const parse = (value: string[] | string | undefined, field: string): string[] | undefined => {
+          if (typeof value !== 'string') return value;
+          try { return JSON.parse(value) as string[]; }
+          catch { throw new Error(`${field} của đề "${exam.title}" không hợp lệ`); }
+        };
+        return {
+          ...question,
+          options: parse(question.options, 'Danh sách đáp án'),
+          optionImages: parse(question.optionImages, 'Danh sách hình ảnh'),
+        };
       }),
     };
   },

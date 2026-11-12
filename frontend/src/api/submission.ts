@@ -32,6 +32,8 @@ export interface SubmissionReview {
     id: number;
     type: string;
     content: string;
+    imageUrl?: string | null;
+    optionImages?: string | null;
     options?: string | null;
     studentAnswer?: string | null;
     correctAnswer?: string | null;

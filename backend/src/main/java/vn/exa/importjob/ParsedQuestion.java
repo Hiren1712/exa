@@ -18,4 +18,6 @@ public class ParsedQuestion {
     private String answerText;
     private String difficulty;
     private String explanation;
+    private String imageUrl;
+    private List<String> optionImages;
 }

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { MathText } from '../components/MathText';
+import { QuestionImage } from '../components/QuestionImage';
 import { Button } from '../components/Button';
 import { useToast } from '../components/Toast';
 import { useExamTimer } from '../hooks/useExamTimer';
@@ -84,10 +85,12 @@ export default function ExamRoom() {
           const indexes = data.shuffleOptions
             ? shuffledIndexes(originalOptions.length)
             : originalOptions.map((_, optionIndex) => optionIndex);
+          const originalImages = Array.isArray(question.optionImages) ? question.optionImages : [];
           orderByQuestion[questionId] = indexes;
           return {
             ...question,
             options: indexes.map((optionIndex) => originalOptions[optionIndex].replace(/^[A-D][.)]\s*/i, '')),
+            optionImages: indexes.map((optionIndex) => originalImages[optionIndex] ?? ''),
           };
         });
         setOptionOrder(orderByQuestion);
@@ -349,6 +352,7 @@ export default function ExamRoom() {
               <p className="text-base font-semibold text-slate-900 dark:text-white leading-relaxed mb-5 whitespace-pre-wrap">
                 <MathText>{current.content}</MathText>
               </p>
+              <QuestionImage src={current.imageUrl} alt={`Hình minh họa câu ${currentIdx + 1}`} className="mb-5" />
 
               {current.options && current.options.length > 0 ? (
                 <div className="space-y-2.5">
@@ -379,6 +383,7 @@ export default function ExamRoom() {
                           {letter}
                         </div>
                         <MathText className="text-sm pt-1.5">{opt}</MathText>
+                        <QuestionImage src={current.optionImages?.[i]} alt={`Hình phương án ${letter}`} className="pt-1" />
                       </button>
                     );
                   })}

@@ -199,12 +199,14 @@ public class ExamController {
 
     public record QuestionDetail(
             Long id, String subject, Integer grade, String unit, String difficulty,
-            String type, String content, String options, java.math.BigDecimal points, String correctAnswer,
+            String type, String content, String options, String imageUrl, String optionImages,
+            java.math.BigDecimal points, String correctAnswer,
             String answerText, String explanation) {
         static QuestionDetail from(Question question, boolean includeAnswers, java.math.BigDecimal points) {
             return new QuestionDetail(question.getId(), question.getSubject(), question.getGrade(),
                     question.getUnit(), question.getDifficulty().name(), question.getType().name(),
-                    question.getContent(), question.getOptions(), points,
+                    question.getContent(), question.getOptions(), question.getImageUrl(),
+                    question.getOptionImages(), points,
                     includeAnswers ? question.getCorrectAnswer() : null,
                     includeAnswers ? question.getAnswerText() : null,
                     includeAnswers ? question.getExplanation() : null);

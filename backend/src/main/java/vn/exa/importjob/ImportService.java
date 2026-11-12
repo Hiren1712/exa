@@ -9,6 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import vn.exa.common.BusinessException;
 import vn.exa.question.Question;
+import vn.exa.question.QuestionMedia;
+import vn.exa.question.QuestionMediaRepository;
 import vn.exa.question.QuestionRepository;
 
 import java.nio.file.Files;
@@ -27,6 +29,7 @@ public class ImportService {
     private final ImportProcessingService importProcessingService;
     private final GeminiParser geminiParser;
     private final QuestionRepository questionRepo;
+    private final QuestionMediaRepository questionMediaRepository;
     private final ObjectMapper objectMapper;
 
     @Value("${exa.storage.upload-dir:./uploads}")
@@ -112,6 +115,10 @@ public class ImportService {
             if (pq.getOptions() != null && pq.getOptions().stream().anyMatch(option -> option == null || option.isBlank())) {
                 throw BusinessException.badRequest("Phương án trả lời không được để trống");
             }
+            validateOwnedMedia(userId, pq.getImageUrl());
+            if (pq.getOptionImages() != null) {
+                pq.getOptionImages().forEach(url -> validateOwnedMedia(userId, url));
+            }
             String correctAnswer = pq.getCorrectAnswer();
             if (correctAnswer != null) {
                 correctAnswer = correctAnswer.trim().toUpperCase(Locale.ROOT);
@@ -133,6 +140,8 @@ public class ImportService {
                     .type(type)
                     .content(pq.getContent())
                     .options(toJson(pq.getOptions()))
+                    .imageUrl(pq.getImageUrl())
+                    .optionImages(toJson(pq.getOptionImages()))
                     .correctAnswer(correctAnswer)
                     .answerText(pq.getAnswerText())
                     .explanation(pq.getExplanation())
@@ -151,6 +160,28 @@ public class ImportService {
 
         log.info("Saved {} questions to bank from job {}", saved, jobId);
         return saved;
+    }
+
+    private void validateOwnedMedia(Long userId, String url) {
+        if (url == null || url.isBlank()) return;
+        String prefix = "/api/v1/question-media/";
+        if (!url.startsWith(prefix)) {
+            throw BusinessException.badRequest("Ảnh câu hỏi phải được tải lên EXA");
+        }
+        String id = url.substring(prefix.length());
+        try {
+            if (!UUID.fromString(id).toString().equalsIgnoreCase(id)) {
+                throw BusinessException.badRequest("Đường dẫn ảnh không hợp lệ");
+            }
+            id = UUID.fromString(id).toString();
+        } catch (IllegalArgumentException ex) {
+            throw BusinessException.badRequest("Đường dẫn ảnh không hợp lệ");
+        }
+        QuestionMedia media = questionMediaRepository.findById(id)
+                .orElseThrow(() -> BusinessException.badRequest("Không tìm thấy ảnh câu hỏi"));
+        if (!media.getOwnerId().equals(userId)) {
+            throw BusinessException.forbidden("Bạn không có quyền sử dụng ảnh này");
+        }
     }
 
     private void validateInput(MultipartFile file, String content, ImportMode mode,

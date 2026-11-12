@@ -11,6 +11,8 @@ export interface Question {
   difficulty: Difficulty;
   type: QuestionType;
   content: string;
+  imageUrl?: string;
+  optionImages?: string[];
   options?: string[];
   correctAnswer?: string;
   answerText?: string;
@@ -28,7 +30,10 @@ export interface QuestionFilter {
   size?: number;
 }
 
-type QuestionResponse = Omit<Question, 'options'> & { options?: string[] | string | null };
+type QuestionResponse = Omit<Question, 'options' | 'optionImages'> & {
+  options?: string[] | string | null;
+  optionImages?: string[] | string | null;
+};
 
 function normalizeQuestion(question: QuestionResponse): Question {
   let options = question.options;
@@ -42,10 +47,27 @@ function normalizeQuestion(question: QuestionResponse): Question {
   if (options != null && (!Array.isArray(options) || options.some((option) => typeof option !== 'string'))) {
     throw new Error(`Dữ liệu đáp án câu hỏi ${question.id ?? ''} không hợp lệ`);
   }
-  return { ...question, options: options ?? undefined };
+  let optionImages = question.optionImages;
+  if (typeof optionImages === 'string') {
+    try {
+      optionImages = JSON.parse(optionImages) as string[];
+    } catch {
+      throw new Error(`Dữ liệu hình ảnh câu hỏi ${question.id ?? ''} không hợp lệ`);
+    }
+  }
+  if (optionImages != null && (!Array.isArray(optionImages) || optionImages.some((url) => typeof url !== 'string'))) {
+    throw new Error(`Dữ liệu hình ảnh câu hỏi ${question.id ?? ''} không hợp lệ`);
+  }
+  return { ...question, options: options ?? undefined, optionImages: optionImages ?? undefined };
 }
 
 export const questionApi = {
+  uploadImage: async (file: File): Promise<string> => {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await apiClient.post<ApiResponse<string>>('/v1/question-media', form);
+    return res.data.data;
+  },
   list: async (filter: QuestionFilter = {}) => {
     const res = await apiClient.get<ApiResponse<{ content: QuestionResponse[]; totalElements: number }>>(
       '/v1/questions',

@@ -9,6 +9,7 @@ import vn.exa.common.BusinessException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
+import java.lang.reflect.Method;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -124,6 +125,23 @@ class GeminiParserTest {
                 .contains("dùng kiến thức phù hợp với môn học và khối lớp")
                 .contains("không trả về [] chỉ vì đầu vào ngắn")
                 .contains("Hãy tạo câu hỏi");
+    }
+
+    @Test
+    void imageImportPromptReadsDiagramsAndAvoidsGuessingUnclearDetails() throws Exception {
+        GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
+        Method sourcePrompt = GeminiParser.class.getDeclaredMethod(
+                "sourcePrompt", String.class, int.class, ImportMode.class, int.class);
+        sourcePrompt.setAccessible(true);
+
+        String prompt = (String) sourcePrompt.invoke(parser, "Toán", 12, ImportMode.EXTRACT, 10);
+
+        assertThat(prompt)
+                .contains("bao gồm chữ trong ảnh scan")
+                .contains("sơ đồ, biểu đồ, hình học")
+                .contains("không tự suy đoán")
+                .contains("\"imageUrl\":null")
+                .contains("\"optionImages\":[]");
     }
 
     @Test

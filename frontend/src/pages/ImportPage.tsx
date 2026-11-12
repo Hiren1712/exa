@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { DragEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
+import { QuestionImage } from '../components/QuestionImage';
 import { Select } from '../components/Input';
 import { SubjectInput } from '../components/SubjectInput';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../hooks/useAuth';
 import { MathText } from '../components/MathText';
+import { questionApi } from '../api/question';
 import { importApi } from '../api/import';
 import type { ImportMode, ImportPreview, ParsedQuestion } from '../api/import';
 import { extractError } from '../api/client';
@@ -44,6 +46,8 @@ export default function ImportPage() {
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [uploadingImageKey, setUploadingImageKey] = useState<string | null>(null);
+  const uploadedSourceImage = useRef<{ file: File; url: string } | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const storageKey = `exa-import-active-${user?.id ?? 'guest'}`;
@@ -112,6 +116,7 @@ export default function ImportPage() {
     setSelected(new Set());
     setPollError('');
     setFile(null);
+    uploadedSourceImage.current = null;
   };
 
 
@@ -133,6 +138,7 @@ export default function ImportPage() {
     setFile(candidate);
     setPreview(null);
     setSelected(new Set());
+    uploadedSourceImage.current = null;
   };
 
   const handleDrop = (event: DragEvent<HTMLLabelElement>) => {
@@ -187,6 +193,61 @@ export default function ImportPage() {
       : current);
   };
 
+  const uploadQuestionImage = async (index: number, imageFile: File) => {
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(imageFile.type) || imageFile.size > 5 * 1024 * 1024) {
+      toast('Ảnh không hợp lệ', 'Chọn PNG, JPEG hoặc WebP, tối đa 5 MB', 'warn');
+      return;
+    }
+    setUploadingImageKey(`question-${index}`);
+    try {
+      const imageUrl = await questionApi.uploadImage(imageFile);
+      updateQuestion(index, { imageUrl });
+    } catch (error) {
+      toast('Không tải được ảnh câu hỏi', extractError(error), 'error');
+    } finally {
+      setUploadingImageKey(null);
+    }
+  };
+
+  const attachScannedImage = async (index: number) => {
+    if (!file || uploadingImageKey) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast('Ảnh gốc quá lớn để đính kèm', 'Ảnh dùng làm hình minh họa tối đa 5 MB. Bạn có thể chọn ảnh nhỏ hơn ở câu hỏi.', 'warn');
+      return;
+    }
+    setUploadingImageKey(`question-${index}`);
+    try {
+      const cached = uploadedSourceImage.current;
+      const imageUrl = cached?.file === file ? cached.url : await questionApi.uploadImage(file);
+      uploadedSourceImage.current = { file, url: imageUrl };
+      updateQuestion(index, { imageUrl });
+    } catch (error) {
+      toast('Không đính kèm được ảnh đã quét', extractError(error), 'error');
+    } finally {
+      setUploadingImageKey(null);
+    }
+  };
+
+  const uploadOptionImage = async (questionIndex: number, optionIndex: number, imageFile: File) => {
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(imageFile.type) || imageFile.size > 5 * 1024 * 1024) {
+      toast('Ảnh không hợp lệ', 'Chọn PNG, JPEG hoặc WebP, tối đa 5 MB', 'warn');
+      return;
+    }
+    const key = `option-${questionIndex}-${optionIndex}`;
+    setUploadingImageKey(key);
+    try {
+      const imageUrl = await questionApi.uploadImage(imageFile);
+      const currentImages = preview?.questions[questionIndex]?.optionImages ?? [];
+      const optionImages = Array.from({ length: preview?.questions[questionIndex]?.options.length ?? 0 }, (_, index) =>
+        index === optionIndex ? imageUrl : currentImages[index] ?? '');
+      updateQuestion(questionIndex, { optionImages });
+    } catch (error) {
+      toast('Không tải được ảnh phương án', extractError(error), 'error');
+    } finally {
+      setUploadingImageKey(null);
+    }
+  };
+
   const toggleSelect = (idx: number) => {
     const next = new Set(selected);
     if (next.has(idx)) next.delete(idx);
@@ -195,7 +256,7 @@ export default function ImportPage() {
   };
 
   const handleSave = async () => {
-    if (!preview || saving || preview.status !== 'REVIEW') return;
+    if (!preview || saving || uploadingImageKey || preview.status !== 'REVIEW') return;
     const questions = preview.questions.filter((_, idx) => selected.has(idx));
     if (questions.length === 0) {
       toast('Chưa chọn câu nào', '', 'warn');
@@ -453,7 +514,7 @@ export default function ImportPage() {
               <Button
                 variant="primary"
                 loading={saving}
-                disabled={selected.size === 0}
+                disabled={selected.size === 0 || uploadingImageKey !== null}
                 onClick={handleSave}
                 icon={<Icon name="save" size={16} />}
               >
@@ -506,6 +567,28 @@ export default function ImportPage() {
                       <MathText className="block whitespace-pre-wrap text-sm font-semibold leading-relaxed text-slate-900 dark:text-white">
                         {q.content}
                       </MathText>
+                      <div className="mt-2 flex flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
+                        <label className="cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-blue-400 dark:border-slate-700 dark:text-slate-200">
+                          {uploadingImageKey === `question-${idx}` ? 'Đang tải ảnh...' : q.imageUrl ? 'Đổi ảnh câu hỏi' : 'Thêm ảnh câu hỏi'}
+                          <input type="file" accept="image/png,image/jpeg,image/webp" aria-label={`Thêm ảnh câu hỏi ${idx + 1}`}
+                            disabled={uploadingImageKey !== null || saving}
+                            onChange={(event) => {
+                              const imageFile = event.target.files?.[0];
+                              if (imageFile) void uploadQuestionImage(idx, imageFile);
+                              event.target.value = '';
+                            }} className="sr-only" />
+                        </label>
+                        {file && /\.(png|jpe?g|webp)$/i.test(file.name) && (
+                          <button type="button" disabled={uploadingImageKey !== null || saving}
+                            onClick={() => void attachScannedImage(idx)}
+                            className="rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-60 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
+                            {uploadingImageKey === `question-${idx}` ? 'Đang đính kèm...' : 'Dùng ảnh đã quét'}
+                          </button>
+                        )}
+                        {q.imageUrl && <button type="button" onClick={() => updateQuestion(idx, { imageUrl: null })}
+                          className="rounded-lg px-2 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40">Gỡ ảnh câu hỏi</button>}
+                      </div>
+                      {q.imageUrl && <QuestionImage src={q.imageUrl} alt={`Hình minh họa câu ${idx + 1}`} className="mt-2" />}
                       <details className="mt-2 text-xs text-slate-500" onClick={(event) => event.stopPropagation()}>
                         <summary className="w-fit cursor-pointer select-none">Sửa nội dung câu hỏi</summary>
                         <textarea
@@ -552,6 +635,27 @@ export default function ImportPage() {
                                   className="mt-2 w-full resize-y rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm font-normal text-slate-900 dark:text-white"
                                 />
                               </details>
+                              {q.type === 'MCQ' && (
+                                <>
+                                  <div className="mt-2 flex flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
+                                    <label className="cursor-pointer rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium hover:border-blue-400 dark:border-slate-700">
+                                      {uploadingImageKey === `option-${idx}-${i}` ? 'Đang tải...' : q.optionImages?.[i] ? `Đổi ảnh ${letter}` : `Thêm ảnh ${letter}`}
+                                      <input type="file" accept="image/png,image/jpeg,image/webp"
+                                        aria-label={`Thêm ảnh phương án ${letter}, câu ${idx + 1}`}
+                                        disabled={uploadingImageKey !== null || saving}
+                                        onChange={(event) => {
+                                          const imageFile = event.target.files?.[0];
+                                          if (imageFile) void uploadOptionImage(idx, i, imageFile);
+                                          event.target.value = '';
+                                        }} className="sr-only" />
+                                    </label>
+                                    {q.optionImages?.[i] && <button type="button"
+                                      onClick={() => updateQuestion(idx, { optionImages: q.optionImages?.map((image, imageIndex) => imageIndex === i ? '' : image) })}
+                                      className="rounded-md px-2 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40">Gỡ ảnh</button>}
+                                  </div>
+                                  {q.optionImages?.[i] && <QuestionImage src={q.optionImages[i]} alt={`Hình phương án ${letter}, câu ${idx + 1}`} className="mt-2" />}
+                                </>
+                              )}
                             </div>
                           );
                         })}

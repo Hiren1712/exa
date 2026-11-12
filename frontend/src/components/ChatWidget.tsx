@@ -4,6 +4,7 @@ import type { ChatTurn } from '../api/ai';
 import { aiApi } from '../api/ai';
 import { extractError } from '../api/client';
 import { Icon } from './Icon';
+import { ExaBot } from './ExaBot';
 import { decodeHtmlEntities, MathText } from './MathText';
 
 interface StoredMessage extends ChatTurn {
@@ -269,7 +270,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
           aria-label="Mở trợ lý EXA"
           className="fixed bottom-5 right-5 z-50 flex h-14 items-center gap-2 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 px-5 font-semibold text-white shadow-xl shadow-blue-600/30 transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-blue-300"
         >
-          <Icon name="message" size={21} />
+          <ExaBot size={30} />
           <span className="hidden sm:inline">Hỏi EXA AI</span>
         </button>
       )}
@@ -281,7 +282,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
         >
           <header className="flex shrink-0 items-center gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-white">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15">
-              <Icon name="sparkle" size={21} />
+              <ExaBot size={29} />
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-sm font-bold">ExaBot</h2>
@@ -366,7 +367,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                 {messages.length === 0 ? (
                   <div className="flex min-h-full flex-col justify-center">
                     <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-300">
-                      <Icon name="sparkle" size={24} />
+                      <ExaBot size={36} />
                     </div>
                     <h3 className="text-center text-base font-bold text-slate-900 dark:text-white">Mình có thể giúp gì cho bạn?</h3>
                     <p className="mx-auto mt-1 max-w-xs text-center text-xs leading-relaxed text-slate-500">

@@ -49,6 +49,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/v1/users/*/media/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/v1/question-media/*").permitAll()
                         .requestMatchers("/uploads/**", "/files/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         // Còn lại yêu cầu xác thực

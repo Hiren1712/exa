@@ -9,6 +9,8 @@ export interface ParsedQuestion {
   answerText: string | null;
   difficulty: string;
   explanation: string | null;
+  imageUrl?: string | null;
+  optionImages?: string[];
 }
 
 export interface ImportPreview {
