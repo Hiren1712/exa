@@ -100,8 +100,11 @@ public class ChatbotService {
                     return reply;
                 } catch (RuntimeException error) {
                     lastError = error;
+                    String failure = error instanceof ChatProviderException providerException
+                            ? "HTTP " + providerException.statusCode()
+                            : error.getClass().getSimpleName();
                     log.warn("ExaBot provider {} slot {} failed; trying the next key/provider ({})",
-                            provider, config.slot(), error.getClass().getSimpleName());
+                            provider, config.slot(), failure);
                 }
             }
         }
