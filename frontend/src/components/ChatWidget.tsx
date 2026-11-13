@@ -1,4 +1,12 @@
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FormEvent,
+  KeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 import type { ChatProvider, ChatTurn } from '../api/ai';
 import { aiApi } from '../api/ai';
@@ -26,7 +34,58 @@ interface ChatWidgetProps {
 const MAX_STORED_THREADS = 20;
 const MAX_STORED_MESSAGES = 80;
 const MAX_INPUT_LENGTH = 4000;
+const LAUNCHER_SIZE = 48;
+const LAUNCHER_EDGE = 8;
 const CHAT_INLINE_PART = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\$[^$\n]+?\$|\\\([\s\S]+?\\\)|\*\*[^*\n]+\*\*|__[^_\n]+__|~~[^~\n]+~~|\*[^*\n]+\*|_[^_\n]+_|`[^`\n]+`)/g;
+
+interface FloatingPosition {
+  x: number;
+  y: number;
+}
+
+interface ViewportSize {
+  width: number;
+  height: number;
+}
+
+function isFloatingPosition(value: unknown): value is FloatingPosition {
+  return typeof value === 'object' && value !== null
+    && 'x' in value && typeof value.x === 'number' && Number.isFinite(value.x)
+    && 'y' in value && typeof value.y === 'number' && Number.isFinite(value.y);
+}
+
+function getViewportSize(): ViewportSize {
+  return {
+    width: typeof window === 'undefined' ? 1024 : window.innerWidth,
+    height: typeof window === 'undefined' ? 768 : window.innerHeight,
+  };
+}
+
+function clampLauncherPosition(position: FloatingPosition, viewport: ViewportSize): FloatingPosition {
+  return {
+    x: Math.min(Math.max(LAUNCHER_EDGE, position.x), Math.max(LAUNCHER_EDGE, viewport.width - LAUNCHER_SIZE - LAUNCHER_EDGE)),
+    y: Math.min(Math.max(LAUNCHER_EDGE, position.y), Math.max(LAUNCHER_EDGE, viewport.height - LAUNCHER_SIZE - LAUNCHER_EDGE)),
+  };
+}
+
+function launcherStorageKey(userId: number) {
+  return `exa-chat-launcher-position-${userId}`;
+}
+
+function readLauncherPosition(userId: number): FloatingPosition {
+  const viewport = getViewportSize();
+  const defaultPosition = {
+    x: viewport.width - LAUNCHER_SIZE - 24,
+    y: viewport.height - LAUNCHER_SIZE - 24,
+  };
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(launcherStorageKey(userId)) || 'null');
+    if (isFloatingPosition(saved)) return clampLauncherPosition(saved, viewport);
+  } catch (error) {
+    console.error('Không thể đọc vị trí nút ExaBot đã lưu:', error);
+  }
+  return clampLauncherPosition(defaultPosition, viewport);
+}
 
 function renderInlineChatText(text: string): ReactNode[] {
   return text.split(CHAT_INLINE_PART).map((part, index) => {
@@ -149,8 +208,19 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
   const [error, setError] = useState('');
   const [pendingHistory, setPendingHistory] = useState<ChatTurn[] | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [viewport, setViewport] = useState(getViewportSize);
+  const [launcherPosition, setLauncherPosition] = useState(() => readLauncherPosition(userId));
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const launcherDrag = useRef<{
+    pointerId: number;
+    offsetX: number;
+    offsetY: number;
+    startX: number;
+    startY: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressLauncherClick = useRef(false);
 
   const activeThread = threads.find((thread) => thread.id === activeThreadId) ?? null;
   const messages = useMemo(() => activeThread?.messages ?? [], [activeThread]);
@@ -179,6 +249,24 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
       console.error('Không thể lưu lựa chọn AI chatbot trên thiết bị:', error);
     }
   }, [provider, userId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(launcherStorageKey(userId), JSON.stringify(launcherPosition));
+    } catch (error) {
+      console.error('Không thể lưu vị trí nút ExaBot trên thiết bị:', error);
+    }
+  }, [launcherPosition, userId]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const nextViewport = getViewportSize();
+      setViewport(nextViewport);
+      setLauncherPosition((current) => clampLauncherPosition(current, nextViewport));
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (!open || showHistory) return;
@@ -284,19 +372,80 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
     }
   };
 
+  const handleLauncherPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) return;
+    suppressLauncherClick.current = false;
+    launcherDrag.current = {
+      pointerId: event.pointerId,
+      offsetX: event.clientX - launcherPosition.x,
+      offsetY: event.clientY - launcherPosition.y,
+      startX: event.clientX,
+      startY: event.clientY,
+      moved: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleLauncherPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const drag = launcherDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 4) {
+      drag.moved = true;
+    }
+    if (drag.moved) {
+      event.preventDefault();
+      setLauncherPosition(clampLauncherPosition({
+        x: event.clientX - drag.offsetX,
+        y: event.clientY - drag.offsetY,
+      }, viewport));
+    }
+  };
+
+  const handleLauncherPointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (launcherDrag.current?.pointerId !== event.pointerId) return;
+    suppressLauncherClick.current = launcherDrag.current.moved;
+    launcherDrag.current = null;
+  };
+
+  const chatPanelStyle = useMemo(() => {
+    if (viewport.width < 640) return undefined;
+    const panelWidth = Math.min(440, viewport.width - 40);
+    const panelHeight = Math.min(700, viewport.height - 40);
+    const left = Math.min(
+      Math.max(20, launcherPosition.x + LAUNCHER_SIZE / 2 - panelWidth / 2),
+      viewport.width - panelWidth - 20,
+    );
+    const desiredTop = launcherPosition.y > viewport.height / 2
+      ? launcherPosition.y - panelHeight - 12
+      : launcherPosition.y + LAUNCHER_SIZE + 12;
+    const top = Math.min(Math.max(20, desiredTop), viewport.height - panelHeight - 20);
+    return { left, top, right: 'auto', bottom: 'auto' };
+  }, [launcherPosition, viewport]);
+
   return (
     <>
       {!open && (
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onPointerDown={handleLauncherPointerDown}
+          onPointerMove={handleLauncherPointerMove}
+          onPointerUp={handleLauncherPointerUp}
+          onPointerCancel={handleLauncherPointerUp}
+          onClick={() => {
+            if (suppressLauncherClick.current) {
+              suppressLauncherClick.current = false;
+              return;
+            }
+            setOpen(true);
+          }}
           aria-label="Mở trợ lý EXA"
-          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-14 items-center gap-2 rounded-2xl bg-slate-950 px-5 font-semibold text-white shadow-xl shadow-blue-950/25 transition hover:-translate-y-0.5 hover:bg-blue-950 hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-blue-300 sm:bottom-6 sm:right-6"
+          title="Kéo để di chuyển · Nhấn để mở trợ lý"
+          style={{ left: launcherPosition.x, top: launcherPosition.y }}
+          className="fixed z-50 flex h-12 w-12 touch-none cursor-grab items-center justify-center rounded-full bg-slate-950 p-0 text-white shadow-xl shadow-blue-950/25 transition hover:scale-105 hover:bg-blue-950 hover:shadow-2xl active:cursor-grabbing focus:outline-none focus:ring-4 focus:ring-blue-300"
         >
-          <span className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500">
-            <ExaBot size={28} />
+          <span className="grid h-full w-full place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600">
+            <ExaBot size={30} />
           </span>
-          <span>Hỏi gia sư EXA</span>
         </button>
       )}
 
@@ -304,6 +453,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
         <section
           role="dialog"
           aria-labelledby="exa-chat-title"
+          style={chatPanelStyle}
           className="fixed inset-x-0 bottom-0 z-50 flex h-[100dvh] w-full flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 dark:border-slate-700 dark:bg-slate-900 sm:inset-x-auto sm:bottom-5 sm:right-5 sm:h-[min(700px,calc(100dvh-2.5rem))] sm:w-[min(440px,calc(100vw-2.5rem))] sm:rounded-[1.75rem]"
         >
           <header className="flex shrink-0 items-center gap-3 border-b border-white/10 bg-slate-950 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white sm:pt-3">

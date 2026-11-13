@@ -26,12 +26,14 @@ public class ImportProcessingService {
 
     @Async("importTaskExecutor")
     public void processAsync(Long jobId, String subjectHint, String supplementalContent,
-                             ImportMode mode, Integer questionCount, Integer grade) {
+                             ImportMode mode, Integer questionCount, Integer grade,
+                             ImportAiProvider provider) {
         ImportJob job = importJobRepository.findById(jobId).orElse(null);
         if (job == null) {
             log.error("Import job {} disappeared before processing", jobId);
             return;
         }
+        geminiParser.setPreferredTaskProvider(provider);
         try {
             job.setStatus(ImportJob.Status.EXTRACTING);
             job.setStartedAt(LocalDateTime.now());
@@ -95,6 +97,8 @@ public class ImportProcessingService {
         } catch (Exception error) {
             log.error("Import job {} failed", jobId, error);
             fail(job, "Không thể phân tích nội dung tệp. Hãy kiểm tra định dạng rồi thử lại.");
+        } finally {
+            geminiParser.clearTaskContext();
         }
     }
 

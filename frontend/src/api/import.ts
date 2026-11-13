@@ -23,6 +23,7 @@ export interface ImportPreview {
 }
 
 export type ImportMode = 'EXTRACT' | 'GENERATE';
+export type ImportAiProvider = 'GEMINI' | 'GROQ';
 
 export const importApi = {
   upload: async (
@@ -32,6 +33,7 @@ export const importApi = {
     grade: number,
     mode: ImportMode,
     questionCount: number,
+    provider: ImportAiProvider,
   ): Promise<number> => {
     const formData = new FormData();
     if (file) formData.append('file', file);
@@ -40,6 +42,7 @@ export const importApi = {
     formData.append('grade', String(grade));
     formData.append('mode', mode);
     formData.append('questionCount', String(questionCount));
+    formData.append('provider', provider);
 
     const res = await apiClient.post<ApiResponse<number>>('/v1/imports/upload', formData, { timeout: 120_000 });
     return res.data.data;

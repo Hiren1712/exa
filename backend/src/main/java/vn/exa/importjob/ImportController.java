@@ -29,9 +29,10 @@ public class ImportController {
             @RequestParam(value = "mode", defaultValue = "EXTRACT") ImportMode mode,
             @RequestParam(value = "questionCount", defaultValue = "10") Integer questionCount,
             @RequestParam(value = "grade", defaultValue = "12") Integer grade,
+            @RequestParam(value = "provider", defaultValue = "GEMINI") ImportAiProvider provider,
             @AuthenticationPrincipal CurrentUser user) {
         Long jobId = importService.uploadAndProcess(
-                file, content, user.getId(), subjectHint, mode, questionCount, grade);
+                file, content, user.getId(), subjectHint, mode, questionCount, grade, provider);
         return ResponseEntity.ok(ApiResponse.ok(jobId, "Đã upload, đang xử lý"));
     }
 

@@ -226,6 +226,76 @@ class GeminiParserTest {
     }
 
     @Test
+    void selectedGroqProviderIsTriedBeforeGeminiForImportTasks() {
+        List<String> requestedHosts = new ArrayList<>();
+        ExchangeFunction exchange = request -> {
+            requestedHosts.add(request.url().getHost());
+            return Mono.just(ClientResponse.create(HttpStatus.OK)
+                    .header("Content-Type", "application/json")
+                    .body("""
+                            {"choices":[{"message":{"content":"[{\\"number\\":1,\\"content\\":\\"Groq question\\",\\"options\\":[\\"A\\",\\"B\\"],\\"correctAnswer\\":\\"A\\"}]"}}]}
+                            """)
+                    .build());
+        };
+        GeminiParser parser = new GeminiParser(
+                WebClient.builder().exchangeFunction(exchange), objectMapper);
+        ReflectionTestUtils.setField(parser, "apiKey", "gemini-test-key");
+        ReflectionTestUtils.setField(parser, "model", "gemini-test-model");
+        ReflectionTestUtils.setField(parser, "groqApiKey", "groq-test-key");
+        ReflectionTestUtils.setField(parser, "groqModel", "groq-test-model");
+        ReflectionTestUtils.setField(parser, "groqBaseUrl",
+                "https://api.groq.com/openai/v1/chat/completions");
+        ReflectionTestUtils.setField(parser, "groqTimeoutMs", 1000L);
+        parser.setPreferredTaskProvider(ImportAiProvider.GROQ);
+
+        List<ParsedQuestion> questions = parser.generateQuestions(
+                "Toán", 10, "Phân số", 1, "COMPREHENSION");
+
+        assertThat(questions).hasSize(1);
+        assertThat(questions.get(0).getContent()).isEqualTo("Groq question");
+        assertThat(requestedHosts).containsExactly("api.groq.com");
+        assertThat(parser.getAndClearLastTaskModel()).isEqualTo("Groq: groq-test-model");
+    }
+
+    @Test
+    void selectedGroqProviderFallsBackToGeminiWhenGroqFails() {
+        List<String> requestedHosts = new ArrayList<>();
+        ExchangeFunction exchange = request -> {
+            requestedHosts.add(request.url().getHost());
+            if (request.url().getHost().equals("api.groq.com")) {
+                return Mono.just(ClientResponse.create(HttpStatus.TOO_MANY_REQUESTS)
+                        .body("{\"error\":\"rate limit\"}")
+                        .build());
+            }
+            return Mono.just(ClientResponse.create(HttpStatus.OK)
+                    .header("Content-Type", "application/json")
+                    .body("""
+                            {"candidates":[{"content":{"parts":[{"text":"[{\\"number\\":1,\\"content\\":\\"Gemini question\\",\\"options\\":[\\"A\\",\\"B\\"],\\"correctAnswer\\":\\"B\\"}]"}]}}]}
+                            """)
+                    .build());
+        };
+        GeminiParser parser = new GeminiParser(
+                WebClient.builder().exchangeFunction(exchange), objectMapper);
+        ReflectionTestUtils.setField(parser, "apiKey", "gemini-test-key");
+        ReflectionTestUtils.setField(parser, "model", "gemini-test-model");
+        ReflectionTestUtils.setField(parser, "groqApiKey", "groq-test-key");
+        ReflectionTestUtils.setField(parser, "groqModel", "groq-test-model");
+        ReflectionTestUtils.setField(parser, "groqBaseUrl",
+                "https://api.groq.com/openai/v1/chat/completions");
+        ReflectionTestUtils.setField(parser, "timeoutMs", 1000L);
+        ReflectionTestUtils.setField(parser, "groqTimeoutMs", 1000L);
+        parser.setPreferredTaskProvider(ImportAiProvider.GROQ);
+
+        List<ParsedQuestion> questions = parser.generateQuestions(
+                "Toán", 10, "Phân số", 1, "COMPREHENSION");
+
+        assertThat(questions).hasSize(1);
+        assertThat(questions.get(0).getContent()).isEqualTo("Gemini question");
+        assertThat(requestedHosts).containsExactly("api.groq.com", "generativelanguage.googleapis.com");
+        assertThat(parser.getAndClearLastTaskModel()).isEqualTo("Gemini: gemini-test-model");
+    }
+
+    @Test
     void groqMessagesPreserveImagePartsAsDataUrls() throws Exception {
         GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
         JsonNode geminiRequest = objectMapper.readTree("""
@@ -237,9 +307,11 @@ class GeminiParserTest {
 
         JsonNode groqRequest = objectMapper.valueToTree(parser.toGroqMessages(geminiRequest));
 
-        assertThat(groqRequest.at("/0/role").asText()).isEqualTo("user");
-        assertThat(groqRequest.at("/0/content/0/text").asText()).isEqualTo("Read this image");
-        assertThat(groqRequest.at("/0/content/1/image_url/url").asText())
+        assertThat(groqRequest.at("/0/role").asText()).isEqualTo("system");
+        assertThat(groqRequest.at("/0/content").asText()).contains("không đoán đáp án");
+        assertThat(groqRequest.at("/1/role").asText()).isEqualTo("user");
+        assertThat(groqRequest.at("/1/content/0/text").asText()).isEqualTo("Read this image");
+        assertThat(groqRequest.at("/1/content/1/image_url/url").asText())
                 .isEqualTo("data:image/png;base64,aGVsbG8=");
     }
 

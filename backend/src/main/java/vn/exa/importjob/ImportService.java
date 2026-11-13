@@ -36,7 +36,8 @@ public class ImportService {
     private String uploadDir;
 
     public Long uploadAndProcess(MultipartFile file, String content, Long userId, String subjectHint,
-                                 ImportMode mode, Integer questionCount, Integer grade) {
+                                 ImportMode mode, Integer questionCount, Integer grade,
+                                 ImportAiProvider provider) {
         validateInput(file, content, mode, questionCount, grade);
         geminiParser.validateConfiguration();
 
@@ -61,7 +62,8 @@ public class ImportService {
 
             job = importJobRepo.save(job);
             importProcessingService.processAsync(
-                    job.getId(), subjectHint, hasFile ? content : null, mode, questionCount, grade);
+                    job.getId(), subjectHint, hasFile ? content : null, mode, questionCount, grade,
+                    provider);
             return job.getId();
         } catch (BusinessException be) {
             throw be;

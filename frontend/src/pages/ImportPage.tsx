@@ -11,7 +11,7 @@ import { useAuth } from '../hooks/useAuth';
 import { MathText } from '../components/MathText';
 import { questionApi } from '../api/question';
 import { importApi } from '../api/import';
-import type { ImportMode, ImportPreview, ParsedQuestion } from '../api/import';
+import type { ImportAiProvider, ImportMode, ImportPreview, ParsedQuestion } from '../api/import';
 import { extractError } from '../api/client';
 import { DIFFICULTY_LABELS } from '../lib/utils';
 
@@ -35,6 +35,7 @@ export default function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [content, setContent] = useState('');
   const [importMode, setImportMode] = useState<ImportMode>('GENERATE');
+  const [provider, setProvider] = useState<ImportAiProvider>('GEMINI');
   const [questionCount, setQuestionCount] = useState(10);
   const [subject, setSubject] = useState('Toán');
   const [grade, setGrade] = useState(12);
@@ -159,7 +160,9 @@ export default function ImportPage() {
     if (uploading) return;
     setUploading(true);
     try {
-      const jobId = await importApi.upload(file, content, subject.trim(), grade, importMode, questionCount);
+      const jobId = await importApi.upload(
+        file, content, subject.trim(), grade, importMode, questionCount, provider,
+      );
       setPreview({
         jobId,
         originalName: file?.name || 'Nội dung nhập tay',
@@ -361,7 +364,7 @@ export default function ImportPage() {
                 Tạo câu hỏi từ nội dung
               </span>
               <span className="mt-1 block text-xs text-slate-500">
-                Gemini xử lý ghi chú, đoạn văn, bảng, dữ kiện, chủ đề ngắn hoặc yêu cầu tự nhiên; không cần theo mẫu đề thi hay có câu hỏi sẵn.
+                AI xử lý ghi chú, đoạn văn, bảng, dữ kiện, chủ đề ngắn hoặc yêu cầu tự nhiên; không cần theo mẫu đề thi hay có câu hỏi sẵn.
               </span>
             </button>
           </div>
@@ -377,6 +380,54 @@ export default function ImportPage() {
               }))}
             />
           )}
+
+          <div>
+            <div className="mb-2 block text-xs font-semibold text-slate-600 dark:text-slate-400">
+              AI xử lý import
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2" role="group" aria-label="Chọn AI cho import">
+              <button
+                type="button"
+                onClick={() => setProvider('GROQ')}
+                aria-pressed={provider === 'GROQ'}
+                className={`rounded-xl border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-blue-500 ${
+                  provider === 'GROQ'
+                    ? 'border-blue-500 bg-blue-50 text-blue-950 shadow-sm dark:bg-blue-500/15 dark:text-blue-100'
+                    : 'border-slate-300 bg-white text-slate-800 hover:border-blue-400 hover:bg-blue-50/60 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-700'
+                }`}
+              >
+                <span className="flex items-center gap-2 text-sm font-bold">
+                  <Icon name="zap" size={17} />
+                  Groq · Nhanh
+                </span>
+                <span className="mt-1 block text-xs text-slate-500">
+                  Ưu tiên xử lý nhanh; ảnh/PDF scan cần model Groq hỗ trợ Vision.
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setProvider('GEMINI')}
+                aria-pressed={provider === 'GEMINI'}
+                className={`rounded-xl border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-blue-500 ${
+                  provider === 'GEMINI'
+                    ? 'border-blue-500 bg-blue-50 text-blue-950 shadow-sm dark:bg-blue-500/15 dark:text-blue-100'
+                    : 'border-slate-300 bg-white text-slate-800 hover:border-blue-400 hover:bg-blue-50/60 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-700'
+                }`}
+              >
+                <span className="flex items-center gap-2 text-sm font-bold">
+                  <Icon name="exaAi" size={17} />
+                  Gemini · Chi tiết
+                </span>
+                <span className="mt-1 block text-xs text-slate-500">
+                  Phân tích sâu câu hỏi, đáp án, công thức và nội dung hình ảnh.
+                </span>
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              AI đã chọn được ưu tiên; nếu gặp lỗi, hệ thống tự chuyển sang AI còn lại.
+              Khi trích xuất, AI không đoán đáp án không có trong tài liệu. Hãy rà soát trước khi lưu.
+            </p>
+          </div>
 
           <div>
             <label className="mb-2 block text-xs font-semibold text-slate-600 dark:text-slate-400">
@@ -433,7 +484,7 @@ export default function ImportPage() {
               {file ? file.name : 'Kéo thả file vào đây hoặc bấm để chọn'}
             </div>
             <div className="text-xs text-slate-500">
-            Hỗ trợ TXT, DOCX, PDF (kể cả PDF scan), XLSX, XLS, PNG, JPG và WEBP. Gemini đọc chữ, công thức, bảng và hình/biểu đồ trong ảnh. Tệp tối đa 20MB, ảnh tối đa 15MB.
+            Hỗ trợ TXT, DOCX, PDF (kể cả PDF scan), XLSX, XLS, PNG, JPG và WEBP. Tệp tối đa 20MB, ảnh tối đa 15MB.
             </div>
           </label>
 
