@@ -96,17 +96,27 @@ export default function Dashboard() {
       ];
 
   return (
-    <div className="space-y-6">
+    <div className="exa-dashboard space-y-6 sm:space-y-8 animate-fade-in">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[.16em] text-blue-700 dark:text-blue-300 mb-1">Tổng quan học tập</p>
+          <h2 className="exa-page-title text-slate-900 dark:text-white">Bảng điều khiển</h2>
+          <p className="exa-page-subtitle">{isTeacher ? 'Quản lý lớp học, đề thi và kết quả ở một nơi.' : 'Theo dõi tiến độ và tiếp tục hành trình học tập.'}</p>
+        </div>
+        <span className="exa-dashboard-edition text-[11px] font-bold uppercase tracking-[.16em]">EXA / YOUR LEARNING SPACE</span>
+      </div>
       {/* Welcome Hero */}
-      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#123b79] via-[#1554a6] to-[#3668b8] text-white p-6 sm:p-8 shadow-xl shadow-blue-800/15">
-        <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-white/10" />
-        <div className="absolute -left-10 -bottom-10 w-48 h-48 rounded-full bg-white/10" />
+      <div className="exa-hero relative rounded-[28px] overflow-hidden text-white p-6 sm:p-9">
+        <div className="exa-hero-orbit exa-hero-orbit-one" aria-hidden="true" />
+        <div className="exa-hero-orbit exa-hero-orbit-two" aria-hidden="true" />
+        <div className="exa-hero-grid" aria-hidden="true" />
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-5">
-          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-3xl">
-            {isTeacher ? '👩‍🏫' : '🎓'}
+          <div className="exa-hero-emblem w-16 h-16 rounded-[20px] flex items-center justify-center text-3xl">
+            <Icon name={isTeacher ? 'graduationCap' : 'book'} size={30} />
           </div>
           <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-1">
+            <div className="exa-hero-kicker">✦ {isTeacher ? 'TEACHER WORKSPACE' : 'STUDENT WORKSPACE'}</div>
+            <h1 className="text-2xl sm:text-[34px] font-extrabold tracking-[-.045em] leading-tight mb-2">
               Xin chào, {user?.fullName}!
             </h1>
             <p className="text-blue-50 text-sm sm:text-base leading-relaxed">
@@ -131,26 +141,26 @@ export default function Dashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-5">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 hover:shadow-lg transition-shadow"
+            className="exa-stat-card exa-premium-card rounded-[20px] p-4 sm:p-6"
           >
             <div
-              className={`w-11 h-11 rounded-xl bg-gradient-to-br ${stat.color} text-white flex items-center justify-center mb-3 shadow-lg`}
+              className={`exa-stat-icon w-11 h-11 rounded-[13px] bg-gradient-to-br ${stat.color} text-white flex items-center justify-center mb-4`}
             >
               <Icon name={stat.icon} size={20} />
             </div>
-            <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white">{stat.value}</h3>
-            <p className="text-xs text-slate-500 mt-0.5">{stat.label}</p>
+            <h3 className="text-[27px] sm:text-[32px] font-extrabold tracking-[-.055em] text-slate-900 dark:text-white">{loading ? <span className="inline-block w-14 h-7 rounded-md bg-slate-200 dark:bg-slate-700 animate-pulse" aria-label="Đang tải" /> : stat.value}</h3>
+            <p className="text-xs font-medium text-slate-500 mt-1.5">{stat.label}</p>
           </div>
         ))}
       </div>
 
       {/* Recent exams */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+      <div className="exa-premium-card rounded-[22px] overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-5 border-b border-slate-200/70 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <Icon name="file" size={18} className="text-blue-500" />
             <h3 className="font-bold text-slate-900 dark:text-white">{isTeacher ? 'Đề thi gần đây' : 'Bài tập được giao'}</h3>
@@ -170,7 +180,7 @@ export default function Dashboard() {
                 <Icon name="file" size={26} className="text-slate-400" />
               </div>
               <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-1">Chưa có đề thi nào</h4>
-              <p className="text-sm text-slate-400 mb-4">Bắt đầu tạo đề thi đầu tiên của bạn</p>
+              <p className="text-sm text-slate-500 mb-4">{isTeacher ? 'Bắt đầu tạo đề thi đầu tiên của bạn' : 'Khi có bài được giao, bạn sẽ thấy tại đây.'}</p>
               {isTeacher && (
                 <Link to="/exams/new">
                   <Button variant="primary" icon={<Icon name="plus" size={16} />}>
@@ -181,7 +191,7 @@ export default function Dashboard() {
             </div>
           ) : (
             exams.slice(0, 5).map((exam) => (
-              <div key={exam.id} className="p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+              <div key={exam.id} className="exa-exam-row px-5 sm:px-6 py-4 flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 transition-colors">
                 <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center text-blue-500">
                   <Icon name="file" size={20} />
                 </div>
@@ -189,18 +199,18 @@ export default function Dashboard() {
                   <h4 className="font-semibold text-sm text-slate-900 dark:text-white truncate">
                     {exam.title}
                   </h4>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs font-medium text-slate-500 mt-1.5">
                     {exam.subject} • {exam.durationMin} phút • {exam.questionCount || 0} câu
                   </p>
                 </div>
-                <span className="text-xs text-slate-400">{fmtDate(exam.createdAt)}</span>
+                <span className="hidden md:inline text-xs text-slate-500 shrink-0">{fmtDate(exam.createdAt)}</span>
                 {!isTeacher && (() => {
                   const submission = latestSubmissionByExam.get(exam.id);
                   const hasSubmitted = submission && submission.status !== 'IN_PROGRESS';
                   return (
                     <Link
                       to={hasSubmitted ? `/exam/${exam.id}/result?submissionId=${submission.id}` : `/exam/${exam.id}`}
-                      className="text-sm font-semibold text-blue-700 dark:text-blue-300 hover:underline"
+                      className="min-h-11 inline-flex items-center justify-center px-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-sm font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-950/70 transition-colors"
                     >
                       {hasSubmitted ? 'Xem kết quả' : submission ? 'Tiếp tục làm' : 'Làm bài'}
                     </Link>
@@ -214,8 +224,8 @@ export default function Dashboard() {
 
       {/* Quick actions */}
       {isTeacher ? (
-        <div className="grid md:grid-cols-2 gap-4">
-          <Link to="/import" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#304a95] to-[#254f9c] p-6 text-white shadow-xl shadow-blue-700/15 hover:shadow-blue-500/25 transition-all">
+        <div className="grid md:grid-cols-2 gap-4 sm:gap-5">
+          <Link to="/import" className="exa-action-ai group relative overflow-hidden rounded-[22px] p-6 sm:p-7 text-white transition-all">
             <div className="relative z-10">
               <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center mb-3">
                 <Icon name="wand" size={22} />
@@ -225,7 +235,7 @@ export default function Dashboard() {
             </div>
           </Link>
 
-          <Link to="/questions" className="group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 hover:shadow-xl transition-all">
+          <Link to="/questions" className="exa-premium-card exa-action-card group relative overflow-hidden rounded-[22px] p-6 sm:p-7 transition-all">
             <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center mb-3 text-blue-500">
               <Icon name="layers" size={22} />
             </div>
@@ -234,7 +244,7 @@ export default function Dashboard() {
           </Link>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-2 gap-4 sm:gap-5">
           <Link to="/classes" className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 hover:shadow-xl transition-all">
             <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center text-blue-500 mb-3"><Icon name="building" size={22} /></div>
             <h4 className="font-bold text-slate-900 dark:text-white">Lớp học của tôi</h4>

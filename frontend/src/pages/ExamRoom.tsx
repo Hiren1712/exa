@@ -85,12 +85,11 @@ export default function ExamRoom() {
           const indexes = data.shuffleOptions
             ? shuffledIndexes(originalOptions.length)
             : originalOptions.map((_, optionIndex) => optionIndex);
-          const originalImages = Array.isArray(question.optionImages) ? question.optionImages : [];
           orderByQuestion[questionId] = indexes;
           return {
             ...question,
             options: indexes.map((optionIndex) => originalOptions[optionIndex].replace(/^[A-D][.)]\s*/i, '')),
-            optionImages: indexes.map((optionIndex) => originalImages[optionIndex] ?? ''),
+            optionImages: indexes.map((optionIndex) => question.optionImages?.[optionIndex] || ''),
           };
         });
         setOptionOrder(orderByQuestion);
@@ -289,17 +288,17 @@ export default function ExamRoom() {
   }
 
   return (
-    <div className="fixed inset-0 z-40 bg-slate-50 dark:bg-slate-950 flex flex-col">
+    <div className="fixed inset-0 z-40 bg-slate-50 dark:bg-slate-950 flex flex-col h-[100dvh]">
       {/* Top bar */}
-      <div className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center gap-4 px-5">
+      <div className="min-h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-2">
         {isPreview && (
-          <span className="rounded-lg bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+          <span className="hidden sm:inline-flex rounded-lg bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
             ĐANG THỬ — KHÔNG LƯU KẾT QUẢ
           </span>
         )}
         <div
           className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-xl font-bold tabular-nums text-base',
+            'flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-xl font-bold tabular-nums text-sm sm:text-base shrink-0',
             timer.isDanger
               ? 'bg-red-50 text-red-600 animate-pulse'
               : timer.isWarning
@@ -335,11 +334,23 @@ export default function ExamRoom() {
         </Button>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Question area */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 min-w-0 overflow-y-auto p-3 sm:p-6">
+          <nav aria-label="Chuyển nhanh câu hỏi" className="md:hidden max-w-3xl mx-auto mb-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3">
+            <div className="flex justify-between items-center mb-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <span>Danh sách câu hỏi</span>
+              <span>{questions.filter((question, i) => !!answers[question.id ?? i + 1]).length}/{questions.length} đã trả lời</span>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Chọn câu">
+              {questions.map((question, i) => {
+                const questionId = question.id ?? i + 1;
+                return <button key={questionId} type="button" aria-label={`Đến câu ${i + 1}${answers[questionId] ? ', đã trả lời' : ''}`} aria-current={i === currentIdx ? 'step' : undefined} onClick={() => setCurrentIdx(i)} className={cn('shrink-0 min-w-11 h-11 px-2 rounded-xl border text-sm font-bold', i === currentIdx ? 'bg-blue-700 text-white border-blue-700' : flagged.has(questionId) ? 'bg-amber-50 text-amber-800 border-amber-300' : answers[questionId] ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700')}>{i + 1}</button>;
+              })}
+            </div>
+          </nav>
           {current && (
-            <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+            <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
                 <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-bold">
                   Câu {currentIdx + 1} / {questions.length}
@@ -351,8 +362,8 @@ export default function ExamRoom() {
 
               <p className="text-base font-semibold text-slate-900 dark:text-white leading-relaxed mb-5 whitespace-pre-wrap">
                 <MathText>{current.content}</MathText>
+                <div className="mt-3"><QuestionImage src={current.imageUrl} alt="Hình minh họa câu hỏi" /></div>
               </p>
-              <QuestionImage src={current.imageUrl} alt={`Hình minh họa câu ${currentIdx + 1}`} className="mb-5" />
 
               {current.options && current.options.length > 0 ? (
                 <div className="space-y-2.5">
@@ -382,8 +393,9 @@ export default function ExamRoom() {
                         >
                           {letter}
                         </div>
-                        <MathText className="text-sm pt-1.5">{opt}</MathText>
-                        <QuestionImage src={current.optionImages?.[i]} alt={`Hình phương án ${letter}`} className="pt-1" />
+                        <div className="min-w-0 flex-1"><MathText className="text-sm pt-1.5">{opt}</MathText>
+                          <div className="mt-2"><QuestionImage src={current.optionImages?.[i]} alt={`Hình phương án ${letter}`} /></div>
+                        </div>
                       </button>
                     );
                   })}
@@ -394,11 +406,11 @@ export default function ExamRoom() {
                   onChange={(e) => handleAnswer(currentIdx, e.target.value)}
                   placeholder="Nhập câu trả lời..."
                   rows={6}
-                  className="w-full p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-blue-500 resize-y"
+                  className="w-full p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-blue-500 resize-y bg-white dark:bg-slate-950 text-slate-900 dark:text-white"
                 />
               )}
 
-              <div className="flex justify-between mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex flex-wrap justify-between gap-2 mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
                 <Button
                   variant="ghost"
                   disabled={currentIdx === 0}
@@ -455,6 +467,8 @@ export default function ExamRoom() {
                 <button
                   key={i}
                   onClick={() => setCurrentIdx(i)}
+                  aria-label={`Đến câu ${i + 1}${answered ? ', đã trả lời' : ''}`}
+                  aria-current={isCur ? 'step' : undefined}
                   className={cn(
                     'aspect-square rounded-lg text-xs font-bold transition-all',
                     isCur

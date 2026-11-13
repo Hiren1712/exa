@@ -310,7 +310,6 @@ export default function ExamBuilder() {
                       <span className="pt-1 text-xs font-bold text-slate-400">{index + 1}</span>
                       <div className="flex-1 min-w-0">
                         <MathText className="text-sm font-semibold text-slate-800 dark:text-slate-200 whitespace-pre-wrap">{question.content}</MathText>
-                        <QuestionImage src={question.imageUrl} alt={`Hình câu hỏi ${index + 1}`} className="mt-2" />
                         <p className="text-xs text-slate-500 mt-2">{QUESTION_TYPE_LABELS[question.type]} · {DIFFICULTY_LABELS[question.difficulty]}</p>
                       </div>
                       <div className="flex flex-col">
@@ -381,7 +380,6 @@ export default function ExamBuilder() {
                   <input type="checkbox" checked={question.id ? pickedIds.has(question.id) : false} onChange={() => toggleQuestion(question)} className="mt-1 accent-blue-600" />
                   <span className="flex-1">
                     <MathText className="block text-sm font-semibold text-slate-800 dark:text-slate-200">{question.content}</MathText>
-                    <QuestionImage src={question.imageUrl} alt="Hình minh họa câu hỏi" className="mt-2" />
                     <span className="block mt-1 text-xs text-slate-500">{question.subject} · {QUESTION_TYPE_LABELS[question.type]}</span>
                   </span>
                 </label>
@@ -404,8 +402,8 @@ export default function ExamBuilder() {
           {questions.map((question, index) => (
             <div key={question.id ?? index} className="border-t border-slate-100 dark:border-slate-800 pt-4">
               <p className="font-semibold text-sm text-slate-900 dark:text-white">Câu {index + 1}. <MathText>{question.content}</MathText></p>
-              <QuestionImage src={question.imageUrl} alt={`Hình câu hỏi ${index + 1}`} className="mt-2" />
-              {question.options?.map((option, optionIndex) => <div key={optionIndex} className="mt-2 pl-3 text-sm text-slate-600 dark:text-slate-400">{String.fromCharCode(65 + optionIndex)}. <MathText>{option}</MathText><QuestionImage src={question.optionImages?.[optionIndex]} alt={`Hình phương án ${String.fromCharCode(65 + optionIndex)}`} className="mt-1" /></div>)}
+              <QuestionImage src={question.imageUrl} alt="Hình minh họa câu hỏi" className="mt-2" />
+              {question.options?.map((option, optionIndex) => <p key={optionIndex} className="mt-2 pl-3 text-sm text-slate-600 dark:text-slate-400">{String.fromCharCode(65 + optionIndex)}. <MathText>{option}</MathText><span className="block"><QuestionImage src={question.optionImages?.[optionIndex]} alt={`Hình phương án ${optionIndex + 1}`} /></span></p>)}
             </div>
           ))}
         </div>

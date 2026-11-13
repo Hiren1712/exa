@@ -212,8 +212,7 @@ public class SubmissionService {
                 .map(question -> {
                     String answer = savedAnswers.get(String.valueOf(question.getId()));
                     return new ReviewQuestion(question.getId(), question.getType().name(),
-                            question.getContent(), question.getOptions(), question.getImageUrl(),
-                            question.getOptionImages(), answer,
+                            question.getContent(), question.getOptions(), question.getImageUrl(), question.getOptionImages(), answer,
                             revealAnswers ? question.getCorrectAnswer() : null,
                             revealAnswers ? question.getAnswerText() : null,
                             revealAnswers ? question.getExplanation() : null);
@@ -252,8 +251,7 @@ public class SubmissionService {
                                     .orElse(null))
                             .filter(question -> question != null && question.getType() == Question.Type.ESSAY)
                             .map(question -> new ReviewQuestion(question.getId(), question.getType().name(),
-                                    question.getContent(), question.getOptions(), question.getImageUrl(),
-                                    question.getOptionImages(), null,
+                                    question.getContent(), question.getOptions(), question.getImageUrl(), question.getOptionImages(), null,
                                     null, null, null))
                             .toList();
                     if (essayQuestions.isEmpty()) return java.util.stream.Stream.empty();
@@ -263,8 +261,7 @@ public class SubmissionService {
                                 Map<String, String> answers = readAnswers(submission.getAnswers());
                                 List<ReviewQuestion> responses = essayQuestions.stream()
                                         .map(question -> new ReviewQuestion(question.id(), question.type(),
-                                                question.content(), question.options(), question.imageUrl(),
-                                                question.optionImages(),
+                                                question.content(), question.options(), question.imageUrl(), question.optionImages(),
                                                 answers.get(String.valueOf(question.id())),
                                                 null, null, null))
                                         .toList();
@@ -371,8 +368,7 @@ public class SubmissionService {
                               LocalDateTime submittedAt, BigDecimal currentScore,
                               List<ReviewQuestion> essayResponses) {}
 
-    public record ReviewQuestion(Long id, String type, String content, String options,
-                                 String imageUrl, String optionImages,
+    public record ReviewQuestion(Long id, String type, String content, String options, String imageUrl, String optionImages,
                                  String studentAnswer, String correctAnswer,
                                  String answerText, String explanation) {}
 

@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 import type { ChatTurn } from '../api/ai';
 import { aiApi } from '../api/ai';
 import { extractError } from '../api/client';
-import { Icon } from './Icon';
 import { ExaBot } from './ExaBot';
+import { Icon } from './Icon';
 import { decodeHtmlEntities, MathText } from './MathText';
 
 interface StoredMessage extends ChatTurn {
@@ -268,27 +268,29 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Mở trợ lý EXA"
-          className="fixed bottom-5 right-5 z-50 flex h-14 items-center gap-2 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 px-5 font-semibold text-white shadow-xl shadow-blue-600/30 transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-blue-300"
+          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-14 items-center gap-2 rounded-2xl bg-slate-950 px-5 font-semibold text-white shadow-xl shadow-blue-950/25 transition hover:-translate-y-0.5 hover:bg-blue-950 hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-blue-300 sm:bottom-6 sm:right-6"
         >
-          <ExaBot size={30} />
-          <span className="hidden sm:inline">Hỏi EXA AI</span>
+          <span className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500">
+            <ExaBot size={28} />
+          </span>
+          <span>Hỏi gia sư EXA</span>
         </button>
       )}
 
       {open && (
         <section
-          aria-label="Chat với trợ lý EXA"
-          className="fixed bottom-3 right-3 z-50 flex h-[min(590px,calc(100dvh-1.5rem))] w-[calc(100vw-1.5rem)] max-w-[370px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 dark:border-slate-700 dark:bg-slate-900 sm:bottom-5 sm:right-5 sm:h-[min(590px,calc(100dvh-2.5rem))]"
+          role="dialog"
+          aria-labelledby="exa-chat-title"
+          className="fixed inset-x-0 bottom-0 z-50 flex h-[100dvh] w-full flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 dark:border-slate-700 dark:bg-slate-900 sm:inset-x-auto sm:bottom-5 sm:right-5 sm:h-[min(700px,calc(100dvh-2.5rem))] sm:w-[min(440px,calc(100vw-2.5rem))] sm:rounded-[1.75rem]"
         >
-          <header className="flex shrink-0 items-center gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-white">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15">
-              <ExaBot size={29} />
+          <header className="flex shrink-0 items-center gap-3 border-b border-white/10 bg-slate-950 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white sm:pt-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-500 shadow-lg shadow-blue-950/30">
+              <ExaBot size={36} />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-sm font-bold">ExaBot</h2>
-              <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-blue-100">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-                Hỏi bài, giải thích và hỗ trợ học tập
+              <h2 id="exa-chat-title" className="truncate text-sm font-bold">Gia sư EXA</h2>
+              <p className="mt-0.5 truncate text-xs text-slate-300">
+                Giải thích · Luyện tập · Khám phá
               </p>
             </div>
             <button
@@ -296,7 +298,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
               onClick={() => { setShowHistory((value) => !value); setError(''); }}
               aria-label={showHistory ? 'Đóng lịch sử trò chuyện' : 'Lịch sử trò chuyện'}
               title="Lịch sử trò chuyện"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-white/90 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/70"
+              className={`flex h-10 w-10 items-center justify-center rounded-xl text-white/90 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/70 ${showHistory ? 'bg-white/10' : ''}`}
             >
               <Icon name="history" size={19} />
             </button>
@@ -305,7 +307,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
               onClick={startNewChat}
               aria-label="Cuộc trò chuyện mới"
               title="Cuộc trò chuyện mới"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-white/90 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/70"
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-white/90 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/70"
             >
               <Icon name="plus" size={20} />
             </button>
@@ -314,21 +316,21 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
               onClick={() => setOpen(false)}
               aria-label="Đóng chatbot"
               title="Đóng"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-white/90 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/70"
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-white/90 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/70"
             >
               <Icon name="x" size={19} />
             </button>
           </header>
 
           {showHistory ? (
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+            <div className="flex min-h-0 flex-1 flex-col bg-white dark:bg-slate-900">
+              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4 dark:border-slate-800">
                 <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Lịch sử trò chuyện</h3>
-                <button type="button" onClick={startNewChat} className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                <button type="button" onClick={startNewChat} className="rounded-lg px-2 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/50">
                   + Trò chuyện mới
                 </button>
               </div>
-              <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+              <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
                 {sortedThreads.length === 0 ? (
                   <p className="px-3 py-8 text-center text-sm text-slate-500">Chưa có cuộc trò chuyện nào.</p>
                 ) : sortedThreads.map((thread) => (
@@ -363,17 +365,17 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
             </div>
           ) : (
             <>
-              <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto bg-slate-50/80 px-3 py-4 dark:bg-slate-950/60 sm:px-4">
+              <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto bg-slate-50 px-3 py-5 dark:bg-slate-950/70 sm:px-4">
                 {messages.length === 0 ? (
                   <div className="flex min-h-full flex-col justify-center">
-                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-300">
-                      <ExaBot size={36} />
+                    <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-600/20">
+                      <ExaBot size={48} />
                     </div>
-                    <h3 className="text-center text-base font-bold text-slate-900 dark:text-white">Mình có thể giúp gì cho bạn?</h3>
-                    <p className="mx-auto mt-1 max-w-xs text-center text-xs leading-relaxed text-slate-500">
-                      Hỏi bài, nhờ giải thích khái niệm hoặc cùng luyện tập từng bước.
+                    <h3 className="text-center text-lg font-bold tracking-tight text-slate-900 dark:text-white">Bắt đầu từ điều bạn tò mò</h3>
+                    <p className="mx-auto mt-2 max-w-xs text-center text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                      Hỏi bài, khám phá khái niệm hoặc luyện tập từng bước cùng gia sư EXA.
                     </p>
-                    <div className="mt-5 space-y-2">
+                    <div className="mt-6 space-y-2.5">
                       {[
                         'Giải thích đạo hàm bằng ví dụ dễ hiểu',
                         'Hướng dẫn giải phương trình bậc hai',
@@ -383,7 +385,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                           key={suggestion}
                           type="button"
                           onClick={() => setInput(suggestion)}
-                          className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-xs text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                          className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                         >
                           {suggestion}
                         </button>
@@ -395,11 +397,16 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                     {messages.map((message) => (
                       <div
                         key={message.id}
-                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        className={`flex items-end gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
+                        {message.role === 'assistant' && (
+                          <div aria-hidden="true" className="mb-5 grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                            <ExaBot size={24} />
+                          </div>
+                        )}
                         <div className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
                           message.role === 'user'
-                            ? 'rounded-br-md bg-blue-600 text-white'
+                            ? 'rounded-br-md bg-gradient-to-br from-blue-600 to-indigo-600 text-white'
                             : 'rounded-bl-md border border-slate-200 bg-white text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
                         }`}>
                           {message.role === 'assistant' ? (
@@ -431,14 +438,17 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                       </div>
                     ))}
                     {sending && (
-                      <div className="flex justify-start">
-                        <div className="flex items-center gap-2 rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900">
+                      <div className="flex items-end gap-2">
+                        <div aria-hidden="true" className="mb-1 grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                          <ExaBot size={24} />
+                        </div>
+                        <div className="flex items-center gap-2 rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                           <span className="flex gap-1">
                             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:-0.2s]" />
                             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:-0.1s]" />
                             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500" />
                           </span>
-                          EXA đang trả lời...
+                          Gia sư EXA đang suy nghĩ...
                         </div>
                       </div>
                     )}
@@ -453,8 +463,8 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                 </div>
               )}
 
-              <form onSubmit={(event) => void submitMessage(event)} className="shrink-0 border-t border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:focus-within:ring-blue-950">
+              <form onSubmit={(event) => void submitMessage(event)} className="shrink-0 border-t border-slate-200 bg-white px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 dark:border-slate-800 dark:bg-slate-900 sm:pb-3">
+                <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2 transition focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:focus-within:ring-blue-950">
                   <textarea
                     ref={inputRef}
                     value={input}

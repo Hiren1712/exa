@@ -136,3 +136,166 @@ main :where(.rounded-2xl.border) { box-shadow: 0 7px 24px -22px rgba(15,40,78,.5
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* EXA 2.0 — interface upgrade: additive rules for existing modules. */
+:root {
+  --exa-radius-sm: 12px;
+  --exa-radius-card: 20px;
+  --exa-shadow-card: 0 10px 35px -24px rgba(16, 44, 94, .28);
+  --exa-focus: #2563eb;
+}
+.dark {
+  --exa-shadow-card: 0 10px 35px -24px rgba(0, 0, 0, .8);
+  --exa-focus: #93c5fd;
+}
+.exa-skip-link { position: fixed; z-index: 100; top: -100px; left: 16px; padding: 12px 18px; background: #1d4ed8; color: white; border-radius: 12px; font-weight: 700; }
+.exa-skip-link:focus { top: 12px; }
+.exa-sidebar { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.exa-topbar { padding-top: env(safe-area-inset-top, 0px); }
+.exa-main { min-width: 0; }
+.exa-nav-item { position: relative; }
+.exa-nav-active::before { content: ''; position: absolute; left: -9px; top: 12px; bottom: 12px; width: 3px; background: #2563eb; border-radius: 999px; }
+.exa-icon-button { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-2); border-radius: 12px; }
+.exa-icon-button:hover { background: var(--surface-2); }
+.exa-stat-card { box-shadow: var(--exa-shadow-card); min-width: 0; }
+.exa-hero { isolation: isolate; }
+.exa-hero::after { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(circle at 85% 25%, rgba(255,255,255,.15), transparent 35%); }
+.exa-dashboard a { text-underline-offset: 3px; }
+.exa-dashboard a:focus-visible, .exa-dashboard button:focus-visible { outline-color: var(--exa-focus); }
+@media (max-width: 639px) {
+  .exa-dashboard .exa-hero h1 { font-size: 1.5rem; line-height: 1.25; overflow-wrap: anywhere; }
+  .exa-stat-card { padding: 14px; }
+  .exa-dashboard .exa-stat-card p { overflow-wrap: anywhere; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .exa-stat-card { transition: box-shadow 180ms ease, transform 180ms ease; }
+  .exa-stat-card:hover { transform: translateY(-2px); }
+}
+
+/* =======================================================================
+   EXA 3.0 · Premium learning workspace
+   Layered on top of the existing Tailwind utilities; no feature rewrites.
+   ======================================================================= */
+:root {
+  --bg: #f5f7fc;
+  --surface: #ffffff;
+  --surface-2: #f7f9fd;
+  --text: #17233b;
+  --text-2: #4e607b;
+  --muted: #64748b;
+  --border: #e5eaf3;
+  --primary: #315de9;
+  --primary-ink: #244ac4;
+  --exa-shadow-card: 0 2px 4px rgba(31,49,91,.015), 0 16px 46px -30px rgba(24,45,95,.24);
+}
+.dark {
+  --bg: #0b1120;
+  --surface: #131d30;
+  --surface-2: #1a2740;
+  --text: #f0f5ff;
+  --text-2: #c0cde2;
+  --muted: #9baecb;
+  --border: #2b3b55;
+  --primary: #80abff;
+  --primary-ink: #a2c2ff;
+  --exa-shadow-card: 0 15px 45px -26px rgba(0,0,0,.65);
+}
+body { font-feature-settings: 'cv11', 'ss01'; }
+.exa-surface-gradient {
+  background-image: radial-gradient(ellipse 60% 42% at 100% -8%, rgba(101,134,244,.09), transparent 74%), radial-gradient(ellipse 45% 50% at -10% 100%, rgba(33,185,194,.05), transparent 75%);
+}
+.exa-sidebar {
+  background: rgba(255,255,255,.96);
+  border-right: 1px solid #e9edf6;
+  box-shadow: 10px 0 45px -42px rgba(29,47,97,.25);
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+}
+.dark .exa-sidebar { background: rgba(17,26,44,.98); border-right-color: #283953; }
+.exa-brand { border-bottom: 1px solid var(--border); }
+.exa-brand-mark {
+  background: linear-gradient(145deg, #1642ac 2%, #4676ff 62%, #8b9bff 110%);
+  box-shadow: 0 8px 18px -5px rgba(51,94,238,.47), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.exa-nav-item { color: var(--text-2); letter-spacing: -.008em; }
+.exa-nav-item svg { flex-shrink: 0; }
+.exa-nav-active::before { left: 0; top: 11px; bottom: 11px; width: 3px; background: #436bfa; }
+.exa-nav-item.exa-nav-active {
+  background: linear-gradient(95deg,rgba(65,104,244,.12),rgba(95,130,240,.055));
+  color: #2352d6; box-shadow: inset 0 0 0 1px rgba(75,112,235,.08);
+}
+.dark .exa-nav-item.exa-nav-active { color: #b9d0ff; background: linear-gradient(95deg,rgba(60,109,228,.25),rgba(61,87,147,.09)); }
+.exa-nav-dot { display: none; width: 5px; height: 5px; background: currentColor; border-radius: 50%; }
+.exa-nav-active .exa-nav-dot { display: inline-block; }
+.exa-pro-card {
+  background: linear-gradient(135deg,#132a65,#2650b1 62%,#4574e7);
+  box-shadow: 0 14px 28px -19px rgba(30,70,176,.8);
+}
+.exa-sidebar-footer { border-top: 1px solid var(--border); }
+.exa-topbar {
+  background: rgba(255,255,255,.86);
+  border-bottom: 1px solid rgba(222,228,240,.8);
+  -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px);
+}
+.dark .exa-topbar { background: rgba(17,26,43,.9); border-bottom-color: #2b3b55; }
+.exa-topbar-divider { height: 24px; width: 1px; background: var(--border); margin: 0 4px; }
+.exa-quick-link { background: #eff4ff; color: #3056cb; border: 1px solid #dfe8ff; transition: background .18s, transform .18s; }
+.exa-quick-link:hover { background: #e5edff; transform: translateY(-1px); }
+.dark .exa-quick-link { background: #1a2c4d; color: #bdd2ff; border-color: #324a70; }
+.exa-page-title { font-size: clamp(1.65rem,1.38rem + 1vw,2.15rem); font-weight: 800; letter-spacing: -.05em; }
+.exa-page-subtitle { color: var(--text-2); }
+.exa-dashboard-edition { color: #8996ad; }
+.exa-premium-card, .exa-card {
+  background: var(--surface); border: 1px solid var(--border);
+  box-shadow: var(--exa-shadow-card);
+}
+.exa-premium-card { transition: box-shadow .22s ease, transform .22s ease, border-color .22s ease; }
+.exa-premium-card:hover { box-shadow: 0 20px 48px -30px rgba(44,68,130,.3); border-color: #cfdaef; }
+.dark .exa-premium-card:hover { box-shadow: 0 18px 50px -28px rgba(0,0,0,.8); border-color: #405675; }
+.exa-hero {
+  background: linear-gradient(108deg, #10265b 0%, #163e8d 51%, #3865d6 100%);
+  box-shadow: 0 24px 55px -31px rgba(24,73,180,.65), inset 0 1px 0 rgba(255,255,255,.17);
+  min-height: 220px; display: flex; align-items: center;
+}
+.exa-hero::after { background: radial-gradient(circle at 85% 22%, rgba(124,174,255,.19), transparent 42%); }
+.exa-hero-grid { position:absolute; inset:0; opacity:.14; pointer-events:none;
+  background-image: linear-gradient(rgba(255,255,255,.25) 1px,transparent 1px), linear-gradient(90deg,rgba(255,255,255,.25) 1px,transparent 1px);
+  background-size: 46px 46px; mask-image:linear-gradient(90deg,transparent 25%,black); }
+.exa-hero-orbit { position:absolute; border: 1px solid rgba(214,232,255,.22); border-radius: 50%; pointer-events:none; }
+.exa-hero-orbit-one { width: 420px; height: 420px; right: -165px; top: -244px; }
+.exa-hero-orbit-two { width: 310px; height: 310px; right: -95px; bottom: -228px; }
+.exa-hero-emblem { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.23); box-shadow:inset 0 1px 0 rgba(255,255,255,.2); }
+.exa-hero-kicker { display:inline-flex; align-items:center; gap:6px; color:#bfd3ff; font-size:10px; font-weight:800; letter-spacing:.17em; margin-bottom:9px; }
+.exa-stat-card { position:relative; overflow:hidden; }
+.exa-stat-card::after { content:''; position:absolute; width:95px;height:95px;right:-35px;top:-35px;border:1px solid rgba(104,138,216,.08);border-radius:50%;pointer-events:none; }
+.exa-stat-icon { box-shadow: 0 9px 17px -10px rgba(43,80,170,.5); }
+.exa-exam-row:hover { background: #f6f8fe; }
+.dark .exa-exam-row:hover { background: #1a2941; }
+.exa-action-ai { background: linear-gradient(125deg,#1a397a,#2255b2 68%,#4279dd); box-shadow:0 15px 35px -25px rgba(20,79,183,.7); }
+.exa-action-ai::after { content:''; position:absolute;width:210px;height:210px;right:-55px;top:-85px;border-radius:50%;border:1px solid rgba(255,255,255,.24);box-shadow:0 0 0 37px rgba(255,255,255,.04),0 0 0 75px rgba(255,255,255,.025);pointer-events:none; }
+.exa-action-ai:hover, .exa-action-card:hover { transform:translateY(-3px); }
+.exa-primary-button { background-image:linear-gradient(110deg,rgba(255,255,255,.08),transparent); }
+/* Harmonize legacy cards and navigation without replacing app behavior. */
+.exa-main :where(.rounded-2xl.bg-white, .rounded-3xl.bg-white) { box-shadow:var(--exa-shadow-card); }
+.exa-main :where(.rounded-2xl, .rounded-3xl) { border-color:var(--border); }
+.exa-main :where(input,textarea,select) { transition:border-color .18s ease, box-shadow .18s ease; }
+.exa-main :where(a,button):focus-visible { outline:3px solid var(--exa-focus); outline-offset:3px; }
+@media (max-width:639px) {
+  .exa-hero { min-height:unset; }
+  .exa-hero-grid { background-size:34px 34px; }
+  .exa-topbar { min-height:68px; }
+  .exa-dashboard-edition { display:none; }
+  .exa-stat-card { min-height:150px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .exa-premium-card,.exa-action-ai,.exa-action-card,.exa-quick-link { transition:none !important; }
+  .exa-action-ai:hover,.exa-action-card:hover,.exa-quick-link:hover { transform:none; }
+}
+/* Authentication shares the same product identity without compromising form UX. */
+.exa-login {
+  background: radial-gradient(ellipse 40% 48% at 5% 5%,rgba(91,125,237,.15),transparent 80%),
+              radial-gradient(ellipse 42% 50% at 100% 100%,rgba(95,135,245,.15),transparent 80%),
+              var(--bg);
+}
+.exa-login-card { background:rgba(255,255,255,.94); border:1px solid rgba(225,232,246,.95); box-shadow:0 35px 95px -44px rgba(31,62,127,.34),0 8px 22px -18px rgba(22,54,130,.15); }
+.dark .exa-login-card { background:rgba(19,29,48,.96); border-color:#2b3b55; box-shadow:0 28px 80px -28px rgba(0,0,0,.62); }

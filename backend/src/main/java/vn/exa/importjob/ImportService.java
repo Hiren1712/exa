@@ -112,12 +112,20 @@ public class ImportService {
             if (type == Question.Type.MCQ && (pq.getOptions() == null || pq.getOptions().size() < 2)) {
                 throw BusinessException.badRequest("Câu trắc nghiệm cần ít nhất 2 phương án");
             }
+            if (type != Question.Type.MCQ && (pq.getOptionImages() != null
+                    && pq.getOptionImages().stream().anyMatch(image -> image != null && !image.isBlank()))) {
+                throw BusinessException.badRequest("Chỉ câu trắc nghiệm mới có ảnh phương án");
+            }
             if (pq.getOptions() != null && pq.getOptions().stream().anyMatch(option -> option == null || option.isBlank())) {
                 throw BusinessException.badRequest("Phương án trả lời không được để trống");
             }
-            validateOwnedMedia(userId, pq.getImageUrl());
-            if (pq.getOptionImages() != null) {
-                pq.getOptionImages().forEach(url -> validateOwnedMedia(userId, url));
+            List<String> optionImages = normalizeOptionImages(pq.getOptionImages(), pq.getOptions());
+            if (optionImages != null) {
+                optionImages = optionImages.stream()
+                        .map(image -> validateImageUrl(image, userId))
+                        .map(image -> image == null ? "" : image)
+                        .toList();
+                if (optionImages.stream().allMatch(String::isBlank)) optionImages = null;
             }
             String correctAnswer = pq.getCorrectAnswer();
             if (correctAnswer != null) {
@@ -140,8 +148,8 @@ public class ImportService {
                     .type(type)
                     .content(pq.getContent())
                     .options(toJson(pq.getOptions()))
-                    .imageUrl(pq.getImageUrl())
-                    .optionImages(toJson(pq.getOptionImages()))
+                    .imageUrl(validateImageUrl(pq.getImageUrl(), userId))
+                    .optionImages(toJson(optionImages))
                     .correctAnswer(correctAnswer)
                     .answerText(pq.getAnswerText())
                     .explanation(pq.getExplanation())
@@ -160,28 +168,6 @@ public class ImportService {
 
         log.info("Saved {} questions to bank from job {}", saved, jobId);
         return saved;
-    }
-
-    private void validateOwnedMedia(Long userId, String url) {
-        if (url == null || url.isBlank()) return;
-        String prefix = "/api/v1/question-media/";
-        if (!url.startsWith(prefix)) {
-            throw BusinessException.badRequest("Ảnh câu hỏi phải được tải lên EXA");
-        }
-        String id = url.substring(prefix.length());
-        try {
-            if (!UUID.fromString(id).toString().equalsIgnoreCase(id)) {
-                throw BusinessException.badRequest("Đường dẫn ảnh không hợp lệ");
-            }
-            id = UUID.fromString(id).toString();
-        } catch (IllegalArgumentException ex) {
-            throw BusinessException.badRequest("Đường dẫn ảnh không hợp lệ");
-        }
-        QuestionMedia media = questionMediaRepository.findById(id)
-                .orElseThrow(() -> BusinessException.badRequest("Không tìm thấy ảnh câu hỏi"));
-        if (!media.getOwnerId().equals(userId)) {
-            throw BusinessException.forbidden("Bạn không có quyền sử dụng ảnh này");
-        }
     }
 
     private void validateInput(MultipartFile file, String content, ImportMode mode,
@@ -269,6 +255,32 @@ public class ImportService {
         } catch (Exception e) {
             throw new IllegalStateException("Không thể lưu danh sách đáp án", e);
         }
+    }
+
+    private List<String> normalizeOptionImages(List<String> images, List<String> options) {
+        if (images == null) return null;
+        if (options == null || images.size() > options.size()) {
+            throw BusinessException.badRequest("Số ảnh phương án không khớp với số phương án");
+        }
+        List<String> normalized = new java.util.ArrayList<>(images);
+        while (normalized.size() < options.size()) normalized.add("");
+        return normalized.stream().map(image -> image == null || image.isBlank() ? "" : image).toList();
+    }
+
+    private String validateImageUrl(String imageUrl, Long userId) {
+        if (imageUrl == null || imageUrl.isBlank()) return null;
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("^/api/v1/question-media/([0-9a-fA-F-]{36})$")
+                .matcher(imageUrl);
+        if (!matcher.matches()) {
+            throw BusinessException.badRequest("Đường dẫn ảnh câu hỏi không hợp lệ");
+        }
+        QuestionMedia media = questionMediaRepository.findById(matcher.group(1))
+                .orElseThrow(() -> BusinessException.badRequest("Không tìm thấy ảnh câu hỏi"));
+        if (!media.getOwnerId().equals(userId)) {
+            throw BusinessException.forbidden("Ảnh câu hỏi không thuộc tài khoản của bạn");
+        }
+        return imageUrl;
     }
 
     private String getExtension(String name) {

@@ -5,6 +5,7 @@ import { ChatWidget } from './ChatWidget';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
 import { profileImageUrl } from '../api/user';
+import { Link } from 'react-router-dom';
 
 interface NavItem {
   to: string;
@@ -46,6 +47,9 @@ export function Layout() {
   const location = useLocation();
 
   const navItems = user?.role === 'STUDENT' ? NAV_STUDENT : NAV_TEACHER;
+  const currentPage = [...navItems].sort((a, b) => b.to.length - a.to.length).find(
+    (item) => item.to === '/' ? location.pathname === '/' : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+  );
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 1023px)');
@@ -72,7 +76,9 @@ export function Layout() {
     if (!sidebarOpen) return;
     closeButtonRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeSidebar();
+      if (event.key === 'Escape') {
+        closeSidebar();
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -84,7 +90,8 @@ export function Layout() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#f3f6fb] dark:bg-[#0a1221] exa-surface-gradient">
+    <div className="flex min-h-[100dvh] bg-[var(--bg)] exa-surface-gradient">
+      <a href="#exa-main" className="exa-skip-link">Bỏ qua điều hướng, đến nội dung</a>
       {/* Sidebar */}
       <aside
         ref={sidebarRef}
@@ -92,28 +99,27 @@ export function Layout() {
         aria-label="Điều hướng chính"
         aria-hidden={isMobileViewport && !sidebarOpen}
         className={cn(
-          'fixed inset-y-0 left-0 z-40 w-64 bg-white/95 dark:bg-[#111b2c] backdrop-blur-xl border-r border-slate-200 dark:border-slate-700 flex flex-col transition-transform lg:translate-x-0',
+          'exa-sidebar fixed inset-y-0 left-0 z-40 w-[min(19rem,85vw)] flex flex-col transition-transform lg:translate-x-0 lg:w-[272px]',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
         {/* Brand */}
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-200 dark:border-slate-800">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30">
+        <div className="exa-brand flex items-center gap-3 px-5 py-6">
+          <div className="exa-brand-mark w-11 h-11 rounded-2xl text-white flex items-center justify-center">
             <Icon name="logo" size={22} />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">EXA</h3>
+            <h3 className="text-[19px] font-black tracking-[-.055em] text-slate-900 dark:text-white leading-tight">EXA<span className="text-blue-600 dark:text-blue-400">.</span></h3>
             <span className="text-xs tracking-wider text-slate-500 dark:text-slate-400 font-semibold uppercase">
-              Exam Extra
+              EDUCATION PLATFORM
             </span>
           </div>
-          <button ref={closeButtonRef} type="button" onClick={closeSidebar} aria-label="Đóng điều hướng" className="ml-auto flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 lg:hidden">
-            <Icon name="x" size={19} />
-          </button>
+          <button ref={closeButtonRef} type="button" onClick={closeSidebar} aria-label="Đóng điều hướng" className="lg:hidden ml-auto exa-icon-button"><Icon name="x" size={19} /></button>
         </div>
 
+        <p className="exa-nav-eyebrow px-6 pt-7 pb-3 text-[10px] font-extrabold uppercase tracking-[.2em] text-slate-500 dark:text-slate-400">KHÔNG GIAN LÀM VIỆC</p>
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+        <nav className="exa-navigation flex-1 overflow-y-auto px-3 pb-4 space-y-1">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -122,15 +128,16 @@ export function Layout() {
               onClick={closeSidebar}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 px-3.5 min-h-11 rounded-xl text-sm font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500',
+                  'exa-nav-item flex items-center gap-3 px-3.5 min-h-[46px] rounded-[13px] text-[13px] font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500',
                   isActive
-                    ? 'bg-blue-100/80 dark:bg-blue-500/15 text-blue-900 dark:text-blue-200 shadow-sm ring-1 ring-blue-200/80 dark:ring-blue-700/40'
+                    ? 'exa-nav-active bg-blue-50 dark:bg-blue-500/15 text-blue-800 dark:text-blue-200'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white',
                 )
               }
             >
               <Icon name={item.icon} size={18} />
-              <span>{item.label}</span>
+              <span className="flex-1">{item.label}</span>
+              <span className="exa-nav-dot" aria-hidden="true" />
             </NavLink>
           ))}
         </nav>
@@ -138,7 +145,7 @@ export function Layout() {
         {/* Pro card */}
         {user?.role !== 'STUDENT' && (
           <div className="p-3">
-            <div className="relative rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white p-4 overflow-hidden">
+            <div className="exa-pro-card relative rounded-[20px] text-white p-5 overflow-hidden">
               <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-white/10" />
               <h5 className="flex items-center gap-1.5 text-sm font-bold relative z-10">
                 <Icon name="crown" size={14} />
@@ -150,38 +157,47 @@ export function Layout() {
             </div>
           </div>
         )}
+        <div className="exa-sidebar-footer px-5 py-4 text-[11px] font-medium text-slate-400 dark:text-slate-500">EXA 3.0 <span aria-hidden="true">·</span> Designed for learning</div>
       </aside>
 
       {/* Overlay mobile */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-slate-900/50 lg:hidden"
+          className="fixed inset-0 z-30 bg-slate-950/65 backdrop-blur-[2px] lg:hidden"
           onClick={closeSidebar}
           aria-hidden="true"
         />
       )}
 
       {/* Main */}
-      <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
+      <div className="flex-1 lg:ml-[272px] flex flex-col min-w-0">
         {/* Topbar */}
-        <header className="sticky top-0 z-20 h-[72px] bg-white/90 dark:bg-[#111b2c]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 flex items-center gap-3 px-4 sm:px-6">
+        <header className="exa-topbar sticky top-0 z-20 min-h-[80px] flex items-center gap-3 px-4 sm:px-7 lg:px-9">
           <button
             ref={menuButtonRef}
+            type="button"
             onClick={() => setSidebarOpen(true)}
             aria-label="Mở menu điều hướng"
-            aria-controls="exa-sidebar"
             aria-expanded={sidebarOpen}
+            aria-controls="exa-sidebar"
             className="lg:hidden w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <Icon name="menu" size={20} />
           </button>
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-base font-bold text-slate-900 dark:text-white truncate">
-              Xin chào, {user?.fullName?.split(' ').slice(-1)[0] || 'bạn'} 👋
-            </h1>
+            <div className="text-[10px] font-bold uppercase tracking-[.18em] text-slate-500 dark:text-slate-400 hidden sm:block">WORKSPACE <span className="px-1.5">/</span> {user?.role === 'STUDENT' ? 'Học sinh' : 'Giáo viên'}</div>
+            <div className="text-[15px] font-bold tracking-[-.02em] text-slate-900 dark:text-white truncate">{currentPage?.label || 'Không gian học tập'}</div>
           </div>
 
+          <div className="hidden xl:flex exa-topbar-date items-center gap-2 mr-3 text-xs font-semibold text-slate-500 dark:text-slate-400">
+            <Icon name="calendar" size={16} />
+            <span>{new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date())}</span>
+          </div>
+          <Link to="/exams" className="exa-quick-link hidden sm:inline-flex items-center gap-2 min-h-10 px-3.5 text-[13px] font-semibold rounded-xl" aria-label="Đến danh sách đề thi">
+            <Icon name="exaExam" size={16} /> Đề thi
+          </Link>
+          <span className="exa-topbar-divider hidden sm:block" aria-hidden="true" />
           <button
             onClick={toggleTheme}
             aria-label="Chuyển chế độ sáng tối"
@@ -214,7 +230,7 @@ export function Layout() {
         </header>
 
         {/* Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1440px] w-full mx-auto">
+        <main id="exa-main" tabIndex={-1} className="exa-main flex-1 p-4 sm:p-7 lg:px-10 lg:py-9 max-w-[1550px] w-full mx-auto">
           <Outlet />
         </main>
       </div>

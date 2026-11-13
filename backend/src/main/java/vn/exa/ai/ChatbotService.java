@@ -114,7 +114,7 @@ public class ChatbotService {
         }
         if (!hasConfiguredProvider) {
             throw BusinessException.badRequest(
-                    "Chưa cấu hình API chatbot. Hãy thêm GEMINI_API_KEY hoặc cấu hình một nhà cung cấp ExaBot trong biến môi trường backend.");
+                    "Chưa cấu hình API chatbot. Hãy thêm GEMINI_API_KEY hoặc cấu hình một nhà cung cấp ExaBot trên Railway.");
         }
         throw BusinessException.badRequest("Không có nhà cung cấp AI nào được bật trong EXABOT_PROVIDER_ORDER.");
     }

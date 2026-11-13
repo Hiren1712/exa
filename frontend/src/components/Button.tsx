@@ -16,7 +16,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 // All variants have explicit foreground colors in BOTH themes and interaction states.
 const variantClasses: Record<Variant, string> = {
   primary:
-    'bg-blue-700 hover:bg-blue-800 text-white dark:bg-blue-500 dark:hover:bg-blue-400 dark:text-slate-950 border border-blue-700 dark:border-blue-400 shadow-sm shadow-blue-900/15 hover:shadow-md hover:shadow-blue-900/20',
+    'exa-primary-button bg-blue-700 hover:bg-blue-800 text-white dark:bg-blue-500 dark:hover:bg-blue-400 dark:text-slate-950 border border-blue-700 dark:border-blue-400 shadow-sm shadow-blue-900/15 hover:shadow-md hover:shadow-blue-900/20',
   ghost:
     'bg-white dark:bg-slate-800/80 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-100 hover:bg-blue-50 dark:hover:bg-slate-700 hover:border-blue-400 dark:hover:border-blue-400 hover:text-blue-800 dark:hover:text-white',
   danger:

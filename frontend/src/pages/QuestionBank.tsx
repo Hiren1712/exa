@@ -19,9 +19,9 @@ const emptyQuestion: Question = {
   difficulty: 'RECOGNITION',
   type: 'MCQ',
   content: '',
+  options: ['', '', '', ''],
   imageUrl: '',
   optionImages: ['', '', '', ''],
-  options: ['', '', '', ''],
   correctAnswer: 'A',
   answerText: '',
   explanation: '',
@@ -89,13 +89,9 @@ export default function QuestionBank() {
       toast('Thiếu nội dung', 'Vui lòng nhập nội dung câu hỏi', 'warn');
       return;
     }
-    const validOptions = (form.options || []).map((option, index) => ({
-      text: option.trim(),
-      image: form.optionImages?.[index] || '',
-      originalIndex: index,
-    })).filter((option) => option.text || option.image);
-    const options = form.type === 'MCQ' ? validOptions.map((option) => option.text) : undefined;
-    const optionImages = form.type === 'MCQ' ? validOptions.map((option) => option.image) : undefined;
+    const validIndexes = (form.options || []).map((option, index) => ({ index, text: option.trim(), image: form.optionImages?.[index] || '' })).filter((item) => item.text || item.image);
+    const options = form.type === 'MCQ' ? validIndexes.map((item) => item.text) : undefined;
+    const optionImages = form.type === 'MCQ' ? validIndexes.map((item) => item.image) : undefined;
     if (form.type === 'MCQ' && (options?.length ?? 0) < 2) {
       toast('Thiếu phương án', 'Câu trắc nghiệm cần ít nhất hai phương án', 'warn');
       return;
@@ -108,10 +104,7 @@ export default function QuestionBank() {
         subject: form.subject.trim(),
         options,
         optionImages,
-        correctAnswer: form.type === 'MCQ'
-          ? String.fromCharCode(65 + Math.max(0, validOptions.findIndex((option) =>
-            String.fromCharCode(65 + option.originalIndex) === form.correctAnswer)))
-          : form.type === 'TRUE_FALSE' ? form.correctAnswer : undefined,
+        correctAnswer: form.type === 'MCQ' ? String.fromCharCode(65 + Math.max(0, validIndexes.findIndex((item) => String.fromCharCode(65 + item.index) === form.correctAnswer))) : form.type === 'TRUE_FALSE' ? form.correctAnswer : undefined,
       };
       if (editing?.id) {
         await questionApi.update(editing.id, payload);
@@ -181,8 +174,8 @@ export default function QuestionBank() {
     setForm((current) => ({
       ...current,
       type,
-      options: type === 'MCQ' ? ['', '', '', ''] : undefined,
-      optionImages: type === 'MCQ' ? ['', '', '', ''] : undefined,
+      options: type === 'MCQ' ? (current.options?.length ? current.options : ['', '', '', '']) : undefined,
+      optionImages: type === 'MCQ' ? (current.optionImages?.length ? current.optionImages : ['', '', '', '']) : undefined,
       correctAnswer: type === 'TRUE_FALSE' ? 'Đúng' : '',
     }));
   };
@@ -197,13 +190,10 @@ export default function QuestionBank() {
       const url = await questionApi.uploadImage(file);
       setForm((current) => optionIndex === undefined
         ? { ...current, imageUrl: url }
-        : { ...current, optionImages: (current.options || []).map((_, index) =>
-          index === optionIndex ? url : current.optionImages?.[index] || '') });
+        : { ...current, optionImages: (current.options || []).map((_, index) => index === optionIndex ? url : current.optionImages?.[index] || '') });
     } catch (err) {
       toast('Không tải được ảnh', extractError(err), 'error');
-    } finally {
-      setUploading(false);
-    }
+    } finally { setUploading(false); }
   };
 
   const page = filter.page || 0;
@@ -331,7 +321,7 @@ export default function QuestionBank() {
           <Select label="Loại câu hỏi" value={form.type} onChange={(event) => updateType(event.target.value as QuestionType)} options={typeOptions} />
           <Textarea label="Nội dung (có thể nhập ký hiệu LaTeX dạng văn bản)" required rows={5} value={form.content} onChange={(event) => setForm({ ...form, content: event.target.value })} />
           <div className="rounded-xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
-            <label className="mb-2 block text-sm font-semibold">Hình minh họa câu hỏi (tùy chọn)</label>
+            <label className="block text-sm font-semibold mb-2">Hình minh họa câu hỏi (tùy chọn)</label>
             <input aria-label="Chọn ảnh câu hỏi" type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading || saving}
               onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file); event.target.value = ''; }}
               className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-blue-700" />
@@ -343,7 +333,7 @@ export default function QuestionBank() {
             <div className="space-y-3">
               <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">Phương án trả lời</p>
               {(form.options || []).map((option, index) => (
-                <div key={index} className="space-y-2 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                <div key={index} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700 space-y-2">
                   <Input label={`Phương án ${String.fromCharCode(65 + index)}`} value={option} onChange={(event) => setOption(index, event.target.value)} />
                   <label className="block text-xs font-semibold">Ảnh phương án {String.fromCharCode(65 + index)} (tùy chọn)</label>
                   <input aria-label={`Chọn ảnh phương án ${String.fromCharCode(65 + index)}`} type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading || saving}

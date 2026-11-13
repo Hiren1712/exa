@@ -223,17 +223,17 @@ public class GeminiParser {
                 """.formatted(count, subjectName, grade, level, level, sourceText);
     }
 
-    private String sourcePrompt(String subjectHint, int grade, ImportMode mode, int questionCount) {
+    String sourcePrompt(String subjectHint, int grade, ImportMode mode, int questionCount) {
         String subject = subjectHint == null || subjectHint.isBlank()
                 ? "chưa xác định" : subjectHint;
         if (mode == ImportMode.GENERATE) {
             return """
                     Hãy tạo đúng %d câu hỏi bằng tiếng Việt cho môn %s, lớp %d, độ khó COMPREHENSION dựa trên tài liệu đính kèm và nội dung bổ sung (nếu có).
                     Tài liệu có thể là ghi chú, đoạn văn, danh sách, bảng, dữ kiện hoặc nội dung bất kỳ; không cần đúng định dạng đề thi và không cần chứa câu hỏi có sẵn.
-                    Nếu tài liệu là ảnh hoặc PDF scan, hãy đọc cả sơ đồ, biểu đồ, hình học và các nhãn/ký hiệu; giữ nguyên số liệu, không suy đoán chi tiết không rõ.
                     Ưu tiên thông tin cụ thể trong tài liệu. Nếu tài liệu chỉ nêu chủ đề hoặc yêu cầu chung, hãy dùng kiến thức phù hợp với môn học và khối lớp; không trả về [] chỉ vì tài liệu ngắn hoặc không có câu hỏi sẵn.
                     Làm theo yêu cầu về dạng câu hỏi trong nội dung bổ sung nếu có; nếu không, mặc định tạo trắc nghiệm 4 lựa chọn với một đáp án đúng. Với câu Đúng/Sai, dùng options ["Đúng","Sai"] và đáp án A hoặc B. Với câu Trả lời ngắn hoặc Tự luận, dùng options [] và điền đáp án vào answerText. Cung cấp giải thích ngắn.
                     Dùng $...$ cho công thức toán và $\\ce{...}$ cho công thức/phản ứng hóa học; giữ chỉ số, số mũ, đơn vị, ký hiệu sinh học và tiếng Việt chính xác.
+                    Nếu tài liệu có ảnh, đọc chữ tiếng Việt và ký hiệu trong ảnh; phân tích bảng, biểu đồ, sơ đồ và hình vẽ có liên quan. Khi câu hỏi phụ thuộc vào hình ảnh, mô tả ngắn gọn các chi tiết nhìn thấy được ngay trong content theo dạng [Hình: ...], không tự bịa chi tiết bị mờ hoặc không đọc được. Chỉ đưa ra đáp án dựa trên bằng chứng đọc được.
                     Trả về duy nhất JSON array theo schema:
                     [{"number":1,"type":"MCQ","content":"...","options":["...","...","...","..."],"correctAnswer":"A","answerText":null,"difficulty":"COMPREHENSION","explanation":"..."}].
                     type phải là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY; correctAnswer có thể là null khi phù hợp với dạng câu hỏi.
@@ -242,13 +242,12 @@ public class GeminiParser {
         }
         return """
                 Đọc toàn bộ tài liệu đính kèm, bao gồm chữ trong ảnh scan, bảng và công thức.
-                Với ảnh hoặc PDF scan, đọc kỹ sơ đồ, biểu đồ, hình học và các nhãn/ký hiệu đi kèm; giữ nguyên số liệu và quan hệ thể hiện trong hình. Nếu chi tiết không rõ, không tự suy đoán.
                 Chỉ trích xuất câu hỏi thực sự có trong tài liệu cùng đáp án được đánh dấu (nếu có).
                 Không tự tạo thêm câu hỏi trong chế độ trích xuất và không đoán đáp án; nếu không có câu hỏi, trả về [].
+                Với câu hỏi dựa trên hình, ghi lại các chi tiết nhìn thấy được trong content theo dạng [Hình: ...]; đọc chính xác tiếng Việt, công thức, bảng, biểu đồ và sơ đồ. Không suy diễn phần ảnh mờ hoặc bị cắt; để correctAnswer là null nếu không đọc rõ đáp án.
                 Môn học gợi ý: %s. Trả về duy nhất JSON array theo schema:
                 [{"number":1,"type":"MCQ","content":"...","options":["...","..."],
-                "correctAnswer":"A","answerText":null,"difficulty":"RECOGNITION","explanation":null,
-                "imageUrl":null,"optionImages":[]}].
+                "correctAnswer":"A","answerText":null,"difficulty":"RECOGNITION","explanation":null}].
                 type chỉ được là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY.
                 difficulty chỉ được là RECOGNITION, COMPREHENSION, APPLICATION hoặc HIGH_APPLICATION.
                 Giữ ký hiệu toán, hóa, sinh, chỉ số dưới/trên và đơn vị chính xác; dùng $...$ cho công thức toán và $\\ce{...}$ cho công thức hóa học. Không trả markdown hay văn bản ngoài JSON.
@@ -724,16 +723,16 @@ public class GeminiParser {
 
         if (statusCode == 401 || statusCode == 403 || "API_KEY_INVALID".equals(reason)) {
             if ("API_KEY_HTTP_REFERRER_BLOCKED".equals(reason)) {
-                return "API key Gemini bị giới hạn theo website. Backend cần key không giới hạn HTTP referrer; cập nhật giới hạn key rồi thử lại.";
+                return "API key Gemini bị giới hạn theo website. Backend Railway cần key không giới hạn HTTP referrer; cập nhật giới hạn key rồi thử lại.";
             }
             if ("API_KEY_SERVICE_BLOCKED".equals(reason)) {
                 return "API key chưa được phép gọi Gemini. Cho phép Generative Language API trong phần giới hạn API key của Google Cloud.";
             }
             if ("API_KEY_INVALID".equals(reason)) {
-                return "Gemini không chấp nhận API key. Kiểm tra biến GEMINI_API_KEY trong cấu hình backend rồi redeploy backend.";
+                return "Gemini không chấp nhận API key. Kiểm tra lại biến GEMINI_API_KEY trên Railway rồi redeploy backend.";
             }
             if (statusCode == 401) {
-                return "Gemini không xác thực được API key. Kiểm tra biến GEMINI_API_KEY trong cấu hình backend rồi redeploy backend.";
+                return "Gemini không xác thực được API key. Kiểm tra lại biến GEMINI_API_KEY trên Railway rồi redeploy backend.";
             }
             return "Gemini từ chối quyền của API key. Kiểm tra giới hạn API key và quyền dùng Generative Language API.";
         }
@@ -783,10 +782,6 @@ public class GeminiParser {
             q.setAnswerText(node.path("answerText").asText(null));
             q.setDifficulty(normalizeDifficulty(node.path("difficulty").asText("RECOGNITION")));
             q.setExplanation(node.path("explanation").asText(null));
-            q.setImageUrl(node.path("imageUrl").asText(null));
-            List<String> optionImages = new ArrayList<>();
-            node.path("optionImages").forEach(image -> optionImages.add(image.asText("")));
-            q.setOptionImages(optionImages);
 
             if (!q.getContent().isBlank()) result.add(q);
         }

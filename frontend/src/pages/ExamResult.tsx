@@ -95,20 +95,14 @@ export default function ExamResult() {
               }
             }
             let optionImages: string[] = [];
-            let optionImagesError = false;
             if (question.optionImages) {
-              try {
-                optionImages = JSON.parse(question.optionImages) as string[];
-              } catch {
-                optionImagesError = true;
-              }
+              try { optionImages = JSON.parse(question.optionImages) as string[]; } catch { optionImages = []; }
             }
             return (
               <article key={question.id} className="rounded-xl border border-slate-100 dark:border-slate-800 p-4">
                 <h3 className="font-semibold text-sm text-slate-900 dark:text-white">{index + 1}. <MathText>{question.content}</MathText></h3>
-                <QuestionImage src={question.imageUrl} alt={`Hình minh họa câu ${index + 1}`} className="mt-2" />
-                {optionImagesError && <p role="alert" className="mt-2 text-xs text-rose-600">Không thể đọc hình ảnh phương án của câu này.</p>}
-                {options.length > 0 && <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-300">{options.map((option, optionIndex) => <li key={optionIndex}><MathText>{option}</MathText><QuestionImage src={optionImages[optionIndex]} alt={`Hình phương án ${String.fromCharCode(65 + optionIndex)}`} className="mt-1" /></li>)}</ul>}
+                <div className="mt-2"><QuestionImage src={question.imageUrl} alt="Hình minh họa câu hỏi" /></div>
+                {options.length > 0 && <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-300">{options.map((option, optionIndex) => <li key={optionIndex}><MathText>{option}</MathText><div><QuestionImage src={optionImages[optionIndex]} alt={`Hình phương án ${optionIndex + 1}`} /></div></li>)}</ul>}
                 <p className="mt-3 text-sm"><span className="text-slate-500">Câu trả lời của bạn: </span><strong>{question.studentAnswer ? <MathText>{question.studentAnswer}</MathText> : 'Chưa trả lời'}</strong></p>
                 {review.answersRevealed && (
                   <>

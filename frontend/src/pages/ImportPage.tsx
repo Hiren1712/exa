@@ -194,8 +194,8 @@ export default function ImportPage() {
   };
 
   const uploadQuestionImage = async (index: number, imageFile: File) => {
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(imageFile.type) || imageFile.size > 5 * 1024 * 1024) {
-      toast('Ảnh không hợp lệ', 'Chọn PNG, JPEG hoặc WebP, tối đa 5 MB', 'warn');
+    if (imageFile.size > 5 * 1024 * 1024) {
+      toast('Ảnh quá lớn', 'Ảnh câu hỏi tối đa 5 MB.', 'warn');
       return;
     }
     setUploadingImageKey(`question-${index}`);
@@ -229,8 +229,8 @@ export default function ImportPage() {
   };
 
   const uploadOptionImage = async (questionIndex: number, optionIndex: number, imageFile: File) => {
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(imageFile.type) || imageFile.size > 5 * 1024 * 1024) {
-      toast('Ảnh không hợp lệ', 'Chọn PNG, JPEG hoặc WebP, tối đa 5 MB', 'warn');
+    if (imageFile.size > 5 * 1024 * 1024) {
+      toast('Ảnh quá lớn', 'Ảnh phương án tối đa 5 MB.', 'warn');
       return;
     }
     const key = `option-${questionIndex}-${optionIndex}`;
@@ -256,7 +256,7 @@ export default function ImportPage() {
   };
 
   const handleSave = async () => {
-    if (!preview || saving || uploadingImageKey || preview.status !== 'REVIEW') return;
+    if (!preview || saving || preview.status !== 'REVIEW') return;
     const questions = preview.questions.filter((_, idx) => selected.has(idx));
     if (questions.length === 0) {
       toast('Chưa chọn câu nào', '', 'warn');
@@ -433,7 +433,7 @@ export default function ImportPage() {
               {file ? file.name : 'Kéo thả file vào đây hoặc bấm để chọn'}
             </div>
             <div className="text-xs text-slate-500">
-              Hỗ trợ TXT, DOCX, PDF (kể cả PDF scan), XLSX, XLS, PNG, JPG và WEBP. Tệp tối đa 20MB, ảnh tối đa 15MB.
+            Hỗ trợ TXT, DOCX, PDF (kể cả PDF scan), XLSX, XLS, PNG, JPG và WEBP. Gemini đọc chữ, công thức, bảng và hình/biểu đồ trong ảnh. Tệp tối đa 20MB, ảnh tối đa 15MB.
             </div>
           </label>
 
@@ -514,7 +514,7 @@ export default function ImportPage() {
               <Button
                 variant="primary"
                 loading={saving}
-                disabled={selected.size === 0 || uploadingImageKey !== null}
+                disabled={selected.size === 0}
                 onClick={handleSave}
                 icon={<Icon name="save" size={16} />}
               >
@@ -570,23 +570,34 @@ export default function ImportPage() {
                       <div className="mt-2 flex flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
                         <label className="cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-blue-400 dark:border-slate-700 dark:text-slate-200">
                           {uploadingImageKey === `question-${idx}` ? 'Đang tải ảnh...' : q.imageUrl ? 'Đổi ảnh câu hỏi' : 'Thêm ảnh câu hỏi'}
-                          <input type="file" accept="image/png,image/jpeg,image/webp" aria-label={`Thêm ảnh câu hỏi ${idx + 1}`}
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            aria-label={`Thêm ảnh câu hỏi ${idx + 1}`}
                             disabled={uploadingImageKey !== null || saving}
                             onChange={(event) => {
                               const imageFile = event.target.files?.[0];
                               if (imageFile) void uploadQuestionImage(idx, imageFile);
                               event.target.value = '';
-                            }} className="sr-only" />
+                            }}
+                            className="sr-only"
+                          />
                         </label>
                         {file && /\.(png|jpe?g|webp)$/i.test(file.name) && (
-                          <button type="button" disabled={uploadingImageKey !== null || saving}
+                          <button
+                            type="button"
+                            disabled={uploadingImageKey !== null || saving}
                             onClick={() => void attachScannedImage(idx)}
-                            className="rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-60 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40">
+                            className="rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-60 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40"
+                          >
                             {uploadingImageKey === `question-${idx}` ? 'Đang đính kèm...' : 'Dùng ảnh đã quét'}
                           </button>
                         )}
-                        {q.imageUrl && <button type="button" onClick={() => updateQuestion(idx, { imageUrl: null })}
-                          className="rounded-lg px-2 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40">Gỡ ảnh câu hỏi</button>}
+                        {q.imageUrl && (
+                          <button type="button" onClick={() => updateQuestion(idx, { imageUrl: null })} className="rounded-lg px-2 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40">
+                            Gỡ ảnh câu hỏi
+                          </button>
+                        )}
                       </div>
                       {q.imageUrl && <QuestionImage src={q.imageUrl} alt={`Hình minh họa câu ${idx + 1}`} className="mt-2" />}
                       <details className="mt-2 text-xs text-slate-500" onClick={(event) => event.stopPropagation()}>
@@ -640,18 +651,30 @@ export default function ImportPage() {
                                   <div className="mt-2 flex flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
                                     <label className="cursor-pointer rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium hover:border-blue-400 dark:border-slate-700">
                                       {uploadingImageKey === `option-${idx}-${i}` ? 'Đang tải...' : q.optionImages?.[i] ? `Đổi ảnh ${letter}` : `Thêm ảnh ${letter}`}
-                                      <input type="file" accept="image/png,image/jpeg,image/webp"
+                                      <input
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/webp"
                                         aria-label={`Thêm ảnh phương án ${letter}, câu ${idx + 1}`}
                                         disabled={uploadingImageKey !== null || saving}
                                         onChange={(event) => {
                                           const imageFile = event.target.files?.[0];
                                           if (imageFile) void uploadOptionImage(idx, i, imageFile);
                                           event.target.value = '';
-                                        }} className="sr-only" />
+                                        }}
+                                        className="sr-only"
+                                      />
                                     </label>
-                                    {q.optionImages?.[i] && <button type="button"
-                                      onClick={() => updateQuestion(idx, { optionImages: q.optionImages?.map((image, imageIndex) => imageIndex === i ? '' : image) })}
-                                      className="rounded-md px-2 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40">Gỡ ảnh</button>}
+                                    {q.optionImages?.[i] && (
+                                      <button
+                                        type="button"
+                                        onClick={() => updateQuestion(idx, {
+                                          optionImages: q.optionImages?.map((image, imageIndex) => imageIndex === i ? '' : image),
+                                        })}
+                                        className="rounded-md px-2 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                                      >
+                                        Gỡ ảnh
+                                      </button>
+                                    )}
                                   </div>
                                   {q.optionImages?.[i] && <QuestionImage src={q.optionImages[i]} alt={`Hình phương án ${letter}, câu ${idx + 1}`} className="mt-2" />}
                                 </>

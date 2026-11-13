@@ -9,7 +9,6 @@ import vn.exa.common.BusinessException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
-import java.lang.reflect.Method;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -46,7 +45,7 @@ class GeminiParserTest {
     }
 
     @Test
-    void invalidGeminiApiKeyErrorExplainsHowToFixBackendConfiguration() {
+    void invalidGeminiApiKeyErrorExplainsHowToFixRailwayConfiguration() {
         GeminiParser parser = new GeminiParser(WebClient.builder(), new ObjectMapper());
         String response = """
                 {"error":{"code":400,"status":"INVALID_ARGUMENT","details":[
@@ -128,20 +127,21 @@ class GeminiParserTest {
     }
 
     @Test
-    void imageImportPromptReadsDiagramsAndAvoidsGuessingUnclearDetails() throws Exception {
+    void imageImportPromptTranscribesVisualContentWithoutGuessingUnclearAnswers() {
         GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
-        Method sourcePrompt = GeminiParser.class.getDeclaredMethod(
-                "sourcePrompt", String.class, int.class, ImportMode.class, int.class);
-        sourcePrompt.setAccessible(true);
 
-        String prompt = (String) sourcePrompt.invoke(parser, "Toán", 12, ImportMode.EXTRACT, 10);
+        String extractPrompt = parser.sourcePrompt("Toán", 12, ImportMode.EXTRACT, 10);
+        String generatePrompt = parser.sourcePrompt("Toán", 12, ImportMode.GENERATE, 10);
 
-        assertThat(prompt)
-                .contains("bao gồm chữ trong ảnh scan")
-                .contains("sơ đồ, biểu đồ, hình học")
-                .contains("không tự suy đoán")
-                .contains("\"imageUrl\":null")
-                .contains("\"optionImages\":[]");
+        assertThat(extractPrompt)
+                .contains("ảnh scan")
+                .contains("biểu đồ và sơ đồ")
+                .contains("correctAnswer là null")
+                .contains("không đoán đáp án");
+        assertThat(generatePrompt)
+                .contains("đọc chữ tiếng Việt")
+                .contains("[Hình: ...]")
+                .contains("không tự bịa chi tiết");
     }
 
     @Test

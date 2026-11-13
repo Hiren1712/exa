@@ -89,16 +89,16 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen grid place-items-center p-6 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 relative overflow-hidden">
+    <div className="exa-login min-h-[100dvh] grid place-items-center p-5 sm:p-8 relative overflow-hidden">
       {/* Decorative blobs */}
       <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-blue-500/20 blur-[120px] pointer-events-none" />
       <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-indigo-500/20 blur-[120px] pointer-events-none" />
 
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full max-w-[460px] relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-2xl shadow-blue-500/40">
+            <div className="exa-brand-mark w-14 h-14 rounded-2xl text-white flex items-center justify-center">
               <Icon name="logo" size={28} />
             </div>
             <div className="text-left">
@@ -114,7 +114,7 @@ export default function Login() {
         </div>
 
         {/* Card */}
-        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-slate-900/10 border border-white/60 dark:border-slate-800 p-8">
+        <div className="exa-login-card backdrop-blur-xl rounded-[28px] p-6 sm:p-9">
           {/* Tabs */}
           <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
             <button
