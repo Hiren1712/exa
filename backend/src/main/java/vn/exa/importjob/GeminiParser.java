@@ -3,6 +3,9 @@ package vn.exa.importjob;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,13 +19,16 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import vn.exa.common.BusinessException;
 
-import java.time.Duration;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.imageio.ImageIO;
 
 @Component
 @Slf4j
@@ -44,7 +50,20 @@ public class GeminiParser {
     @Value("${exa.gemini.timeout-ms:60000}")
     private long timeoutMs;
 
+    @Value("${exa.chat.groq.api-key:}")
+    private String groqApiKey;
+
+    @Value("${exa.chat.groq.model:qwen/qwen3.8-27b}")
+    private String groqModel;
+
+    @Value("${exa.chat.groq.base-url:https://api.groq.com/openai/v1/chat/completions}")
+    private String groqBaseUrl;
+
+    @Value("${exa.chat.timeout-ms:25000}")
+    private long groqTimeoutMs;
+
     private volatile List<String> availableFallbackModels;
+    private final ThreadLocal<Set<String>> taskModels = ThreadLocal.withInitial(LinkedHashSet::new);
 
     private static final String GEMINI_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent";
@@ -53,21 +72,24 @@ public class GeminiParser {
     private static final int MAX_INLINE_PDF_SIZE = 15 * 1024 * 1024;
     private static final int MAX_GEMINI_RETRIES = 2;
     private static final int MAX_FALLBACK_MODELS = 2;
+    private static final int MAX_GROQ_PDF_PAGES = 3;
+    private static final int MAX_GROQ_OUTPUT_TOKENS = 8192;
     private static final Pattern NUMBERED_GEMINI_KEY = Pattern.compile("(?i)^gemini(\\d+)$");
 
     public void validateConfiguration() {
-        requireConfiguredApiKey();
+        requireTaskProviderConfigured();
     }
 
     public boolean isConfigured() {
-        return !configuredApiKeys().isEmpty();
+        return !configuredApiKeys().isEmpty() || isGroqConfigured();
     }
 
     /**
      * Parse text → danh sách câu hỏi có cấu trúc.
      */
     public ParseResult parse(String rawText, String subjectHint) {
-        requireConfiguredApiKey();
+        requireTaskProviderConfigured();
+        resetTaskModels();
         if (rawText == null || rawText.isBlank()) {
             throw BusinessException.badRequest("Không đọc được nội dung file");
         }
@@ -98,7 +120,8 @@ public class GeminiParser {
 
     public ParseResult processPdf(byte[] pdfBytes, String subjectHint, String supplementalContent,
                                   ImportMode mode, int questionCount, int grade) {
-        requireConfiguredApiKey();
+        requireTaskProviderConfigured();
+        resetTaskModels();
         if (pdfBytes == null || pdfBytes.length == 0) {
             throw BusinessException.badRequest("Tệp PDF trống");
         }
@@ -122,13 +145,14 @@ public class GeminiParser {
                         "maxOutputTokens", 16384,
                         "responseMimeType", "application/json"));
 
-        return parseResponse(callGemini(body));
+        return parseResponse(callTaskAi(body));
     }
 
     public ParseResult processImage(byte[] imageBytes, String mimeType, String subjectHint,
                                     String supplementalContent, ImportMode mode,
                                     int questionCount, int grade) {
-        requireConfiguredApiKey();
+        requireTaskProviderConfigured();
+        resetTaskModels();
         if (imageBytes == null || imageBytes.length == 0) {
             throw BusinessException.badRequest("Tệp ảnh trống");
         }
@@ -151,12 +175,13 @@ public class GeminiParser {
                         "temperature", 0.1,
                         "maxOutputTokens", 16384,
                         "responseMimeType", "application/json"));
-        return parseResponse(callGemini(body));
+        return parseResponse(callTaskAi(body));
     }
 
     public ParseResult generateQuestionsFromText(String sourceText, String subject, int grade,
                                                  int questionCount, String difficulty) {
-        requireConfiguredApiKey();
+        requireTaskProviderConfigured();
+        resetTaskModels();
         if (sourceText == null || sourceText.isBlank()) {
             throw BusinessException.badRequest("Hãy nhập nội dung để AI tạo câu hỏi");
         }
@@ -168,7 +193,7 @@ public class GeminiParser {
             int chunkCount = counts.get(i);
             if (chunkCount == 0) continue;
             String prompt = generationPrompt(chunks.get(i), subject, grade, chunkCount, difficulty);
-            ParseResult result = parseResponse(callGemini(prompt));
+            ParseResult result = parseResponse(callTaskAi(prompt));
             questions.addAll(result.questions());
             tokens += result.tokensUsed();
         }
@@ -256,7 +281,8 @@ public class GeminiParser {
 
     public List<ParsedQuestion> generateQuestions(String subject, Integer grade, String topic,
                                                   Integer count, String difficulty) {
-        requireConfiguredApiKey();
+        requireTaskProviderConfigured();
+        resetTaskModels();
         String prompt = """
                 Tạo %d câu hỏi trắc nghiệm chất lượng bằng tiếng Việt cho môn %s, khối %d,
                 chủ đề "%s", độ khó %s. Trả về DUY NHẤT một JSON array đúng schema:
@@ -265,17 +291,18 @@ public class GeminiParser {
                 Đáp án phải chính xác, các lựa chọn nhiễu hợp lý; dùng $...$ cho công thức toán và $\\ce{...}$ cho công thức hóa học.
                 """.formatted(count, subject, grade, topic, difficulty, difficulty);
         try {
-            return parseAiResponse(extractResponseText(callGemini(prompt)));
+            return parseAiResponse(extractResponseText(callTaskAi(prompt)));
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Failed to generate questions with Gemini", e);
+            log.error("Failed to generate questions with AI", e);
             throw BusinessException.badRequest("AI không tạo được câu hỏi hợp lệ. Vui lòng thử lại.");
         }
     }
 
     public EssayGrade gradeEssay(String question, String answer, String rubric, BigDecimal maxScore) {
-        requireConfiguredApiKey();
+        requireTaskProviderConfigured();
+        resetTaskModels();
         String prompt = """
                 Hãy đánh giá câu trả lời tự luận theo thang điểm 0 đến %s.
                 Câu hỏi: %s
@@ -285,14 +312,14 @@ public class GeminiParser {
                 Không cộng điểm vượt quá thang điểm. Nếu câu trả lời bỏ trống thì cho 0 điểm.
                 """.formatted(maxScore, question, answer, rubric == null || rubric.isBlank() ? "Độ chính xác, lập luận và mức độ đầy đủ." : rubric);
         try {
-            JsonNode result = objectMapper.readTree(extractResponseText(callGemini(prompt)));
+            JsonNode result = objectMapper.readTree(extractResponseText(callTaskAi(prompt)));
             BigDecimal score = new BigDecimal(result.path("score").asText());
             score = score.max(BigDecimal.ZERO).min(maxScore);
             return new EssayGrade(score, result.path("feedback").asText(""));
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Failed to grade essay with Gemini", e);
+            log.error("Failed to grade essay with AI", e);
             throw BusinessException.badRequest("AI không chấm được câu trả lời. Vui lòng thử lại.");
         }
     }
@@ -342,6 +369,16 @@ public class GeminiParser {
 
     public record ChatTurn(String role, String content) {}
 
+    public String getAndClearLastTaskModel() {
+        Set<String> usedModels = taskModels.get();
+        taskModels.remove();
+        return usedModels.isEmpty() ? model : String.join(", ", usedModels);
+    }
+
+    private void resetTaskModels() {
+        taskModels.get().clear();
+    }
+
     private void requireConfiguredApiKey() {
         if (configuredApiKeys().isEmpty()) {
             throw BusinessException.badRequest("Chưa cấu hình Gemini API key trên máy chủ");
@@ -378,7 +415,7 @@ public class GeminiParser {
                         "temperature", 0.1,
                         "maxOutputTokens", 16384,
                         "responseMimeType", "application/json"));
-        return parseResponse(callGemini(body));
+        return parseResponse(callTaskAi(body));
     }
 
     private ParseResult parseResponse(String responseBody) {
@@ -391,7 +428,7 @@ public class GeminiParser {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Failed to parse Gemini response", e);
+            log.error("Failed to parse AI response", e);
             throw BusinessException.badRequest("AI trả về dữ liệu không hợp lệ. Vui lòng thử lại.");
         }
     }
@@ -429,14 +466,192 @@ public class GeminiParser {
                 """.formatted(subjectLine, chunk);
     }
 
-    private String callGemini(String prompt) {
+    private String callTaskAi(String prompt) {
         Map<String, Object> body = Map.of(
                 "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
                 "generationConfig", Map.of(
                         "temperature", 0.1,
                         "maxOutputTokens", 8192,
                         "responseMimeType", "application/json"));
-        return callGemini(body);
+        return callTaskAi(body);
+    }
+
+    private String callTaskAi(Map<String, Object> body) {
+        List<String> keys = configuredApiKeys();
+        if (keys.isEmpty()) return callGroqAndTrack(body);
+
+        try {
+            String response = callGemini(body);
+            taskModels.get().add("Gemini: " + normalizeModelName(model));
+            return response;
+        } catch (RuntimeException geminiError) {
+            if (!isGroqConfigured()) throw geminiError;
+            log.warn("Gemini failed for an AI task; retrying with Groq ({})",
+                    geminiError.getClass().getSimpleName());
+            return callGroqAndTrack(body, geminiError);
+        }
+    }
+
+    private String callGroqAndTrack(Map<String, Object> body) {
+        return callGroqAndTrack(body, null);
+    }
+
+    private String callGroqAndTrack(Map<String, Object> body, RuntimeException geminiError) {
+        try {
+            String response = callGroq(body);
+            taskModels.get().add("Groq: " + groqModel.trim());
+            return response;
+        } catch (RuntimeException groqError) {
+            if (geminiError != null) groqError.addSuppressed(geminiError);
+            throw groqError;
+        }
+    }
+
+    private boolean isGroqConfigured() {
+        return groqApiKey != null && !groqApiKey.isBlank()
+                && groqModel != null && !groqModel.isBlank();
+    }
+
+    private void requireTaskProviderConfigured() {
+        if (configuredApiKeys().isEmpty() && !isGroqConfigured()) {
+            throw BusinessException.badRequest(
+                    "Chưa cấu hình Gemini hoặc Groq API key và model trên máy chủ");
+        }
+    }
+
+    private String callGroq(Map<String, Object> geminiBody) {
+        if (!isGroqConfigured()) {
+            throw BusinessException.badRequest(
+                    "Chưa cấu hình GROQ_API_KEY và GROQ_MODEL trên máy chủ");
+        }
+        try {
+            JsonNode generationConfig = objectMapper.valueToTree(geminiBody).path("generationConfig");
+            JsonNode response = webClientBuilder.build()
+                    .post()
+                    .uri(groqBaseUrl)
+                    .headers(headers -> headers.setBearerAuth(groqApiKey.trim()))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(Map.of(
+                            "model", groqModel.trim(),
+                            "messages", toGroqMessages(objectMapper.valueToTree(geminiBody)),
+                            "temperature", generationConfig.path("temperature").asDouble(0.1),
+                            "max_tokens", Math.min(
+                                    generationConfig.path("maxOutputTokens").asInt(MAX_GROQ_OUTPUT_TOKENS),
+                                    MAX_GROQ_OUTPUT_TOKENS)))
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .timeout(Duration.ofMillis(groqTimeoutMs))
+                    .block();
+            JsonNode content = response == null
+                    ? null
+                    : response.path("choices").path(0).path("message").path("content");
+            if (content == null || content.isMissingNode() || content.isNull()
+                    || content.asText().isBlank()) {
+                throw new IllegalStateException("Groq returned an empty response");
+            }
+
+            Map<String, Object> usage = Map.of(
+                    "totalTokenCount", response.path("usage").path("total_tokens").asInt(0));
+            return objectMapper.writeValueAsString(Map.of(
+                    "candidates", List.of(Map.of("content", Map.of(
+                            "parts", List.of(Map.of("text", content.asText()))))),
+                    "usageMetadata", usage));
+        } catch (WebClientResponseException error) {
+            log.warn("Groq API returned HTTP {}", error.getStatusCode().value());
+            throw BusinessException.badRequest(
+                    groqFailurePrefix() + " gặp lỗi HTTP "
+                            + error.getStatusCode().value()
+                            + ". Kiểm tra GROQ_API_KEY, GROQ_MODEL và quota trên Groq.");
+        } catch (BusinessException error) {
+            throw error;
+        } catch (Exception error) {
+            log.warn("Groq AI task failed: {}", error.getClass().getSimpleName());
+            throw BusinessException.badRequest(
+                    groqFailurePrefix() + " không kết nối được. Kiểm tra cấu hình Groq rồi thử lại.");
+        }
+    }
+
+    private String groqFailurePrefix() {
+        return configuredApiKeys().isEmpty() ? "Groq" : "Gemini không khả dụng và Groq";
+    }
+
+    List<Map<String, Object>> toGroqMessages(JsonNode geminiBody) throws IOException {
+        List<Map<String, Object>> messages = new ArrayList<>();
+        JsonNode systemParts = geminiBody.path("systemInstruction").path("parts");
+        if (systemParts.isArray() && !systemParts.isEmpty()) {
+            messages.add(Map.of("role", "system", "content", joinTextParts(systemParts)));
+        }
+
+        JsonNode contents = geminiBody.path("contents");
+        if (!contents.isArray()) {
+            throw new IllegalArgumentException("AI request has no contents");
+        }
+        for (JsonNode content : contents) {
+            String role = "model".equals(content.path("role").asText()) ? "assistant" : "user";
+            List<Map<String, Object>> multimodalContent = new ArrayList<>();
+            JsonNode parts = content.path("parts");
+            for (JsonNode part : parts) {
+                if (part.hasNonNull("text")) {
+                    multimodalContent.add(Map.of("type", "text", "text", part.path("text").asText()));
+                }
+                JsonNode inlineData = part.path("inline_data");
+                if (!inlineData.isMissingNode()) {
+                    String mimeType = inlineData.path("mime_type").asText();
+                    byte[] data = Base64.getDecoder().decode(inlineData.path("data").asText());
+                    if ("application/pdf".equals(mimeType)) {
+                        multimodalContent.addAll(renderPdfForGroq(data));
+                    } else {
+                        multimodalContent.add(groqImagePart(mimeType, data));
+                    }
+                }
+            }
+            if (multimodalContent.isEmpty()) {
+                throw new IllegalArgumentException("AI request has no message content");
+            }
+            Object messageContent = multimodalContent.stream()
+                    .allMatch(part -> "text".equals(part.get("type")))
+                    ? multimodalContent.stream().map(part -> part.get("text").toString())
+                            .collect(java.util.stream.Collectors.joining("\n"))
+                    : multimodalContent;
+            messages.add(Map.of("role", role, "content", messageContent));
+        }
+        return messages;
+    }
+
+    private String joinTextParts(JsonNode parts) {
+        List<String> text = new ArrayList<>();
+        parts.forEach(part -> {
+            if (part.hasNonNull("text")) text.add(part.path("text").asText());
+        });
+        return String.join("\n", text);
+    }
+
+    private List<Map<String, Object>> renderPdfForGroq(byte[] pdfBytes) throws IOException {
+        try (PDDocument document = Loader.loadPDF(pdfBytes)) {
+            if (document.getNumberOfPages() > MAX_GROQ_PDF_PAGES) {
+                throw BusinessException.badRequest(
+                        "PDF scan dùng Groq dự phòng chỉ hỗ trợ tối đa "
+                                + MAX_GROQ_PDF_PAGES
+                                + " trang. Hãy chia nhỏ tệp hoặc dùng Gemini.");
+            }
+            PDFRenderer renderer = new PDFRenderer(document);
+            List<Map<String, Object>> images = new ArrayList<>();
+            for (int page = 0; page < document.getNumberOfPages(); page++) {
+                ByteArrayOutputStream output = new ByteArrayOutputStream();
+                var mediaBox = document.getPage(page).getMediaBox();
+                float scale = Math.min(96f / 72f, Math.min(
+                        1600f / mediaBox.getWidth(), 1600f / mediaBox.getHeight()));
+                ImageIO.write(renderer.renderImage(page, scale), "jpg", output);
+                images.add(groqImagePart("image/jpeg", output.toByteArray()));
+            }
+            return images;
+        }
+    }
+
+    private Map<String, Object> groqImagePart(String mimeType, byte[] imageBytes) {
+        String dataUrl = "data:" + mimeType + ";base64,"
+                + Base64.getEncoder().encodeToString(imageBytes);
+        return Map.of("type", "image_url", "image_url", Map.of("url", dataUrl));
     }
 
     private String callGemini(Map<String, Object> body) {

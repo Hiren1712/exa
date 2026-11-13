@@ -3,7 +3,6 @@ package vn.exa.importjob;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,9 +23,6 @@ public class ImportProcessingService {
     private final DocumentParser documentParser;
     private final GeminiParser geminiParser;
     private final ObjectMapper objectMapper;
-
-    @Value("${exa.gemini.model:gemini-3.6-flash}")
-    private String aiModel;
 
     @Async("importTaskExecutor")
     public void processAsync(Long jobId, String subjectHint, String supplementalContent,
@@ -66,13 +62,12 @@ public class ImportProcessingService {
             importJobRepository.save(job);
 
             GeminiParser.ParseResult result;
-            String resultModel = aiModel;
             if (imageFile) {
                 result = geminiParser.processImage(fileBytes, imageMimeType(fileType), subjectHint,
                         text, mode, questionCount, grade);
             } else if ("pdf".equals(fileType) && (extractedText == null || extractedText.isBlank())) {
                 if (!geminiParser.isConfigured()) {
-                    fail(job, "PDF scan cần GEMINI_API_KEY để đọc hình ảnh. Vui lòng cấu hình Gemini hoặc dùng PDF có thể chọn chữ.");
+                    fail(job, "PDF scan cần cấu hình Gemini hoặc Groq với model hỗ trợ hình ảnh. Vui lòng cấu hình một trong hai hoặc dùng PDF có thể chọn chữ.");
                     return;
                 }
                 if (text != null && !text.isBlank()) job.setExtractedText(text);
@@ -93,7 +88,7 @@ public class ImportProcessingService {
                 job.setExtractedText(text);
                 result = geminiParser.parse(text, subjectHint);
             }
-            saveResult(job, result, resultModel);
+            saveResult(job, result, geminiParser.getAndClearLastTaskModel());
         } catch (BusinessException error) {
             log.warn("Import job {} could not be processed: {}", jobId, error.getMessage());
             fail(job, error.getMessage());

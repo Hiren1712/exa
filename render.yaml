@@ -25,3 +25,7 @@ services:
         value: https://exa-edulab.pages.dev
       - key: GEMINI_API_KEY
         sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        sync: false

@@ -3,9 +3,19 @@ package vn.exa.importjob;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.ExchangeFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 import vn.exa.common.BusinessException;
+import reactor.core.publisher.Mono;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
 
+import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
@@ -22,7 +32,7 @@ class GeminiParserTest {
 
         assertThatThrownBy(() -> parser.parse("Câu 1. Nội dung câu hỏi", "Toán"))
                 .isInstanceOf(BusinessException.class)
-                .hasMessage("Chưa cấu hình Gemini API key trên máy chủ");
+                .hasMessage("Chưa cấu hình Gemini hoặc Groq API key và model trên máy chủ");
     }
 
     @Test
@@ -156,13 +166,101 @@ class GeminiParserTest {
     }
 
     @Test
-    void textQuestionGenerationRequiresGeminiConfiguration() {
+    void textQuestionGenerationRequiresAnAiProviderConfiguration() {
         GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
 
         assertThatThrownBy(() -> parser.generateQuestionsFromText(
                 "Tạo câu hỏi về quang hợp", "Sinh học", 10, 1, "COMPREHENSION"))
                 .isInstanceOf(BusinessException.class)
-                .hasMessage("Chưa cấu hình Gemini API key trên máy chủ");
+                .hasMessage("Chưa cấu hình Gemini hoặc Groq API key và model trên máy chủ");
+    }
+
+    @Test
+    void groqKeyAndModelEnableAiTasksWithoutGemini() {
+        GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
+        ReflectionTestUtils.setField(parser, "groqApiKey", "groq-test-key");
+        ReflectionTestUtils.setField(parser, "groqModel", "vision-model");
+
+        assertThat(parser.isConfigured()).isTrue();
+        org.assertj.core.api.Assertions.assertThatCode(parser::validateConfiguration)
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void groqFallbackIsUsedAfterGeminiFailsForQuestionGeneration() {
+        List<String> requestedHosts = new ArrayList<>();
+        ExchangeFunction exchange = request -> {
+            requestedHosts.add(request.url().getHost());
+            if (request.url().getHost().equals("generativelanguage.googleapis.com")) {
+                return Mono.just(ClientResponse.create(HttpStatus.TOO_MANY_REQUESTS)
+                        .body("{\"error\":{\"status\":\"RESOURCE_EXHAUSTED\"}}")
+                        .build());
+            }
+            return Mono.just(ClientResponse.create(HttpStatus.OK)
+                    .header("Content-Type", "application/json")
+                    .body("""
+                            {"choices":[{"message":{"content":"[{\\"number\\":1,\\"content\\":\\"Generated\\",\\"options\\":[\\"A\\",\\"B\\"],\\"correctAnswer\\":\\"A\\"}]"}}],
+                             "usage":{"total_tokens":12}}
+                            """)
+                    .build());
+        };
+        GeminiParser parser = new GeminiParser(
+                WebClient.builder().exchangeFunction(exchange), objectMapper);
+        ReflectionTestUtils.setField(parser, "apiKey", "gemini-test-key");
+        ReflectionTestUtils.setField(parser, "model", "gemini-test-model");
+        ReflectionTestUtils.setField(parser, "timeoutMs", 1000L);
+        ReflectionTestUtils.setField(parser, "groqApiKey", "groq-test-key");
+        ReflectionTestUtils.setField(parser, "groqModel", "groq-test-model");
+        ReflectionTestUtils.setField(parser, "groqBaseUrl",
+                "https://api.groq.com/openai/v1/chat/completions");
+        ReflectionTestUtils.setField(parser, "groqTimeoutMs", 1000L);
+
+        List<ParsedQuestion> questions = parser.generateQuestions(
+                "Toán", 10, "Phân số", 1, "COMPREHENSION");
+
+        assertThat(questions).hasSize(1);
+        assertThat(questions.get(0).getContent()).isEqualTo("Generated");
+        assertThat(requestedHosts).containsExactly(
+                "generativelanguage.googleapis.com", "api.groq.com");
+        assertThat(parser.getAndClearLastTaskModel()).isEqualTo("Groq: groq-test-model");
+    }
+
+    @Test
+    void groqMessagesPreserveImagePartsAsDataUrls() throws Exception {
+        GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
+        JsonNode geminiRequest = objectMapper.readTree("""
+                {"contents":[{"parts":[
+                  {"text":"Read this image"},
+                  {"inline_data":{"mime_type":"image/png","data":"aGVsbG8="}}
+                ]}]}
+                """);
+
+        JsonNode groqRequest = objectMapper.valueToTree(parser.toGroqMessages(geminiRequest));
+
+        assertThat(groqRequest.at("/0/role").asText()).isEqualTo("user");
+        assertThat(groqRequest.at("/0/content/0/text").asText()).isEqualTo("Read this image");
+        assertThat(groqRequest.at("/0/content/1/image_url/url").asText())
+                .isEqualTo("data:image/png;base64,aGVsbG8=");
+    }
+
+    @Test
+    void groqPdfFallbackRejectsDocumentsOverThreePagesInsteadOfDroppingPages() throws Exception {
+        GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
+        ByteArrayOutputStream pdfBytes = new ByteArrayOutputStream();
+        try (PDDocument document = new PDDocument()) {
+            for (int page = 0; page < 4; page++) document.addPage(new PDPage());
+            document.save(pdfBytes);
+        }
+        JsonNode geminiRequest = objectMapper.valueToTree(Map.of(
+                "contents", List.of(Map.of("parts", List.of(
+                        Map.of("text", "Read the scanned document"),
+                        Map.of("inline_data", Map.of(
+                                "mime_type", "application/pdf",
+                                "data", Base64.getEncoder().encodeToString(pdfBytes.toByteArray()))))))));
+
+        assertThatThrownBy(() -> parser.toGroqMessages(geminiRequest))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("tối đa 3 trang");
     }
 
     @Test

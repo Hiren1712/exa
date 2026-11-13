@@ -68,7 +68,7 @@ public class ChatbotService {
     @Value("${exa.chat.groq.api-key:}")
     private String groqApiKey;
 
-    @Value("${exa.chat.groq.model:}")
+    @Value("${exa.chat.groq.model:qwen/qwen3.8-27b}")
     private String groqModel;
 
     @Value("${exa.chat.groq.base-url:https://api.groq.com/openai/v1/chat/completions}")
