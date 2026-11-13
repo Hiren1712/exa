@@ -30,6 +30,19 @@ class ChatbotServiceTest {
     }
 
     @Test
+    void systemPromptExplainsEduLabAndSeparatesExaBotFromChemAI() {
+        String prompt = ChatbotService.systemPrompt(true);
+
+        assertThat(prompt)
+                .contains("EduLab là hệ sinh thái website giáo dục STEM")
+                .contains("ChemLab (Hóa học), PhysicsLab (Vật lý), MathLab (Toán học)")
+                .contains("BioLab (Sinh học) và ITLab")
+                .contains("ExaBot là trợ lý trong phân hệ EXA, không phải ChemAI")
+                .contains("PhysicsAI, MathAI, BioAI và ITAI là định hướng tương lai")
+                .contains("Không bịa tên bài học, mô-đun, thí nghiệm");
+    }
+
+    @Test
     void providerOrderRejectsUnknownProviders() {
         assertThatThrownBy(() -> ChatbotService.parseProviderOrder("gemini,unknown"))
                 .isInstanceOf(IllegalStateException.class)
