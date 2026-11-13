@@ -63,7 +63,7 @@ public class AiController {
         List<GeminiParser.ChatTurn> history = request.getMessages().stream()
                 .map(message -> new GeminiParser.ChatTurn(message.getRole(), message.getContent()))
                 .toList();
-        String reply = aiService.chat(history, user.isStudent());
+        String reply = aiService.chat(history, user.isStudent(), request.getProvider());
         return ResponseEntity.ok(ApiResponse.ok(new ChatResponse(reply), "Đã nhận câu trả lời"));
     }
 
@@ -73,6 +73,8 @@ public class AiController {
         @NotNull
         @Size(min = 1, max = 12)
         private List<ChatMessage> messages = new ArrayList<>();
+
+        private ChatbotService.ChatProvider provider;
 
         @AssertTrue(message = "Tin nhắn phải luân phiên người dùng và trợ lý, kết thúc bằng tin nhắn người dùng")
         public boolean isConversationValid() {

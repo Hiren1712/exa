@@ -2,6 +2,7 @@ package vn.exa.ai;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,6 +20,27 @@ class ChatbotServiceTest {
     void blankProviderOrderUsesTheDefaultOrder() {
         assertThat(ChatbotService.parseProviderOrder(" "))
                 .containsExactly("gemini", "openrouter", "openai", "groq", "deepseek");
+    }
+
+    @Test
+    void preferredChatProviderIsTriedFirstThenFallsBackToConfiguredOrder() {
+        assertThat(ChatbotService.prioritizeProviderOrder(
+                List.of("gemini", "openrouter", "groq"), ChatbotService.ChatProvider.GROQ))
+                .containsExactly("groq", "gemini", "openrouter");
+        assertThat(ChatbotService.prioritizeProviderOrder(
+                List.of("gemini", "groq"), null))
+                .containsExactly("gemini", "groq");
+        assertThat(ChatbotService.prioritizeProviderOrder(
+                List.of("gemini"), ChatbotService.ChatProvider.GROQ))
+                .containsExactly("gemini");
+    }
+
+    @Test
+    void selectedChatProviderAddsItsResponseStyleToTheSharedSystemPrompt() {
+        assertThat(ChatbotService.systemPrompt(true, ChatbotService.ChatProvider.GROQ))
+                .contains("Ưu tiên phản hồi nhanh, ngắn gọn");
+        assertThat(ChatbotService.systemPrompt(true, ChatbotService.ChatProvider.GEMINI))
+                .contains("Ưu tiên giải thích chi tiết, trình bày từng bước");
     }
 
     @Test

@@ -20,6 +20,15 @@ class AiControllerTest {
     }
 
     @Test
+    void chatRequestCanSelectEitherSupportedProvider() {
+        AiController.ChatRequest request = new AiController.ChatRequest();
+        request.setMessages(List.of(message("user", "Giải thích đạo hàm")));
+        request.setProvider(ChatbotService.ChatProvider.GROQ);
+
+        assertThat(request.getProvider()).isEqualTo(ChatbotService.ChatProvider.GROQ);
+    }
+
+    @Test
     void chatRequestRejectsRepeatedRolesAndConversationEndingWithAssistant() {
         AiController.ChatRequest repeatedRole = new AiController.ChatRequest();
         repeatedRole.setMessages(List.of(message("user", "Câu hỏi 1"), message("user", "Câu hỏi 2")));

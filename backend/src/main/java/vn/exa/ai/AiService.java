@@ -46,6 +46,13 @@ public class AiService {
         return chatbotService.chat(history, student);
     }
 
+    public String chat(
+            List<GeminiParser.ChatTurn> history,
+            boolean student,
+            ChatbotService.ChatProvider provider) {
+        return chatbotService.chat(history, student, provider);
+    }
+
     private Question saveGeneratedQuestion(Long userId, GenerateQuestionsRequest request, ParsedQuestion parsed) {
         if (parsed.getContent() == null || parsed.getContent().isBlank()
                 || parsed.getOptions() == null || parsed.getOptions().size() < 2) {

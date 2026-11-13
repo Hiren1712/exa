@@ -1,6 +1,6 @@
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { ChatTurn } from '../api/ai';
+import type { ChatProvider, ChatTurn } from '../api/ai';
 import { aiApi } from '../api/ai';
 import { extractError } from '../api/client';
 import { ExaBot } from './ExaBot';
@@ -90,6 +90,20 @@ function storageKey(userId: number) {
   return `exa-chat-history-${userId}`;
 }
 
+function providerStorageKey(userId: number) {
+  return `exa-chat-provider-${userId}`;
+}
+
+function readChatProvider(userId: number): ChatProvider {
+  try {
+    const value = localStorage.getItem(providerStorageKey(userId));
+    return value === 'GROQ' ? 'GROQ' : 'GEMINI';
+  } catch (error) {
+    console.error('Không thể đọc lựa chọn AI chatbot đã lưu:', error);
+    return 'GEMINI';
+  }
+}
+
 function readThreads(userId: number): ChatThread[] {
   try {
     const value: unknown = JSON.parse(localStorage.getItem(storageKey(userId)) || '[]');
@@ -130,6 +144,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
   const [threads, setThreads] = useState<ChatThread[]>(() => readThreads(userId));
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [input, setInput] = useState('');
+  const [provider, setProvider] = useState<ChatProvider>(() => readChatProvider(userId));
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [pendingHistory, setPendingHistory] = useState<ChatTurn[] | null>(null);
@@ -158,6 +173,14 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
   }, [threads, userId]);
 
   useEffect(() => {
+    try {
+      localStorage.setItem(providerStorageKey(userId), provider);
+    } catch (error) {
+      console.error('Không thể lưu lựa chọn AI chatbot trên thiết bị:', error);
+    }
+  }, [provider, userId]);
+
+  useEffect(() => {
     if (!open || showHistory) return;
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [messages, open, sending, showHistory]);
@@ -166,11 +189,11 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
     if (open && !showHistory) inputRef.current?.focus();
   }, [open, showHistory]);
 
-  const ask = async (history: ChatTurn[], threadId: string) => {
+  const ask = async (history: ChatTurn[], threadId: string, selectedProvider: ChatProvider) => {
     setSending(true);
     setError('');
     try {
-      const reply = await aiApi.chat(history);
+      const reply = await aiApi.chat(history, selectedProvider);
       const assistantMessage: StoredMessage = {
         id: createId(),
         role: 'assistant',
@@ -219,12 +242,12 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
       .slice(-11)
       .map(({ role, content: messageContent }) => ({ role, content: messageContent }));
     if (history[0]?.role === 'assistant') history.shift();
-    await ask(history, threadId);
+    await ask(history, threadId, provider);
   };
 
   const retry = async () => {
     if (!pendingHistory || !activeThreadId || sending) return;
-    await ask(pendingHistory, activeThreadId);
+    await ask(pendingHistory, activeThreadId, provider);
   };
 
   const copyMessage = async (message: StoredMessage) => {
@@ -464,6 +487,47 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
               )}
 
               <form onSubmit={(event) => void submitMessage(event)} className="shrink-0 border-t border-slate-200 bg-white px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 dark:border-slate-800 dark:bg-slate-900 sm:pb-3">
+                <div className="mb-2 grid grid-cols-2 gap-2" role="group" aria-label="Chọn AI cho ExaBot">
+                  <button
+                    type="button"
+                    onClick={() => setProvider('GROQ')}
+                    aria-pressed={provider === 'GROQ'}
+                    title="Groq · ưu tiên phản hồi nhanh"
+                    disabled={sending}
+                    className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-60 ${
+                      provider === 'GROQ'
+                        ? 'border-blue-500 bg-blue-50 text-blue-800 dark:border-blue-400 dark:bg-blue-950/50 dark:text-blue-200'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                    }`}
+                  >
+                    <Icon name="zap" size={17} className="shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block text-xs font-semibold">Groq · Nhanh</span>
+                      <span className="block text-[10px] opacity-75">Trả lời gọn</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProvider('GEMINI')}
+                    aria-pressed={provider === 'GEMINI'}
+                    title="Gemini · ưu tiên giải thích chi tiết"
+                    disabled={sending}
+                    className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-60 ${
+                      provider === 'GEMINI'
+                        ? 'border-blue-500 bg-blue-50 text-blue-800 dark:border-blue-400 dark:bg-blue-950/50 dark:text-blue-200'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                    }`}
+                  >
+                    <Icon name="exaAi" size={17} className="shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block text-xs font-semibold">Gemini · Chi tiết</span>
+                      <span className="block text-[10px] opacity-75">Giải thích từng bước</span>
+                    </span>
+                  </button>
+                </div>
+                <p className="mb-2 px-1 text-[10px] text-slate-400">
+                  AI đã chọn được ưu tiên; ExaBot tự chuyển sang AI khác nếu gặp lỗi.
+                </p>
                 <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2 transition focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:focus-within:ring-blue-950">
                   <textarea
                     ref={inputRef}
