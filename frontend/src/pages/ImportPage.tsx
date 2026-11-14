@@ -425,7 +425,8 @@ export default function ImportPage() {
             </div>
             <p className="mt-2 text-xs text-slate-500">
               AI đã chọn được ưu tiên; nếu gặp lỗi, hệ thống tự chuyển sang AI còn lại.
-              Khi trích xuất, AI không đoán đáp án không có trong tài liệu. Hãy rà soát trước khi lưu.
+              Khi tài liệu không ghi đáp án, AI sẽ tự giải và điền đáp án nếu đủ dữ kiện.
+              Hãy duyệt, sửa nếu cần trước khi lưu.
             </p>
           </div>
 

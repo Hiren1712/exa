@@ -137,7 +137,7 @@ class GeminiParserTest {
     }
 
     @Test
-    void imageImportPromptTranscribesVisualContentWithoutGuessingUnclearAnswers() {
+    void imageImportPromptSolvesExtractedQuestionsAndLeavesUnclearAnswersBlank() {
         GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
 
         String extractPrompt = parser.sourcePrompt("Toán", 12, ImportMode.EXTRACT, 10);
@@ -146,8 +146,9 @@ class GeminiParserTest {
         assertThat(extractPrompt)
                 .contains("ảnh scan")
                 .contains("biểu đồ và sơ đồ")
-                .contains("correctAnswer là null")
-                .contains("không đoán đáp án");
+                .contains("tự giải từ nội dung câu hỏi và phương án đọc được")
+                .contains("không thể xác định duy nhất đáp án")
+                .contains("điền answerText nếu đủ dữ kiện");
         assertThat(generatePrompt)
                 .contains("đọc chữ tiếng Việt")
                 .contains("[Hình: ...]")
@@ -308,7 +309,7 @@ class GeminiParserTest {
         JsonNode groqRequest = objectMapper.valueToTree(parser.toGroqMessages(geminiRequest));
 
         assertThat(groqRequest.at("/0/role").asText()).isEqualTo("system");
-        assertThat(groqRequest.at("/0/content").asText()).contains("không đoán đáp án");
+        assertThat(groqRequest.at("/0/content").asText()).contains("correctAnswer/answerText");
         assertThat(groqRequest.at("/1/role").asText()).isEqualTo("user");
         assertThat(groqRequest.at("/1/content/0/text").asText()).isEqualTo("Read this image");
         assertThat(groqRequest.at("/1/content/1/image_url/url").asText())
