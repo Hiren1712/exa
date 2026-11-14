@@ -542,7 +542,11 @@ public class GeminiParser {
                 }
             }
             int additionalTokens = response.path("usageMetadata").path("totalTokenCount").asInt(0);
-            return new ParseResult(result.questions(), result.tokensUsed() + additionalTokens);
+            ParseResult updated = new ParseResult(
+                    result.questions(), result.tokensUsed() + additionalTokens);
+            return !sourceParts.isEmpty() && unanswered.stream().anyMatch(this::needsAnswer)
+                    ? resolveMissingAnswers(updated, List.of())
+                    : updated;
         } catch (BusinessException error) {
             throw error;
         } catch (Exception error) {
