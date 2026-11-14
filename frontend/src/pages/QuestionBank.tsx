@@ -11,6 +11,7 @@ import { useToast } from '../components/Toast';
 import { extractError } from '../api/client';
 import { Difficulty, Question, QuestionFilter, QuestionType, questionApi } from '../api/question';
 import { DIFFICULTY_LABELS, QUESTION_TYPE_LABELS } from '../lib/utils';
+import { useLanguage } from '../i18n';
 
 const emptyQuestion: Question = {
   subject: 'Toán',
@@ -33,6 +34,7 @@ const typeOptions = Object.entries(QUESTION_TYPE_LABELS).map(([value, label]) =>
 export default function QuestionBank() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -52,11 +54,11 @@ export default function QuestionBank() {
       setTotal(result.totalElements || 0);
       setSelected(new Set());
     } catch (err) {
-      toast('Không tải được câu hỏi', extractError(err), 'error');
+      toast(t('Không tải được câu hỏi'), extractError(err), 'error');
     } finally {
       setLoading(false);
     }
-  }, [filter, toast]);
+  }, [filter, t, toast]);
 
   useEffect(() => {
     void load();
@@ -82,18 +84,18 @@ export default function QuestionBank() {
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
     if (!form.subject.trim()) {
-      toast('Thiếu môn học', 'Vui lòng nhập môn học cho câu hỏi', 'warn');
+      toast(t('Thiếu môn học'), t('Vui lòng nhập môn học cho câu hỏi'), 'warn');
       return;
     }
     if (!form.content.trim()) {
-      toast('Thiếu nội dung', 'Vui lòng nhập nội dung câu hỏi', 'warn');
+      toast(t('Thiếu nội dung'), t('Vui lòng nhập nội dung câu hỏi'), 'warn');
       return;
     }
     const validIndexes = (form.options || []).map((option, index) => ({ index, text: option.trim(), image: form.optionImages?.[index] || '' })).filter((item) => item.text || item.image);
     const options = form.type === 'MCQ' ? validIndexes.map((item) => item.text) : undefined;
     const optionImages = form.type === 'MCQ' ? validIndexes.map((item) => item.image) : undefined;
     if (form.type === 'MCQ' && (options?.length ?? 0) < 2) {
-      toast('Thiếu phương án', 'Câu trắc nghiệm cần ít nhất hai phương án', 'warn');
+      toast(t('Thiếu phương án'), t('Câu trắc nghiệm cần ít nhất hai phương án'), 'warn');
       return;
     }
     if (uploading) return;
@@ -108,15 +110,15 @@ export default function QuestionBank() {
       };
       if (editing?.id) {
         await questionApi.update(editing.id, payload);
-        toast('Đã cập nhật câu hỏi', '', 'success');
+        toast(t('Đã cập nhật câu hỏi'), '', 'success');
       } else {
         await questionApi.create(payload);
-        toast('Đã tạo câu hỏi', '', 'success');
+        toast(t('Đã tạo câu hỏi'), '', 'success');
       }
       setModalOpen(false);
       await load();
     } catch (err) {
-      toast('Không lưu được câu hỏi', extractError(err), 'error');
+      toast(t('Không lưu được câu hỏi'), extractError(err), 'error');
     } finally {
       setSaving(false);
     }
@@ -126,10 +128,10 @@ export default function QuestionBank() {
     if (!question.id || !confirm('Bạn có chắc muốn xóa câu hỏi này?')) return;
     try {
       await questionApi.delete(question.id);
-      toast('Đã xóa câu hỏi', '', 'success');
+      toast(t('Đã xóa câu hỏi'), '', 'success');
       await load();
     } catch (err) {
-      toast('Không xóa được câu hỏi', extractError(err), 'error');
+      toast(t('Không xóa được câu hỏi'), extractError(err), 'error');
     }
   };
 
@@ -137,10 +139,10 @@ export default function QuestionBank() {
     if (selected.size === 0 || !confirm(`Xóa ${selected.size} câu hỏi đã chọn?`)) return;
     try {
       const count = await questionApi.bulkDelete([...selected]);
-      toast('Đã xóa câu hỏi', `${count} câu`, 'success');
+      toast(t('Đã xóa câu hỏi'), t('{{count}} câu', { count }), 'success');
       await load();
     } catch (err) {
-      toast('Không xóa được các câu đã chọn', extractError(err), 'error');
+      toast(t('Không xóa được các câu đã chọn'), extractError(err), 'error');
     }
   };
 
@@ -182,7 +184,7 @@ export default function QuestionBank() {
 
   const uploadImage = async (file: File, optionIndex?: number) => {
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
-      toast('Ảnh không hợp lệ', 'Chọn PNG, JPEG hoặc WebP, tối đa 5 MB', 'warn');
+      toast(t('Ảnh không hợp lệ'), t('Chọn PNG, JPEG hoặc WebP, tối đa 5 MB'), 'warn');
       return;
     }
     setUploading(true);
@@ -192,7 +194,7 @@ export default function QuestionBank() {
         ? { ...current, imageUrl: url }
         : { ...current, optionImages: (current.options || []).map((_, index) => index === optionIndex ? url : current.optionImages?.[index] || '') });
     } catch (err) {
-      toast('Không tải được ảnh', extractError(err), 'error');
+      toast(t('Không tải được ảnh'), extractError(err), 'error');
     } finally { setUploading(false); }
   };
 
@@ -203,12 +205,12 @@ export default function QuestionBank() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">Ngân hàng câu hỏi</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{total} câu hỏi trong kho</p>
+          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{t('Ngân hàng câu hỏi')}</h1>
+          <p className="text-sm text-slate-500 mt-0.5">{t('{{count}} câu hỏi trong kho', { count: total })}</p>
         </div>
         <div className="flex gap-2">
           <Link to="/import"><Button variant="ghost" icon={<Icon name="upload" size={16} />}>Import Word/PDF</Button></Link>
-          <Button variant="primary" icon={<Icon name="plus" size={16} />} onClick={beginCreate}>Tạo câu hỏi</Button>
+          <Button variant="primary" icon={<Icon name="plus" size={16} />} onClick={beginCreate}>{t('Tạo câu hỏi')}</Button>
         </div>
       </div>
 
@@ -249,10 +251,10 @@ export default function QuestionBank() {
 
       {selected.size > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 p-3 text-sm">
-          <span className="font-semibold text-blue-700 dark:text-blue-300">Đã chọn {selected.size} câu</span>
-          <Button size="sm" variant="primary" onClick={handleAddToExam}>Thêm vào đề thi</Button>
-          <Button size="sm" variant="danger" onClick={() => void handleBulkDelete()}>Xóa đã chọn</Button>
-          <button className="text-xs text-slate-500" onClick={() => setSelected(new Set())}>Bỏ chọn</button>
+          <span className="font-semibold text-blue-700 dark:text-blue-300">{t('Đã chọn {{count}} câu', { count: selected.size })}</span>
+          <Button size="sm" variant="primary" onClick={handleAddToExam}>{t('Thêm vào đề thi')}</Button>
+          <Button size="sm" variant="danger" onClick={() => void handleBulkDelete()}>{t('Xóa đã chọn')}</Button>
+          <button className="text-xs text-slate-500" onClick={() => setSelected(new Set())}>{t('Bỏ chọn')}</button>
         </div>
       )}
 
@@ -261,8 +263,8 @@ export default function QuestionBank() {
       ) : questions.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-16 text-center">
           <Icon name="layers" size={28} className="mx-auto mb-3 text-blue-500" />
-          <h2 className="font-bold text-slate-700 dark:text-slate-300">Chưa tìm thấy câu hỏi</h2>
-          <p className="text-sm text-slate-500 mt-1">Tạo câu hỏi mới hoặc thay đổi bộ lọc.</p>
+          <h2 className="font-bold text-slate-700 dark:text-slate-300">{t('Chưa tìm thấy câu hỏi')}</h2>
+          <p className="text-sm text-slate-500 mt-1">{t('Tạo câu hỏi mới hoặc thay đổi bộ lọc.')}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -278,7 +280,7 @@ export default function QuestionBank() {
                     {question.unit && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">{question.unit}</span>}
                   </div>
                   <MathText className="whitespace-pre-wrap text-sm font-semibold leading-relaxed text-slate-900 dark:text-white">{question.content}</MathText>
-                  <div className="mt-2"><QuestionImage src={question.imageUrl} alt="Hình minh họa câu hỏi" /></div>
+                  <div className="mt-2"><QuestionImage src={question.imageUrl} alt={t('Hình minh họa câu hỏi')} /></div>
                   {question.options && (
                     <div className="mt-3 grid sm:grid-cols-2 gap-2">
                       {question.options.map((option, index) => {
@@ -288,7 +290,7 @@ export default function QuestionBank() {
                       })}
                     </div>
                   )}
-                  {question.explanation && <p className="mt-3 text-xs text-slate-500"><strong>Lời giải:</strong> <MathText>{question.explanation}</MathText></p>}
+                  {question.explanation && <p className="mt-3 text-xs text-slate-500"><strong>{t('Lời giải')}:</strong> <MathText>{question.explanation}</MathText></p>}
                 </div>
                 <div className="flex gap-1">
                   <button aria-label="Sửa câu hỏi" onClick={() => beginEdit(question)} className="rounded-lg p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-200"><Icon name="edit" size={16} /></button>
@@ -302,7 +304,7 @@ export default function QuestionBank() {
 
       {!loading && total > (filter.size || 20) && (
         <div className="flex items-center justify-between">
-          <span className="text-xs text-slate-500">Trang {page + 1} / {pageCount}</span>
+          <span className="text-xs text-slate-500">{t('Trang {{page}} / {{pages}}', { page: page + 1, pages: pageCount })}</span>
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" disabled={page === 0} onClick={() => setFilter({ ...filter, page: page - 1 })}>Trước</Button>
             <Button size="sm" variant="ghost" disabled={page + 1 >= pageCount} onClick={() => setFilter({ ...filter, page: page + 1 })}>Tiếp</Button>
@@ -321,25 +323,25 @@ export default function QuestionBank() {
           <Select label="Loại câu hỏi" value={form.type} onChange={(event) => updateType(event.target.value as QuestionType)} options={typeOptions} />
           <Textarea label="Nội dung (có thể nhập ký hiệu LaTeX dạng văn bản)" required rows={5} value={form.content} onChange={(event) => setForm({ ...form, content: event.target.value })} />
           <div className="rounded-xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
-            <label className="block text-sm font-semibold mb-2">Hình minh họa câu hỏi (tùy chọn)</label>
-            <input aria-label="Chọn ảnh câu hỏi" type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading || saving}
+            <label className="block text-sm font-semibold mb-2">{t('Hình minh họa câu hỏi (tùy chọn)')}</label>
+            <input aria-label={t('Chọn ảnh câu hỏi')} type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading || saving}
               onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file); event.target.value = ''; }}
               className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-blue-700" />
-            <p className="mt-1 text-xs text-slate-500">PNG / JPG / WebP · Tối đa 5 MB · Nhấn vào ảnh để xem lớn</p>
-            <div className="mt-2"><QuestionImage src={form.imageUrl} alt="Xem trước hình câu hỏi" /></div>
-            {form.imageUrl && <button type="button" className="text-sm text-rose-600" onClick={() => setForm({ ...form, imageUrl: '' })}>Gỡ ảnh câu hỏi</button>}
+            <p className="mt-1 text-xs text-slate-500">{t('PNG / JPG / WebP · Tối đa 5 MB · Nhấn vào ảnh để xem lớn')}</p>
+            <div className="mt-2"><QuestionImage src={form.imageUrl} alt={t('Xem trước hình câu hỏi')} /></div>
+            {form.imageUrl && <button type="button" className="text-sm text-rose-600" onClick={() => setForm({ ...form, imageUrl: '' })}>{t('Gỡ ảnh câu hỏi')}</button>}
           </div>
           {form.type === 'MCQ' && (
             <div className="space-y-3">
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">Phương án trả lời</p>
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">{t('Phương án trả lời')}</p>
               {(form.options || []).map((option, index) => (
                 <div key={index} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700 space-y-2">
                   <Input label={`Phương án ${String.fromCharCode(65 + index)}`} value={option} onChange={(event) => setOption(index, event.target.value)} />
-                  <label className="block text-xs font-semibold">Ảnh phương án {String.fromCharCode(65 + index)} (tùy chọn)</label>
-                  <input aria-label={`Chọn ảnh phương án ${String.fromCharCode(65 + index)}`} type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading || saving}
+                  <label className="block text-xs font-semibold">{t('Ảnh phương án {{letter}} (tùy chọn)', { letter: String.fromCharCode(65 + index) })}</label>
+                  <input aria-label={t('Chọn ảnh phương án {{letter}}', { letter: String.fromCharCode(65 + index) })} type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading || saving}
                     onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file, index); event.target.value = ''; }} className="block w-full text-xs" />
-                  <QuestionImage src={form.optionImages?.[index]} alt={`Xem trước hình phương án ${String.fromCharCode(65 + index)}`} />
-                  {form.optionImages?.[index] && <button type="button" className="text-xs text-rose-600" onClick={() => setForm((current) => ({ ...current, optionImages: (current.optionImages || []).map((url, i) => i === index ? '' : url) }))}>Gỡ ảnh</button>}
+                  <QuestionImage src={form.optionImages?.[index]} alt={t('Xem trước hình phương án {{letter}}', { letter: String.fromCharCode(65 + index) })} />
+                  {form.optionImages?.[index] && <button type="button" className="text-xs text-rose-600" onClick={() => setForm((current) => ({ ...current, optionImages: (current.optionImages || []).map((url, i) => i === index ? '' : url) }))}>{t('Gỡ ảnh')}</button>}
                 </div>
               ))}
               <Select label="Đáp án đúng" value={form.correctAnswer || 'A'} onChange={(event) => setForm({ ...form, correctAnswer: event.target.value })} options={(form.options || []).map((_, index) => ({ value: String.fromCharCode(65 + index), label: `Phương án ${String.fromCharCode(65 + index)}` }))} />
@@ -349,8 +351,8 @@ export default function QuestionBank() {
           {(form.type === 'SHORT_ANSWER' || form.type === 'ESSAY') && <Textarea label="Đáp án / hướng dẫn chấm" value={form.answerText || ''} onChange={(event) => setForm({ ...form, answerText: event.target.value })} />}
           <Textarea label="Lời giải chi tiết" value={form.explanation || ''} onChange={(event) => setForm({ ...form, explanation: event.target.value })} />
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>Hủy</Button>
-            <Button type="submit" form="question-form" variant="primary" loading={saving}>{editing ? 'Lưu thay đổi' : 'Tạo câu hỏi'}</Button>
+            <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>{t('Hủy')}</Button>
+            <Button type="submit" form="question-form" variant="primary" loading={saving}>{t(editing ? 'Lưu thay đổi' : 'Tạo câu hỏi')}</Button>
           </div>
         </form>
       </Modal>

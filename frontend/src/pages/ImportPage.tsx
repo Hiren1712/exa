@@ -14,6 +14,7 @@ import { importApi } from '../api/import';
 import type { ImportAiProvider, ImportMode, ImportPreview, ParsedQuestion } from '../api/import';
 import { extractError } from '../api/client';
 import { DIFFICULTY_LABELS } from '../lib/utils';
+import { useLanguage } from '../i18n';
 
 const IMPORT_POLL_INTERVAL_MS = 2_000;
 const STATUS_LABELS: Record<string, string> = {
@@ -51,6 +52,7 @@ export default function ImportPage() {
   const uploadedSourceImage = useRef<{ file: File; url: string } | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const storageKey = `exa-import-active-${user?.id ?? 'guest'}`;
   const navigate = useNavigate();
 
@@ -75,12 +77,12 @@ export default function ImportPage() {
         if (next.status === 'REVIEW') setSelected(new Set(next.questions.map((_, index) => index)));
       }).catch(() => {
         sessionStorage.removeItem(storageKey);
-        setPollError('Không thể khôi phục phiên import cũ. Hãy kiểm tra đăng nhập và thử lại.');
+        setPollError(t('Không thể khôi phục phiên import cũ. Hãy kiểm tra đăng nhập và thử lại.'));
       });
     } catch {
       sessionStorage.removeItem(storageKey);
     }
-  }, [storageKey]);
+  }, [storageKey, t]);
 
   // Poll in the background, never block the upload button for minutes.
   const activeJobId = preview?.jobId;
@@ -98,9 +100,9 @@ export default function ImportPage() {
         setPreview(next);
         if (next.status === 'REVIEW') {
           setSelected(new Set(next.questions.map((_, index) => index)));
-          toast('Đã xử lý xong', `Có ${next.questions.length} câu để xem lại trước khi lưu.`, 'success');
+          toast(t('Đã xử lý xong'), t('Có {{count}} câu để xem lại trước khi lưu.', { count: next.questions.length }), 'success');
         } else if (next.status === 'FAILED') {
-          toast('Import chưa thành công', next.errorMessage || 'Hãy thử lại.', 'error');
+          toast(t('Import chưa thành công'), next.errorMessage || t('Hãy thử lại.'), 'error');
         }
       } catch (error) {
         if (active) setPollError(extractError(error));
@@ -109,7 +111,7 @@ export default function ImportPage() {
     };
     timer = setTimeout(poll, IMPORT_POLL_INTERVAL_MS);
     return () => { active = false; clearTimeout(timer); };
-  }, [activeJobId, activeJobStatus, toast]);
+  }, [activeJobId, activeJobStatus, t, toast]);
 
   const resetImport = () => {
     sessionStorage.removeItem(storageKey);
@@ -125,15 +127,15 @@ export default function ImportPage() {
     if (!candidate) return;
     const extension = candidate.name.split('.').pop()?.toLowerCase();
     if (!extension || !SUPPORTED_EXTENSIONS.includes(extension)) {
-      toast('Định dạng không hỗ trợ', 'Chỉ nhận TXT, DOCX, PDF, XLSX, XLS, PNG, JPG hoặc WEBP.', 'warn');
+      toast(t('Định dạng không hỗ trợ'), t('Chỉ nhận TXT, DOCX, PDF, XLSX, XLS, PNG, JPG hoặc WEBP.'), 'warn');
       return;
     }
     if (candidate.size > 20 * 1024 * 1024) {
-      toast('File quá lớn', 'Dung lượng file tối đa là 20MB.', 'warn');
+      toast(t('File quá lớn'), t('Dung lượng file tối đa là 20MB.'), 'warn');
       return;
     }
     if (['png', 'jpg', 'jpeg', 'webp'].includes(extension) && candidate.size > 15 * 1024 * 1024) {
-      toast('Ảnh quá lớn', 'Dung lượng ảnh gửi đến AI tối đa 15MB.', 'warn');
+      toast(t('Ảnh quá lớn'), t('Dung lượng ảnh gửi đến AI tối đa 15MB.'), 'warn');
       return;
     }
     setFile(candidate);
@@ -150,11 +152,11 @@ export default function ImportPage() {
 
   const handleUpload = async () => {
     if (!subject.trim()) {
-      toast('Thiếu môn học', 'Hãy nhập môn học cho câu hỏi cần import.', 'warn');
+      toast(t('Thiếu môn học'), t('Hãy nhập môn học cho câu hỏi cần import.'), 'warn');
       return;
     }
     if (!file && !content.trim()) {
-      toast('Chưa có nội dung', 'Hãy chọn tệp hoặc nhập nội dung cần xử lý.', 'warn');
+      toast(t('Chưa có nội dung'), t('Hãy chọn tệp hoặc nhập nội dung cần xử lý.'), 'warn');
       return;
     }
     if (uploading) return;
@@ -170,9 +172,9 @@ export default function ImportPage() {
         totalFound: 0,
         questions: [],
       });
-      toast('Đang xử lý', importMode === 'GENERATE'
+      toast(t('Đang xử lý'), t(importMode === 'GENERATE'
         ? 'AI đang đọc nội dung và tạo câu hỏi...'
-        : 'AI đang phân tích tài liệu...', 'info');
+        : 'AI đang phân tích tài liệu...'), 'info');
       sessionStorage.setItem(storageKey, JSON.stringify({
         id: jobId, mode: importMode, subject, grade, unit,
       }));
@@ -180,7 +182,7 @@ export default function ImportPage() {
       // Status is refreshed in the background; the page remains responsive.
 
     } catch (err) {
-      toast('Lỗi', extractError(err), 'error');
+      toast(t('Lỗi'), extractError(err), 'error');
     } finally {
       setUploading(false);
     }
@@ -198,7 +200,7 @@ export default function ImportPage() {
 
   const uploadQuestionImage = async (index: number, imageFile: File) => {
     if (imageFile.size > 5 * 1024 * 1024) {
-      toast('Ảnh quá lớn', 'Ảnh câu hỏi tối đa 5 MB.', 'warn');
+      toast(t('Ảnh quá lớn'), t('Ảnh câu hỏi tối đa 5 MB.'), 'warn');
       return;
     }
     setUploadingImageKey(`question-${index}`);
@@ -206,7 +208,7 @@ export default function ImportPage() {
       const imageUrl = await questionApi.uploadImage(imageFile);
       updateQuestion(index, { imageUrl });
     } catch (error) {
-      toast('Không tải được ảnh câu hỏi', extractError(error), 'error');
+      toast(t('Không tải được ảnh câu hỏi'), extractError(error), 'error');
     } finally {
       setUploadingImageKey(null);
     }
@@ -215,7 +217,7 @@ export default function ImportPage() {
   const attachScannedImage = async (index: number) => {
     if (!file || uploadingImageKey) return;
     if (file.size > 5 * 1024 * 1024) {
-      toast('Ảnh gốc quá lớn để đính kèm', 'Ảnh dùng làm hình minh họa tối đa 5 MB. Bạn có thể chọn ảnh nhỏ hơn ở câu hỏi.', 'warn');
+      toast(t('Ảnh gốc quá lớn để đính kèm'), t('Ảnh dùng làm hình minh họa tối đa 5 MB. Bạn có thể chọn ảnh nhỏ hơn ở câu hỏi.'), 'warn');
       return;
     }
     setUploadingImageKey(`question-${index}`);
@@ -225,7 +227,7 @@ export default function ImportPage() {
       uploadedSourceImage.current = { file, url: imageUrl };
       updateQuestion(index, { imageUrl });
     } catch (error) {
-      toast('Không đính kèm được ảnh đã quét', extractError(error), 'error');
+      toast(t('Không đính kèm được ảnh đã quét'), extractError(error), 'error');
     } finally {
       setUploadingImageKey(null);
     }
@@ -233,7 +235,7 @@ export default function ImportPage() {
 
   const uploadOptionImage = async (questionIndex: number, optionIndex: number, imageFile: File) => {
     if (imageFile.size > 5 * 1024 * 1024) {
-      toast('Ảnh quá lớn', 'Ảnh phương án tối đa 5 MB.', 'warn');
+      toast(t('Ảnh quá lớn'), t('Ảnh phương án tối đa 5 MB.'), 'warn');
       return;
     }
     const key = `option-${questionIndex}-${optionIndex}`;
@@ -245,7 +247,7 @@ export default function ImportPage() {
         index === optionIndex ? imageUrl : currentImages[index] ?? '');
       updateQuestion(questionIndex, { optionImages });
     } catch (error) {
-      toast('Không tải được ảnh phương án', extractError(error), 'error');
+      toast(t('Không tải được ảnh phương án'), extractError(error), 'error');
     } finally {
       setUploadingImageKey(null);
     }
@@ -262,23 +264,23 @@ export default function ImportPage() {
     if (!preview || saving || preview.status !== 'REVIEW') return;
     const questions = preview.questions.filter((_, idx) => selected.has(idx));
     if (questions.length === 0) {
-      toast('Chưa chọn câu nào', '', 'warn');
+      toast(t('Chưa chọn câu nào'), '', 'warn');
       return;
     }
     const invalidIndex = preview.questions.findIndex((q, index) => selected.has(index)
       && (!q.content.trim() || (q.type === 'MCQ' && (q.options?.filter((opt) => opt.trim()).length ?? 0) < 2)));
     if (invalidIndex !== -1) {
-      toast('Câu hỏi chưa hợp lệ', `Kiểm tra nội dung và phương án của câu ${invalidIndex + 1}.`, 'warn');
+      toast(t('Câu hỏi chưa hợp lệ'), t('Kiểm tra nội dung và phương án của câu {{number}}.', { number: invalidIndex + 1 }), 'warn');
       return;
     }
     setSaving(true);
     try {
       const count = await importApi.saveToBank(preview.jobId, questions, subject, grade, unit);
-      toast('Đã lưu', `${count} câu hỏi vào ngân hàng`, 'success');
+      toast(t('Đã lưu'), t('{{count}} câu hỏi vào ngân hàng', { count }), 'success');
       sessionStorage.removeItem(storageKey);
       navigate('/questions');
     } catch (err) {
-      toast('Lỗi', extractError(err), 'error');
+      toast(t('Lỗi'), extractError(err), 'error');
     } finally {
       setSaving(false);
     }
@@ -292,17 +294,17 @@ export default function ImportPage() {
           <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-blue-700 text-white dark:bg-blue-500 dark:text-slate-950 shadow-lg shadow-blue-500/20"><Icon name="wand" size={26} /></div>
           <div className="flex-1 min-w-0">
             <div className="mb-1 text-xs font-bold uppercase tracking-[.16em] text-blue-700 dark:text-blue-300">EXA • AI WORKSPACE</div>
-            <h1 className="exa-page-title text-slate-900 dark:text-white">Import đề thi bằng AI</h1>
-            <p className="exa-page-subtitle mt-1">Tải tài liệu, trích xuất hoặc sinh câu hỏi, kiểm tra đáp án và lưu vào ngân hàng.</p>
+            <h1 className="exa-page-title text-slate-900 dark:text-white">{t('Import đề thi bằng AI')}</h1>
+            <p className="exa-page-subtitle mt-1">{t('Tải tài liệu, trích xuất hoặc sinh câu hỏi, kiểm tra đáp án và lưu vào ngân hàng.')}</p>
           </div>
         </div>
-        <ol aria-label="Các bước import" className="relative mt-6 grid grid-cols-3 gap-2 text-xs sm:text-sm">
+        <ol aria-label={t('Các bước import')} className="relative mt-6 grid grid-cols-3 gap-2 text-xs sm:text-sm">
           {['01 · Cung cấp nội dung', '02 · AI xử lý', '03 · Rà soát & lưu'].map((label, index) => (
             <li key={label} className={`rounded-xl border px-3 py-2.5 text-center font-semibold ${
               (!preview && index === 0) || (preview && preview.status !== 'REVIEW' && index === 1) || preview?.status === 'REVIEW' && index === 2
                 ? 'border-blue-500/40 bg-blue-50 text-blue-900 dark:bg-blue-500/15 dark:text-blue-200'
                 : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300'
-            }`}>{label}</li>
+            }`}>{t(label)}</li>
           ))}
         </ol>
       </header>
@@ -314,19 +316,19 @@ export default function ImportPage() {
           <div className="grid md:grid-cols-3 gap-4">
             <SubjectInput value={subject} onChange={setSubject} required />
             <Select
-              label="Khối lớp"
+              label={t('Khối lớp')}
               value={String(grade)}
               onChange={(e) => setGrade(Number(e.target.value))}
-              options={[10, 11, 12].map((g) => ({ value: String(g), label: `Lớp ${g}` }))}
+              options={[10, 11, 12].map((g) => ({ value: String(g), label: t('Lớp {{grade}}', { grade: g }) }))}
             />
             <div>
               <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
-                Chuyên đề (tùy chọn)
+                {t('Chuyên đề (tùy chọn)')}
               </label>
               <input
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
-                placeholder="VD: Hàm số bậc ba"
+                placeholder={t('VD: Hàm số bậc ba')}
                 className="exa-field w-full px-3.5 py-2.5 text-sm"
               />
             </div>
@@ -344,10 +346,10 @@ export default function ImportPage() {
               }`}
             >
               <span className="block text-sm font-bold text-slate-900 dark:text-white">
-                Tách câu hỏi có sẵn
+                {t('Tách câu hỏi có sẵn')}
               </span>
               <span className="mt-1 block text-xs text-slate-500">
-                Giữ câu hỏi và đáp án tìm thấy trong tài liệu hoặc ảnh.
+                {t('Giữ câu hỏi và đáp án tìm thấy trong tài liệu hoặc ảnh.')}
               </span>
             </button>
             <button
@@ -361,31 +363,31 @@ export default function ImportPage() {
               }`}
             >
               <span className="block text-sm font-bold text-slate-900 dark:text-white">
-                Tạo câu hỏi từ nội dung
+                {t('Tạo câu hỏi từ nội dung')}
               </span>
               <span className="mt-1 block text-xs text-slate-500">
-                AI xử lý ghi chú, đoạn văn, bảng, dữ kiện, chủ đề ngắn hoặc yêu cầu tự nhiên; không cần theo mẫu đề thi hay có câu hỏi sẵn.
+                {t('AI xử lý ghi chú, đoạn văn, bảng, dữ kiện, chủ đề ngắn hoặc yêu cầu tự nhiên; không cần theo mẫu đề thi hay có câu hỏi sẵn.')}
               </span>
             </button>
           </div>
 
           {importMode === 'GENERATE' && (
             <Select
-              label="Số câu hỏi cần tạo"
+              label={t('Số câu hỏi cần tạo')}
               value={String(questionCount)}
               onChange={(event) => setQuestionCount(Number(event.target.value))}
               options={[5, 10, 15, 20].map((count) => ({
                 value: String(count),
-                label: `${count} câu`,
+                label: t('{{count}} câu', { count }),
               }))}
             />
           )}
 
           <div>
             <div className="mb-2 block text-xs font-semibold text-slate-600 dark:text-slate-400">
-              AI xử lý import
+              {t('AI xử lý import')}
             </div>
-            <div className="grid gap-3 sm:grid-cols-2" role="group" aria-label="Chọn AI cho import">
+            <div className="grid gap-3 sm:grid-cols-2" role="group" aria-label={t('Chọn AI cho import')}>
               <button
                 type="button"
                 onClick={() => setProvider('GROQ')}
@@ -398,10 +400,10 @@ export default function ImportPage() {
               >
                 <span className="flex items-center gap-2 text-sm font-bold">
                   <Icon name="zap" size={17} />
-                  Groq · Nhanh
+                  {t('Groq · Nhanh')}
                 </span>
                 <span className="mt-1 block text-xs text-slate-500">
-                  Ưu tiên xử lý nhanh; ảnh/PDF scan cần model Groq hỗ trợ Vision.
+                  {t('Ưu tiên xử lý nhanh; ảnh/PDF scan cần model Groq hỗ trợ Vision.')}
                 </span>
               </button>
               <button
@@ -416,25 +418,25 @@ export default function ImportPage() {
               >
                 <span className="flex items-center gap-2 text-sm font-bold">
                   <Icon name="exaAi" size={17} />
-                  Gemini · Chi tiết
+                  {t('Gemini · Chi tiết')}
                 </span>
                 <span className="mt-1 block text-xs text-slate-500">
-                  Phân tích sâu câu hỏi, đáp án, công thức và nội dung hình ảnh.
+                  {t('Phân tích sâu câu hỏi, đáp án, công thức và nội dung hình ảnh.')}
                 </span>
               </button>
             </div>
             <p className="mt-2 text-xs text-slate-500">
-              AI đã chọn được ưu tiên; nếu gặp lỗi, hệ thống tự chuyển sang AI còn lại.
-              Khi tài liệu không ghi đáp án, AI sẽ tự giải và điền đáp án nếu đủ dữ kiện.
-              Hãy duyệt, sửa nếu cần trước khi lưu.
+              {t('AI đã chọn được ưu tiên; nếu gặp lỗi, hệ thống tự chuyển sang AI còn lại.')}
+              {' '}{t('Khi tài liệu không ghi đáp án, AI sẽ tự giải và điền đáp án nếu đủ dữ kiện.')}
+              {' '}{t('Hãy duyệt, sửa nếu cần trước khi lưu.')}
             </p>
           </div>
 
           <div>
             <label className="mb-2 block text-xs font-semibold text-slate-600 dark:text-slate-400">
               {importMode === 'GENERATE'
-                ? 'Nội dung, chủ đề hoặc yêu cầu cho AI (tùy chọn nếu đã chọn tệp)'
-                : 'Nội dung nguồn (tùy chọn nếu đã chọn tệp)'}
+                ? t('Nội dung, chủ đề hoặc yêu cầu cho AI (tùy chọn nếu đã chọn tệp)')
+                : t('Nội dung nguồn (tùy chọn nếu đã chọn tệp)')}
             </label>
             <textarea
               value={content}
@@ -442,17 +444,17 @@ export default function ImportPage() {
               maxLength={100000}
               rows={5}
               placeholder={importMode === 'GENERATE'
-                ? 'Dán bất kỳ nội dung nào hoặc nhập yêu cầu tự nhiên, ví dụ: “Tạo câu hỏi về quang hợp lớp 10” — không cần theo mẫu đề thi...'
-                : 'Có thể dán thêm nội dung để AI trích xuất câu hỏi...'}
+                ? t('Dán bất kỳ nội dung nào hoặc nhập yêu cầu tự nhiên, ví dụ: “Tạo câu hỏi về quang hợp lớp 10” — không cần theo mẫu đề thi...')
+                : t('Có thể dán thêm nội dung để AI trích xuất câu hỏi...')}
               className="exa-field w-full resize-y px-3.5 py-3 text-sm min-h-36"
             />
             {importMode === 'GENERATE' && (
               <p className="mt-1 text-xs text-slate-500">
-                Nếu chỉ nhập chủ đề hoặc yêu cầu ngắn, AI vẫn có thể tự biên soạn câu hỏi theo môn học và khối lớp đã chọn.
+                {t('Nếu chỉ nhập chủ đề hoặc yêu cầu ngắn, AI vẫn có thể tự biên soạn câu hỏi theo môn học và khối lớp đã chọn.')}
               </p>
             )}
             <p className="mt-1 text-right text-xs text-slate-400">
-              {content.length.toLocaleString()} / 100.000 ký tự
+              {content.length.toLocaleString()} / {t('100.000 ký tự')}
             </p>
           </div>
 
@@ -473,7 +475,7 @@ export default function ImportPage() {
               type="file"
               accept=".txt,.docx,.pdf,.xlsx,.xls,.png,.jpg,.jpeg,.webp"
               id="exa-import-file"
-              aria-label="Chọn tệp để import"
+              aria-label={t('Chọn tệp để import')}
               className="sr-only"
               disabled={uploading}
               onChange={(event) => chooseFile(event.target.files?.[0])}
@@ -482,16 +484,16 @@ export default function ImportPage() {
               <Icon name="upload" size={28} />
             </div>
             <div className="font-bold text-slate-700 dark:text-slate-300 mb-1">
-              {file ? file.name : 'Kéo thả file vào đây hoặc bấm để chọn'}
+              {file ? file.name : t('Kéo thả file vào đây hoặc bấm để chọn')}
             </div>
             <div className="text-xs text-slate-500">
-            Hỗ trợ TXT, DOCX, PDF (kể cả PDF scan), XLSX, XLS, PNG, JPG và WEBP. Tệp tối đa 20MB, ảnh tối đa 15MB.
+            {t('Hỗ trợ TXT, DOCX, PDF (kể cả PDF scan), XLSX, XLS, PNG, JPG và WEBP. Tệp tối đa 20MB, ảnh tối đa 15MB.')}
             </div>
           </label>
 
           {file && <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-800">
             <span className="min-w-0 truncate font-semibold text-slate-800 dark:text-slate-100">{file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)</span>
-            <button type="button" onClick={() => setFile(null)} className="shrink-0 rounded-lg px-3 py-2 font-semibold text-rose-700 hover:bg-rose-100 dark:text-rose-300 dark:hover:bg-rose-950" aria-label="Bỏ tệp đã chọn">Bỏ tệp</button>
+            <button type="button" onClick={() => setFile(null)} className="shrink-0 rounded-lg px-3 py-2 font-semibold text-rose-700 hover:bg-rose-100 dark:text-rose-300 dark:hover:bg-rose-950" aria-label={t('Bỏ tệp đã chọn')}>{t('Bỏ tệp')}</button>
           </div>}
           <Button
             variant="primary"
@@ -502,14 +504,14 @@ export default function ImportPage() {
             onClick={handleUpload}
             icon={<Icon name="sparkle" size={18} />}
           >
-            {uploading ? 'AI đang xử lý...' : importMode === 'GENERATE'
+            {t(uploading ? 'AI đang xử lý...' : importMode === 'GENERATE'
               ? 'Tạo câu hỏi bằng AI'
-              : 'Bắt đầu import bằng AI'}
+              : 'Bắt đầu import bằng AI')}
           </Button>
           {uploading && (
             <div
               role="progressbar"
-              aria-label="Đang phân tích tài liệu"
+              aria-label={t('Đang phân tích tài liệu')}
               className="h-1.5 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950"
             >
               <div className="h-full w-1/3 animate-pulse rounded-full bg-blue-600" />
@@ -522,15 +524,15 @@ export default function ImportPage() {
       {preview && preview.status === 'REVIEW' && preview.questions.length === 0 && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 p-6 text-center">
           <h3 className="font-bold text-amber-800 dark:text-amber-300">
-            {importMode === 'GENERATE' ? 'AI chưa tạo được câu hỏi' : 'AI chưa tìm thấy câu hỏi'}
+            {t(importMode === 'GENERATE' ? 'AI chưa tạo được câu hỏi' : 'AI chưa tìm thấy câu hỏi')}
           </h3>
           <p className="mt-1 text-sm text-amber-700 dark:text-amber-200">
             {importMode === 'GENERATE'
-              ? 'Nội dung nguồn có thể chưa đủ thông tin để tạo câu hỏi chính xác. Hãy bổ sung nội dung rõ hơn hoặc chọn tệp khác.'
-              : 'Kiểm tra nội dung tệp có thể đọc được rồi thử lại. Với ảnh hoặc PDF scan, hãy bảo đảm chữ rõ và không bị nghiêng.'}
+              ? t('Nội dung nguồn có thể chưa đủ thông tin để tạo câu hỏi chính xác. Hãy bổ sung nội dung rõ hơn hoặc chọn tệp khác.')
+              : t('Kiểm tra nội dung tệp có thể đọc được rồi thử lại. Với ảnh hoặc PDF scan, hãy bảo đảm chữ rõ và không bị nghiêng.')}
           </p>
           <Button variant="ghost" className="mt-3" onClick={resetImport}>
-            Chọn tệp khác
+            {t('Chọn tệp khác')}
           </Button>
         </div>
       )}
@@ -544,7 +546,7 @@ export default function ImportPage() {
               </div>
               <div>
                 <h3 className="font-bold text-slate-900 dark:text-white">
-                  {importMode === 'GENERATE' ? 'Đã tạo' : 'Tìm thấy'} {preview.totalFound} câu hỏi
+                  {t(importMode === 'GENERATE' ? 'Đã tạo' : 'Tìm thấy')} {t('{{count}} câu hỏi', { count: preview.totalFound })}
                 </h3>
                 <p className="text-xs text-slate-500">{preview.originalName}</p>
               </div>
@@ -558,10 +560,10 @@ export default function ImportPage() {
                     : new Set(preview.questions.map((_, idx) => idx)),
                 )}
               >
-                {selected.size === preview.questions.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                {t(selected.size === preview.questions.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả')}
               </Button>
               <Button variant="ghost" onClick={resetImport}>
-                ← Upload lại
+                ← {t('Upload lại')}
               </Button>
               <Button
                 variant="primary"
@@ -570,7 +572,7 @@ export default function ImportPage() {
                 onClick={handleSave}
                 icon={<Icon name="save" size={16} />}
               >
-                Lưu {selected.size} câu vào ngân hàng
+                {t('Lưu {{count}} câu vào ngân hàng', { count: selected.size })}
               </Button>
             </div>
           </div>
@@ -607,12 +609,12 @@ export default function ImportPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-2">
-                      <span className="text-xs font-bold text-slate-400">Câu {idx + 1}</span>
+                      <span className="text-xs font-bold text-slate-400">{t('Câu {{number}}', { number: idx + 1 })}</span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 font-semibold">
-                        {DIFFICULTY_LABELS[q.difficulty] || q.difficulty}
+                        {t(DIFFICULTY_LABELS[q.difficulty] || q.difficulty)}
                       </span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-semibold">
-                        {QUESTION_TYPES[q.type] || q.type}
+                        {t(QUESTION_TYPES[q.type] || q.type)}
                       </span>
                     </div>
                     <div className="mb-3">
@@ -621,11 +623,11 @@ export default function ImportPage() {
                       </MathText>
                       <div className="mt-2 flex flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
                         <label className="cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-blue-400 dark:border-slate-700 dark:text-slate-200">
-                          {uploadingImageKey === `question-${idx}` ? 'Đang tải ảnh...' : q.imageUrl ? 'Đổi ảnh câu hỏi' : 'Thêm ảnh câu hỏi'}
+                          {t(uploadingImageKey === `question-${idx}` ? 'Đang tải ảnh...' : q.imageUrl ? 'Đổi ảnh câu hỏi' : 'Thêm ảnh câu hỏi')}
                           <input
                             type="file"
                             accept="image/png,image/jpeg,image/webp"
-                            aria-label={`Thêm ảnh câu hỏi ${idx + 1}`}
+                            aria-label={t('Thêm ảnh câu hỏi {{number}}', { number: idx + 1 })}
                             disabled={uploadingImageKey !== null || saving}
                             onChange={(event) => {
                               const imageFile = event.target.files?.[0];
@@ -642,20 +644,20 @@ export default function ImportPage() {
                             onClick={() => void attachScannedImage(idx)}
                             className="rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-60 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40"
                           >
-                            {uploadingImageKey === `question-${idx}` ? 'Đang đính kèm...' : 'Dùng ảnh đã quét'}
+                            {t(uploadingImageKey === `question-${idx}` ? 'Đang đính kèm...' : 'Dùng ảnh đã quét')}
                           </button>
                         )}
                         {q.imageUrl && (
                           <button type="button" onClick={() => updateQuestion(idx, { imageUrl: null })} className="rounded-lg px-2 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40">
-                            Gỡ ảnh câu hỏi
+                            {t('Gỡ ảnh câu hỏi')}
                           </button>
                         )}
                       </div>
-                      {q.imageUrl && <QuestionImage src={q.imageUrl} alt={`Hình minh họa câu ${idx + 1}`} className="mt-2" />}
+                      {q.imageUrl && <QuestionImage src={q.imageUrl} alt={t('Hình minh họa câu {{number}}', { number: idx + 1 })} className="mt-2" />}
                       <details className="mt-2 text-xs text-slate-500" onClick={(event) => event.stopPropagation()}>
-                        <summary className="w-fit cursor-pointer select-none">Sửa nội dung câu hỏi</summary>
+                        <summary className="w-fit cursor-pointer select-none">{t('Sửa nội dung câu hỏi')}</summary>
                         <textarea
-                          aria-label={`Nội dung câu hỏi ${idx + 1}`}
+                          aria-label={t('Nội dung câu hỏi {{number}}', { number: idx + 1 })}
                           value={q.content}
                           onChange={(event) => updateQuestion(idx, { content: event.target.value })}
                           onClick={(event) => event.stopPropagation()}
@@ -682,12 +684,12 @@ export default function ImportPage() {
                                 <MathText className="min-w-0 flex-1 whitespace-pre-wrap">
                                   {opt}
                                 </MathText>
-                                {isCorrect && <span aria-label="Đáp án đúng">✓</span>}
+                                {isCorrect && <span aria-label={t('Đáp án đúng')}>✓</span>}
                               </div>
                               <details className="mt-1 text-xs opacity-75" onClick={(event) => event.stopPropagation()}>
-                                <summary className="w-fit cursor-pointer select-none">Sửa phương án {letter}</summary>
+                                <summary className="w-fit cursor-pointer select-none">{t('Sửa phương án {{letter}}', { letter })}</summary>
                                 <textarea
-                                  aria-label={`Phương án ${letter}, câu ${idx + 1}`}
+                                  aria-label={t('Phương án {{letter}}, câu {{number}}', { letter, number: idx + 1 })}
                                   value={opt}
                                   rows={2}
                                   onChange={(event) => updateQuestion(idx, {
@@ -702,11 +704,11 @@ export default function ImportPage() {
                                 <>
                                   <div className="mt-2 flex flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
                                     <label className="cursor-pointer rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium hover:border-blue-400 dark:border-slate-700">
-                                      {uploadingImageKey === `option-${idx}-${i}` ? 'Đang tải...' : q.optionImages?.[i] ? `Đổi ảnh ${letter}` : `Thêm ảnh ${letter}`}
+                                      {t(uploadingImageKey === `option-${idx}-${i}` ? 'Đang tải...' : q.optionImages?.[i] ? 'Đổi ảnh {{letter}}' : 'Thêm ảnh {{letter}}', { letter })}
                                       <input
                                         type="file"
                                         accept="image/png,image/jpeg,image/webp"
-                                        aria-label={`Thêm ảnh phương án ${letter}, câu ${idx + 1}`}
+                                        aria-label={t('Thêm ảnh phương án {{letter}}, câu {{number}}', { letter, number: idx + 1 })}
                                         disabled={uploadingImageKey !== null || saving}
                                         onChange={(event) => {
                                           const imageFile = event.target.files?.[0];
@@ -724,11 +726,11 @@ export default function ImportPage() {
                                         })}
                                         className="rounded-md px-2 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                                       >
-                                        Gỡ ảnh
+                                        {t('Gỡ ảnh')}
                                       </button>
                                     )}
                                   </div>
-                                  {q.optionImages?.[i] && <QuestionImage src={q.optionImages[i]} alt={`Hình phương án ${letter}, câu ${idx + 1}`} className="mt-2" />}
+                                  {q.optionImages?.[i] && <QuestionImage src={q.optionImages[i]} alt={t('Hình phương án {{letter}}, câu {{number}}', { letter, number: idx + 1 })} className="mt-2" />}
                                 </>
                               )}
                             </div>
@@ -738,13 +740,13 @@ export default function ImportPage() {
                     )}
                     {q.options.length > 0 && (
                       <label className="mt-3 block max-w-xs text-xs font-semibold text-slate-600 dark:text-slate-300">
-                        Đáp án đúng
+                        {t('Đáp án đúng')}
                         <select
                           value={q.correctAnswer || ''}
                           onChange={(event) => updateQuestion(idx, { correctAnswer: event.target.value || null })}
                           className="exa-field mt-1 w-full px-3 py-2 text-sm"
                         >
-                          <option value="">Chưa xác định</option>
+                          <option value="">{t('Chưa xác định')}</option>
                           {q.options.map((_, optionIndex) => {
                             const letter = String.fromCharCode(65 + optionIndex);
                             return <option key={letter} value={letter}>{letter}</option>;
@@ -754,14 +756,14 @@ export default function ImportPage() {
                     )}
                     {q.explanation && (
                       <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                        <strong>Giải thích xem trước:</strong>{' '}
+                        <strong>{t('Giải thích xem trước')}:</strong>{' '}
                         <MathText>{q.explanation}</MathText>
                       </p>
                     )}
                     {(q.type === 'SHORT_ANSWER' || q.type === 'ESSAY' || q.answerText !== null) && (
                       <div className="mt-3">
                         <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300">
-                          Đáp án / gợi ý trả lời
+                          {t('Đáp án / gợi ý trả lời')}
                           <textarea
                             value={q.answerText || ''}
                             onChange={(event) => updateQuestion(idx, { answerText: event.target.value || null })}
@@ -770,16 +772,16 @@ export default function ImportPage() {
                         </label>
                         {q.answerText && (
                           <p className="mt-1 text-sm text-slate-700 dark:text-slate-200">
-                            Xem trước: <MathText>{q.answerText}</MathText>
+                            {t('Xem trước')}: <MathText>{q.answerText}</MathText>
                           </p>
                         )}
                       </div>
                     )}
                     {q.explanation && (
                       <details className="mt-3 text-xs font-semibold text-amber-700" onClick={(event) => event.stopPropagation()}>
-                        <summary className="w-fit cursor-pointer select-none">Sửa giải thích</summary>
+                        <summary className="w-fit cursor-pointer select-none">{t('Sửa giải thích')}</summary>
                         <textarea
-                          aria-label={`Giải thích câu ${idx + 1}`}
+                          aria-label={t('Giải thích câu {{number}}', { number: idx + 1 })}
                           value={q.explanation}
                           onChange={(event) => updateQuestion(idx, { explanation: event.target.value || null })}
                           onClick={(event) => event.stopPropagation()}
@@ -801,20 +803,20 @@ export default function ImportPage() {
           <div className="w-16 h-16 rounded-2xl bg-red-100 text-red-500 flex items-center justify-center mx-auto mb-3">
             <Icon name="alert" size={28} />
           </div>
-          <h3 className="font-bold text-red-700 dark:text-red-400 mb-1">Xử lý thất bại</h3>
+          <h3 className="font-bold text-red-700 dark:text-red-400 mb-1">{t('Xử lý thất bại')}</h3>
           <p className="text-sm text-red-600 mb-4">{preview.errorMessage}</p>
           <Button variant="ghost" onClick={resetImport}>
-            Thử lại
+            {t('Thử lại')}
           </Button>
         </div>
       )}
       {preview && preview.status !== 'REVIEW' && preview.status !== 'FAILED' && (
         <div className="rounded-2xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 p-6 text-center">
           <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-          <h3 className="font-bold text-blue-700 dark:text-blue-300">Đang xử lý tệp</h3>
-          <p className="mt-1 text-sm text-slate-700 dark:text-slate-200">{STATUS_LABELS[preview.status] || preview.status}</p>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Tiến trình tự cập nhật. Có thể mở trang khác hoặc tải lại trang mà không mất mã phiên.</p>
-          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">Mã phiên: #{preview.jobId}</p>
+          <h3 className="font-bold text-blue-700 dark:text-blue-300">{t('Đang xử lý tệp')}</h3>
+          <p className="mt-1 text-sm text-slate-700 dark:text-slate-200">{t(STATUS_LABELS[preview.status] || preview.status)}</p>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{t('Tiến trình tự cập nhật. Có thể mở trang khác hoặc tải lại trang mà không mất mã phiên.')}</p>
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{t('Mã phiên')}: #{preview.jobId}</p>
           <Button
             variant="ghost"
             className="mt-3"
@@ -826,7 +828,7 @@ export default function ImportPage() {
                 setPreview(latest);
                 setPollError('');
                 if (latest.status === 'REVIEW') setSelected(new Set(latest.questions.map((_, index) => index)));
-                if (latest.status === 'FAILED') toast('AI xử lý thất bại', latest.errorMessage || 'Vui lòng thử lại.', 'error');
+                if (latest.status === 'FAILED') toast(t('AI xử lý thất bại'), latest.errorMessage || t('Vui lòng thử lại.'), 'error');
               } catch (error) {
                 setPollError(extractError(error));
               } finally {
@@ -834,9 +836,9 @@ export default function ImportPage() {
               }
             }}
           >
-            Kiểm tra tiến trình
+            {t('Kiểm tra tiến trình')}
           </Button>
-          <div><button type="button" onClick={resetImport} className="mt-3 text-sm font-semibold text-blue-800 underline underline-offset-4 dark:text-blue-200">Bắt đầu phiên import khác</button></div>
+          <div><button type="button" onClick={resetImport} className="mt-3 text-sm font-semibold text-blue-800 underline underline-offset-4 dark:text-blue-200">{t('Bắt đầu phiên import khác')}</button></div>
         </div>
       )}
     </div>

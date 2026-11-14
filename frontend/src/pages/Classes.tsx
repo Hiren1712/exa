@@ -9,6 +9,7 @@ import { useToast } from '../components/Toast';
 import { classroomApi, Classroom, ClassroomRequest } from '../api/classroom';
 import { extractError } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../i18n';
 
 const emptyForm: ClassroomRequest = { name: '', subject: 'Toán', grade: 12, description: '' };
 
@@ -16,6 +17,7 @@ export default function Classes() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const isTeacher = user?.role === 'TEACHER' || user?.role === 'ADMIN';
   const [classes, setClasses] = useState<Classroom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,11 +33,11 @@ export default function Classes() {
     try {
       setClasses(isTeacher ? await classroomApi.list() : await classroomApi.listMine());
     } catch (err) {
-      toast('Không tải được lớp học', extractError(err), 'error');
+      toast(t('Không tải được lớp học'), extractError(err), 'error');
     } finally {
       setLoading(false);
     }
-  }, [isTeacher, toast]);
+  }, [isTeacher, t, toast]);
 
   useEffect(() => {
     void load();
@@ -68,22 +70,22 @@ export default function Classes() {
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
     if (!form.subject?.trim()) {
-      toast('Thiếu môn học', 'Vui lòng nhập môn học cho lớp', 'warn');
+      toast(t('Thiếu môn học'), t('Vui lòng nhập môn học cho lớp'), 'warn');
       return;
     }
     setSaving(true);
     try {
       if (editing) {
         await classroomApi.update(editing.id, { ...form, subject: form.subject?.trim() });
-        toast('Đã cập nhật lớp', form.name, 'success');
+        toast(t('Đã cập nhật lớp'), form.name, 'success');
       } else {
         await classroomApi.create({ ...form, subject: form.subject?.trim() });
-        toast('Đã tạo lớp', form.name, 'success');
+        toast(t('Đã tạo lớp'), form.name, 'success');
       }
       setModalOpen(false);
       await load();
     } catch (err) {
-      toast('Không lưu được lớp', extractError(err), 'error');
+      toast(t('Không lưu được lớp'), extractError(err), 'error');
     } finally {
       setSaving(false);
     }
@@ -92,13 +94,13 @@ export default function Classes() {
   const handleDelete = async (event: MouseEvent, classroom: Classroom) => {
     event.preventDefault();
     event.stopPropagation();
-    if (!confirm(`Bạn có chắc muốn lưu trữ lớp "${classroom.name}"?`)) return;
+    if (!confirm(t('Bạn có chắc muốn lưu trữ lớp "{{name}}"?', { name: classroom.name }))) return;
     try {
       await classroomApi.delete(classroom.id);
       setClasses((current) => current.filter((item) => item.id !== classroom.id));
-      toast('Đã lưu trữ lớp', classroom.name, 'success');
+      toast(t('Đã lưu trữ lớp'), classroom.name, 'success');
     } catch (err) {
-      toast('Không xóa được lớp', extractError(err), 'error');
+      toast(t('Không xóa được lớp'), extractError(err), 'error');
     }
   };
 
@@ -107,9 +109,9 @@ export default function Classes() {
     event.stopPropagation();
     try {
       await navigator.clipboard.writeText(code);
-      toast('Đã sao chép mã lớp', code, 'success');
+      toast(t('Đã sao chép mã lớp'), code, 'success');
     } catch (err) {
-      toast('Không sao chép được mã lớp', extractError(err), 'error');
+      toast(t('Không sao chép được mã lớp'), extractError(err), 'error');
     }
   };
 
@@ -119,11 +121,11 @@ export default function Classes() {
     setJoining(true);
     try {
       const joinedClass = await classroomApi.join(joinCode);
-      toast('Đã tham gia lớp', joinedClass.name, 'success');
+      toast(t('Đã tham gia lớp'), joinedClass.name, 'success');
       setJoinCode('');
       await load();
     } catch (err) {
-      toast('Không tham gia được lớp', extractError(err), 'error');
+      toast(t('Không tham gia được lớp'), extractError(err), 'error');
     } finally {
       setJoining(false);
     }
@@ -134,26 +136,26 @@ export default function Classes() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">
-            {isTeacher ? 'Lớp học của tôi' : 'Lớp học'}
+            {t(isTeacher ? 'Lớp học của tôi' : 'Lớp học')}
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {isTeacher ? 'Quản lý lớp và học sinh' : 'Các lớp bạn đã tham gia'}
+            {t(isTeacher ? 'Quản lý lớp và học sinh' : 'Các lớp bạn đã tham gia')}
           </p>
         </div>
         {isTeacher ? (
           <Button variant="primary" icon={<Icon name="plus" size={16} />} onClick={openCreate}>
-            Tạo lớp mới
+            {t('Tạo lớp mới')}
           </Button>
         ) : (
           <form className="flex gap-2" onSubmit={handleJoin}>
             <Input
-              aria-label="Mã lớp"
-              placeholder="Nhập mã lớp EXA-..."
+              aria-label={t('Mã lớp')}
+              placeholder={t('Nhập mã lớp EXA-...')}
               value={joinCode}
               onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
               className="min-w-48"
             />
-            <Button variant="primary" loading={joining} type="submit">Tham gia</Button>
+            <Button variant="primary" loading={joining} type="submit">{t('Tham gia')}</Button>
           </form>
         )}
       </div>
@@ -168,14 +170,14 @@ export default function Classes() {
             <Icon name="building" size={28} />
           </div>
           <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-1">
-            {isTeacher ? 'Chưa có lớp nào' : 'Bạn chưa tham gia lớp nào'}
+            {t(isTeacher ? 'Chưa có lớp nào' : 'Bạn chưa tham gia lớp nào')}
           </h4>
           <p className="text-sm text-slate-400 mb-4">
-            {isTeacher ? 'Tạo lớp đầu tiên để bắt đầu giao bài' : 'Nhập mã lớp do giáo viên cung cấp để tham gia'}
+            {t(isTeacher ? 'Tạo lớp đầu tiên để bắt đầu giao bài' : 'Nhập mã lớp do giáo viên cung cấp để tham gia')}
           </p>
           {isTeacher && (
             <Button variant="primary" icon={<Icon name="plus" size={16} />} onClick={openCreate}>
-              Tạo lớp mới
+              {t('Tạo lớp mới')}
             </Button>
           )}
         </div>
@@ -192,21 +194,21 @@ export default function Classes() {
                   <Icon name="building" size={22} />
                 </div>
                 <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 font-semibold">
-                  {classroom.subject || 'Chưa phân môn'}
+                  {classroom.subject || t('Chưa phân môn')}
                 </span>
               </div>
               <h3 className="font-bold text-slate-900 dark:text-white mb-1">{classroom.name}</h3>
               <div className="flex items-center gap-2 text-xs text-slate-500 mb-4">
-                {classroom.grade && <span>Khối {classroom.grade}</span>}
+                {classroom.grade && <span>{t('Khối {{grade}}', { grade: classroom.grade })}</span>}
                 {classroom.grade && <span>·</span>}
-                <span>{classroom.memberCount ?? 0} học sinh</span>
+                <span>{t('{{count}} học sinh', { count: classroom.memberCount ?? 0 })}</span>
               </div>
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 mb-4">
                 <Icon name="lock" size={14} className="text-slate-400" />
                 <code className="text-xs font-mono font-bold text-blue-600 flex-1">{classroom.code}</code>
                 <button
                   type="button"
-                  aria-label="Sao chép mã lớp"
+                  aria-label={t('Sao chép mã lớp')}
                   onClick={(event) => void handleCopy(event, classroom.code)}
                   className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white hover:text-blue-500 transition-colors"
                 >
@@ -245,13 +247,13 @@ export default function Classes() {
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editing ? 'Chỉnh sửa lớp học' : 'Tạo lớp học mới'}
+        title={t(editing ? 'Chỉnh sửa lớp học' : 'Tạo lớp học mới')}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setModalOpen(false)}>Hủy</Button>
+            <Button variant="ghost" onClick={() => setModalOpen(false)}>{t('Hủy')}</Button>
             <Button variant="primary" loading={saving}             type="submit"
             form="class-form">
-              {editing ? 'Lưu thay đổi' : 'Tạo lớp'}
+              {t(editing ? 'Lưu thay đổi' : 'Tạo lớp')}
             </Button>
           </>
         }

@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useId, useRef } from 'react';
 import { Icon } from './Icon';
 import { cn } from '../lib/utils';
+import { useLanguage } from '../i18n';
 
 interface ModalProps {
   open: boolean;
@@ -19,6 +20,7 @@ const sizeClasses = {
 };
 
 export function Modal({ open, onClose, title, children, footer, size = 'md' }: ModalProps) {
+  const { t } = useLanguage();
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -57,13 +59,13 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
-        aria-label={title ? undefined : 'Hộp thoại'}
+        aria-label={title ? undefined : t('Hộp thoại')}
         tabIndex={-1}
         className={cn('bg-white dark:bg-[#162339] rounded-2xl w-full max-h-[min(90dvh,900px)] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-600 animate-slide-up outline-none', sizeClasses[size])}
       >
         {title && <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-          <h3 id={titleId} className="text-lg font-bold text-slate-900 dark:text-white">{title}</h3>
-          <button type="button" onClick={onClose} aria-label="Đóng hộp thoại" className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><Icon name="x" size={18} /></button>
+          <h3 id={titleId} className="text-lg font-bold text-slate-900 dark:text-white">{t(title)}</h3>
+          <button type="button" onClick={onClose} aria-label={t('Đóng hộp thoại')} className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><Icon name="x" size={18} /></button>
         </div>}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</div>
         {footer && <div className="flex flex-wrap justify-end gap-2 px-4 sm:px-6 py-4 border-t border-slate-200 dark:border-slate-700">{footer}</div>}

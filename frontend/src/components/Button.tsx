@@ -1,5 +1,6 @@
 import { ButtonHTMLAttributes, forwardRef, ReactNode } from 'react';
 import { cn } from '../lib/utils';
+import { useLanguage } from '../i18n';
 
 type Variant = 'primary' | 'ghost' | 'danger' | 'success' | 'gold';
 type Size = 'sm' | 'md' | 'lg';
@@ -49,8 +50,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ...rest
     },
     ref,
-  ) => (
-    <button
+  ) => {
+    const { t } = useLanguage();
+    return (
+      <button
       ref={ref}
       type={type}
       disabled={disabled || loading}
@@ -70,10 +73,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       {loading ? (
         <span aria-hidden="true" className="inline-block size-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
       ) : icon}
-      {children}
+      {typeof children === 'string' ? t(children) : children}
       {iconRight}
-    </button>
-  ),
+      </button>
+    );
+  },
 );
 
 Button.displayName = 'Button';

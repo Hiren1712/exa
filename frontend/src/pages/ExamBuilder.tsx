@@ -12,6 +12,7 @@ import { examApi, Exam } from '../api/exam';
 import { Difficulty, Question, QuestionFilter, questionApi } from '../api/question';
 import { extractError } from '../api/client';
 import { DIFFICULTY_LABELS, QUESTION_TYPE_LABELS } from '../lib/utils';
+import { useLanguage } from '../i18n';
 
 interface ExamForm {
   title: string;
@@ -49,6 +50,7 @@ export default function ExamBuilder() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { language, t } = useLanguage();
   const [form, setForm] = useState<ExamForm>({
     ...initialForm,
     classroomId: Number(searchParams.get('classroomId')) || undefined,
@@ -80,7 +82,7 @@ export default function ExamBuilder() {
       if (initialIds.length) {
         Promise.all(initialIds.map((questionId) => questionApi.get(questionId)))
           .then(setQuestions)
-          .catch((err: unknown) => toast('Không tải được câu hỏi đã chọn', extractError(err), 'error'));
+          .catch((err: unknown) => toast(t('Không tải được câu hỏi đã chọn'), extractError(err), 'error'));
       }
       return;
     }
@@ -105,9 +107,9 @@ export default function ExamBuilder() {
         });
         setQuestions(exam.questions || []);
       })
-      .catch((err: unknown) => toast('Không tải được đề thi', extractError(err), 'error'))
+      .catch((err: unknown) => toast(t('Không tải được đề thi'), extractError(err), 'error'))
       .finally(() => setLoading(false));
-  }, [id, searchParams, toast]);
+  }, [id, searchParams, t, toast]);
 
   const persistDraft = useCallback(async (notify: boolean) => {
     const current = formRef.current;
@@ -130,16 +132,16 @@ export default function ExamBuilder() {
         examIdRef.current = created.id;
       }
       setSavedAt(new Date());
-      if (notify) toast('Đã lưu bản nháp', current.title, 'success');
+      if (notify) toast(t('Đã lưu bản nháp'), current.title, 'success');
       return true;
     } catch (err) {
-      toast('Không lưu được đề thi', extractError(err), 'error');
+      toast(t('Không lưu được đề thi'), extractError(err), 'error');
       return false;
     } finally {
       savingRef.current = false;
       setSaving(false);
     }
-  }, [toast]);
+  }, [t, toast]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -154,11 +156,11 @@ export default function ExamBuilder() {
       const result = await questionApi.list({ ...pickerFilter, subject: pickerFilter.subject || form.subject });
       setBankQuestions(result.content);
     } catch (err) {
-      toast('Không tải được ngân hàng câu hỏi', extractError(err), 'error');
+      toast(t('Không tải được ngân hàng câu hỏi'), extractError(err), 'error');
     } finally {
       setPickerLoading(false);
     }
-  }, [pickerFilter, form.subject, toast]);
+  }, [pickerFilter, form.subject, t, toast]);
 
   useEffect(() => {
     if (pickerOpen) void loadQuestions();
@@ -209,15 +211,15 @@ export default function ExamBuilder() {
 
   const handleSave = async (publish: boolean) => {
     if (!form.title.trim()) {
-      toast('Thiếu tiêu đề', 'Vui lòng nhập tiêu đề đề thi', 'warn');
+      toast(t('Thiếu tiêu đề'), t('Vui lòng nhập tiêu đề đề thi'), 'warn');
       return;
     }
     if (!form.subject.trim()) {
-      toast('Thiếu môn học', 'Vui lòng nhập môn học cho đề thi', 'warn');
+      toast(t('Thiếu môn học'), t('Vui lòng nhập môn học cho đề thi'), 'warn');
       return;
     }
     if (publish && !questions.length) {
-      toast('Chưa có câu hỏi', 'Thêm ít nhất một câu hỏi trước khi công khai đề thi', 'warn');
+      toast(t('Chưa có câu hỏi'), t('Thêm ít nhất một câu hỏi trước khi công khai đề thi'), 'warn');
       return;
     }
     const saved = await persistDraft(false);
@@ -225,13 +227,13 @@ export default function ExamBuilder() {
     if (publish && examIdRef.current) {
       try {
         await examApi.publish(examIdRef.current);
-        toast('Đã công khai đề thi', 'Học sinh đủ điều kiện có thể làm bài', 'success');
+        toast(t('Đã công khai đề thi'), t('Học sinh đủ điều kiện có thể làm bài'), 'success');
       } catch (err) {
-        toast('Không công khai được đề thi', extractError(err), 'error');
+        toast(t('Không công khai được đề thi'), extractError(err), 'error');
         return;
       }
     } else {
-      toast('Đã lưu bản nháp', form.title, 'success');
+      toast(t('Đã lưu bản nháp'), form.title, 'success');
     }
     navigate('/exams');
   };
@@ -253,8 +255,8 @@ export default function ExamBuilder() {
         <div className="flex items-center gap-3">
           <button aria-label="Quay lại" onClick={() => navigate('/exams')} className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800"><Icon name="chevronL" /></button>
           <div>
-            <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{id ? 'Sửa đề thi' : 'Tạo đề thi mới'}</h1>
-            <p className="text-xs text-slate-500">{savedAt ? `Tự lưu lúc ${savedAt.toLocaleTimeString('vi-VN')}` : 'Bản nháp tự lưu mỗi 30 giây'}</p>
+            <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{t(id ? 'Sửa đề thi' : 'Tạo đề thi mới')}</h1>
+            <p className="text-xs text-slate-500">{savedAt ? t('Tự lưu lúc {{time}}', { time: savedAt.toLocaleTimeString(language === 'en' ? 'en-US' : 'vi-VN') }) : t('Bản nháp tự lưu mỗi 30 giây')}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -267,7 +269,7 @@ export default function ExamBuilder() {
       <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)] gap-6 items-start">
         <div className="space-y-5">
           <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-4">
-            <h2 className="font-bold text-slate-900 dark:text-white">Thông tin đề thi</h2>
+            <h2 className="font-bold text-slate-900 dark:text-white">{t('Thông tin đề thi')}</h2>
             <Input label="Tiêu đề *" required maxLength={200} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Ví dụ: Kiểm tra giữa kỳ Toán 12" />
             <Textarea label="Mô tả" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
             <div className="grid sm:grid-cols-2 gap-4">
@@ -287,7 +289,7 @@ export default function ExamBuilder() {
                     { value: 0, label: 'Vô hạn' },
                   ]}
                 />
-                <p className="mt-1.5 text-xs text-slate-500">Chọn “Vô hạn” để học sinh có thể làm bài không giới hạn số lượt.</p>
+                <p className="mt-1.5 text-xs text-slate-500">{t('Chọn “Vô hạn” để học sinh có thể làm bài không giới hạn số lượt.')}</p>
               </div>
             </div>
           </section>
@@ -295,13 +297,13 @@ export default function ExamBuilder() {
           <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
             <div className="flex items-center justify-between gap-3 mb-4">
               <div>
-                <h2 className="font-bold text-slate-900 dark:text-white">Câu hỏi ({questions.length})</h2>
-                <p className="text-xs text-slate-500 mt-1">Kéo thả hoặc dùng mũi tên để đổi thứ tự</p>
+                <h2 className="font-bold text-slate-900 dark:text-white">{t('Câu hỏi ({{count}})', { count: questions.length })}</h2>
+                <p className="text-xs text-slate-500 mt-1">{t('Kéo thả hoặc dùng mũi tên để đổi thứ tự')}</p>
               </div>
               <Button variant="primary" size="sm" icon={<Icon name="plus" size={15} />} onClick={() => setPickerOpen(true)}>Chọn câu hỏi</Button>
             </div>
             {questions.length === 0 ? (
-              <div className="rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-8 text-center text-sm text-slate-500">Chưa có câu hỏi. Chọn từ ngân hàng để thêm vào đề.</div>
+              <div className="rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-8 text-center text-sm text-slate-500">{t('Chưa có câu hỏi. Chọn từ ngân hàng để thêm vào đề.')}</div>
             ) : (
               <div className="space-y-3">
                 {questions.map((question, index) => (
@@ -310,12 +312,12 @@ export default function ExamBuilder() {
                       <span className="pt-1 text-xs font-bold text-slate-400">{index + 1}</span>
                       <div className="flex-1 min-w-0">
                         <MathText className="text-sm font-semibold text-slate-800 dark:text-slate-200 whitespace-pre-wrap">{question.content}</MathText>
-                        <p className="text-xs text-slate-500 mt-2">{QUESTION_TYPE_LABELS[question.type]} · {DIFFICULTY_LABELS[question.difficulty]}</p>
+                        <p className="text-xs text-slate-500 mt-2">{t(QUESTION_TYPE_LABELS[question.type])} · {t(DIFFICULTY_LABELS[question.difficulty])}</p>
                       </div>
                       <div className="flex flex-col">
-                        <button aria-label="Di chuyển lên" disabled={index === 0} onClick={() => moveQuestion(index, -1)} className="p-1 text-slate-400 disabled:opacity-30">↑</button>
-                        <button aria-label="Di chuyển xuống" disabled={index === questions.length - 1} onClick={() => moveQuestion(index, 1)} className="p-1 text-slate-400 disabled:opacity-30">↓</button>
-                        <button aria-label="Xóa câu khỏi đề" onClick={() => removeQuestion(index)} className="p-1 text-red-400"><Icon name="trash" size={14} /></button>
+                        <button aria-label={t('Di chuyển lên')} disabled={index === 0} onClick={() => moveQuestion(index, -1)} className="p-1 text-slate-400 disabled:opacity-30">↑</button>
+                        <button aria-label={t('Di chuyển xuống')} disabled={index === questions.length - 1} onClick={() => moveQuestion(index, 1)} className="p-1 text-slate-400 disabled:opacity-30">↓</button>
+                        <button aria-label={t('Xóa câu khỏi đề')} onClick={() => removeQuestion(index)} className="p-1 text-red-400"><Icon name="trash" size={14} /></button>
                       </div>
                     </div>
                   </div>
@@ -327,13 +329,13 @@ export default function ExamBuilder() {
 
         <aside className="space-y-5 lg:sticky lg:top-4">
           <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
-            <h2 className="font-bold text-slate-900 dark:text-white mb-4">Cấu hình nâng cao</h2>
+            <h2 className="font-bold text-slate-900 dark:text-white mb-4">{t('Cấu hình nâng cao')}</h2>
             <div className="space-y-4">
               {toggles.map(({ key, label, description }) => (
                 <label key={key} className="flex items-start justify-between gap-3 cursor-pointer">
                   <span className="flex-1">
-                    <span className="block text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</span>
-                    <span className="block text-xs text-slate-500 mt-0.5">{description}</span>
+                    <span className="block text-sm font-semibold text-slate-700 dark:text-slate-300">{t(label)}</span>
+                    <span className="block text-xs text-slate-500 mt-0.5">{t(description)}</span>
                   </span>
                   <input type="checkbox" checked={form[key]} onChange={(event) => setForm({ ...form, [key]: event.target.checked })} className="mt-1 h-4 w-4 accent-blue-600" />
                 </label>
@@ -351,20 +353,20 @@ export default function ExamBuilder() {
 
           <section className="rounded-2xl border border-blue-100 dark:border-blue-900 bg-blue-50/70 dark:bg-blue-950/30 p-5">
             <h3 className="font-bold text-slate-900 dark:text-white">Xem trước</h3>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{form.title || 'Tên đề thi'} · {form.durationMin} phút · {questions.length} câu</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{form.title || t('Tên đề thi')} · {t('{{count}} phút', { count: form.durationMin })} · {t('{{count}} câu', { count: questions.length })}</p>
             <div className="mt-4 rounded-xl bg-white dark:bg-slate-900 p-4">
-              <div className="text-xs text-slate-500">Thang điểm</div>
+              <div className="text-xs text-slate-500">{t('Thang điểm')}</div>
               <div className="text-xl font-extrabold text-blue-600">{form.totalPoints}</div>
             </div>
           </section>
         </aside>
       </div>
 
-      <Modal open={pickerOpen} onClose={() => setPickerOpen(false)} title="Chọn câu hỏi từ ngân hàng" size="lg">
+      <Modal open={pickerOpen} onClose={() => setPickerOpen(false)} title={t('Chọn câu hỏi từ ngân hàng')} size="lg">
         <div className="space-y-4">
           <div className="grid sm:grid-cols-3 gap-3">
             <Input placeholder="Tìm câu hỏi" value={pickerFilter.keyword || ''} onChange={(event) => setPickerFilter({ ...pickerFilter, keyword: event.target.value || undefined, page: 0 })} />
-            <Select aria-label="Lọc độ khó" value={pickerFilter.difficulty || ''} onChange={(event) => setPickerFilter({ ...pickerFilter, difficulty: (event.target.value || undefined) as Difficulty | undefined, page: 0 })} options={[{ value: '', label: 'Mọi độ khó' }, ...Object.entries(DIFFICULTY_LABELS).map(([value, label]) => ({ value, label }))]} />
+            <Select aria-label={t('Lọc độ khó')} value={pickerFilter.difficulty || ''} onChange={(event) => setPickerFilter({ ...pickerFilter, difficulty: (event.target.value || undefined) as Difficulty | undefined, page: 0 })} options={[{ value: '', label: t('Mọi độ khó') }, ...Object.entries(DIFFICULTY_LABELS).map(([value, label]) => ({ value, label: t(label) }))]} />
             <SubjectInput
               aria-label="Lọc môn học"
               label="Lọc môn học"
@@ -373,37 +375,37 @@ export default function ExamBuilder() {
               onChange={(subject) => setPickerFilter({ ...pickerFilter, subject: subject || undefined, page: 0 })}
             />
           </div>
-          {pickerLoading ? <div className="p-8 text-center"><div className="inline-block w-7 h-7 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div> : bankQuestions.length === 0 ? <p className="p-8 text-center text-sm text-slate-500">Không tìm thấy câu hỏi phù hợp.</p> : (
+          {pickerLoading ? <div className="p-8 text-center"><div className="inline-block w-7 h-7 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div> : bankQuestions.length === 0 ? <p className="p-8 text-center text-sm text-slate-500">{t('Không tìm thấy câu hỏi phù hợp.')}</p> : (
             <div className="max-h-[50vh] overflow-y-auto space-y-2">
               {bankQuestions.map((question) => (
                 <label key={question.id} className="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-3 cursor-pointer">
                   <input type="checkbox" checked={question.id ? pickedIds.has(question.id) : false} onChange={() => toggleQuestion(question)} className="mt-1 accent-blue-600" />
                   <span className="flex-1">
                     <MathText className="block text-sm font-semibold text-slate-800 dark:text-slate-200">{question.content}</MathText>
-                    <span className="block mt-1 text-xs text-slate-500">{question.subject} · {QUESTION_TYPE_LABELS[question.type]}</span>
+                    <span className="block mt-1 text-xs text-slate-500">{question.subject} · {t(QUESTION_TYPE_LABELS[question.type])}</span>
                   </span>
                 </label>
               ))}
             </div>
           )}
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setPickerOpen(false)}>Hủy</Button>
-            <Button variant="primary" onClick={addPickedQuestions}>Thêm {pickedIds.size} câu</Button>
+            <Button variant="ghost" onClick={() => setPickerOpen(false)}>{t('Hủy')}</Button>
+            <Button variant="primary" onClick={addPickedQuestions}>{t('Thêm {{count}} câu', { count: pickedIds.size })}</Button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={previewOpen} onClose={() => setPreviewOpen(false)} title="Xem trước đề thi" size="lg">
+      <Modal open={previewOpen} onClose={() => setPreviewOpen(false)} title={t('Xem trước đề thi')} size="lg">
         <div className="space-y-5">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">{form.title || 'Tên đề thi'}</h2>
-            <p className="text-sm text-slate-500">{form.subject} · {form.durationMin} phút · {questions.length} câu</p>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">{form.title || t('Tên đề thi')}</h2>
+            <p className="text-sm text-slate-500">{form.subject} · {t('{{count}} phút', { count: form.durationMin })} · {t('{{count}} câu', { count: questions.length })}</p>
           </div>
           {questions.map((question, index) => (
             <div key={question.id ?? index} className="border-t border-slate-100 dark:border-slate-800 pt-4">
-              <p className="font-semibold text-sm text-slate-900 dark:text-white">Câu {index + 1}. <MathText>{question.content}</MathText></p>
-              <QuestionImage src={question.imageUrl} alt="Hình minh họa câu hỏi" className="mt-2" />
-              {question.options?.map((option, optionIndex) => <p key={optionIndex} className="mt-2 pl-3 text-sm text-slate-600 dark:text-slate-400">{String.fromCharCode(65 + optionIndex)}. <MathText>{option}</MathText><span className="block"><QuestionImage src={question.optionImages?.[optionIndex]} alt={`Hình phương án ${optionIndex + 1}`} /></span></p>)}
+              <p className="font-semibold text-sm text-slate-900 dark:text-white">{t('Câu {{number}}.', { number: index + 1 })} <MathText>{question.content}</MathText></p>
+              <QuestionImage src={question.imageUrl} alt={t('Hình minh họa câu hỏi')} className="mt-2" />
+              {question.options?.map((option, optionIndex) => <p key={optionIndex} className="mt-2 pl-3 text-sm text-slate-600 dark:text-slate-400">{String.fromCharCode(65 + optionIndex)}. <MathText>{option}</MathText><span className="block"><QuestionImage src={question.optionImages?.[optionIndex]} alt={t('Hình phương án {{number}}', { number: optionIndex + 1 })} /></span></p>)}
             </div>
           ))}
         </div>

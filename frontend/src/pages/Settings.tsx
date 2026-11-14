@@ -6,9 +6,11 @@ import { Input } from '../components/Input';
 import { useToast } from '../components/Toast';
 import { profileImageUrl, userApi } from '../api/user';
 import { extractError } from '../api/client';
+import { useLanguage } from '../i18n';
 
 export default function Settings() {
   const { user, theme, toggleTheme, logout, updateUser } = useAuth();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const avatarInput = useRef<HTMLInputElement>(null);
   const coverInput = useRef<HTMLInputElement>(null);
@@ -38,9 +40,9 @@ export default function Settings() {
         dateOfBirth: dateOfBirth || undefined,
       });
       updateUser(updated);
-      toast('Đã cập nhật thông tin', 'Hồ sơ của bạn đã được lưu', 'success');
+      toast(t('Đã cập nhật thông tin'), t('Hồ sơ của bạn đã được lưu'), 'success');
     } catch (err) {
-      toast('Không lưu được thông tin', extractError(err), 'error');
+      toast(t('Không lưu được thông tin'), extractError(err), 'error');
     } finally {
       setSavingProfile(false);
     }
@@ -53,11 +55,11 @@ export default function Settings() {
 
     const maxBytes = type === 'avatar' ? 3 * 1024 * 1024 : 5 * 1024 * 1024;
     if (!['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(file.type)) {
-      toast('Định dạng ảnh chưa hỗ trợ', 'Chọn ảnh PNG, JPEG, GIF hoặc WebP', 'warn');
+      toast(t('Định dạng ảnh chưa hỗ trợ'), t('Chọn ảnh PNG, JPEG, GIF hoặc WebP'), 'warn');
       return;
     }
     if (file.size > maxBytes) {
-      toast('Ảnh quá lớn', `Ảnh ${type === 'avatar' ? 'đại diện' : 'bìa'} tối đa ${maxBytes / (1024 * 1024)} MB`, 'warn');
+      toast(t('Ảnh quá lớn'), `${t(type === 'avatar' ? 'Ảnh đại diện' : 'Ảnh bìa')}: ${maxBytes / (1024 * 1024)} MB`, 'warn');
       return;
     }
 
@@ -65,9 +67,9 @@ export default function Settings() {
     try {
       const updated = await userApi.uploadProfileImage(type, file);
       updateUser(updated);
-      toast('Đã lưu ảnh', `${type === 'avatar' ? 'Ảnh đại diện' : 'Ảnh bìa'} đã được đồng bộ với tài khoản`, 'success');
+      toast(t('Đã lưu ảnh'), t(type === 'avatar' ? 'Ảnh đại diện đã được đồng bộ với tài khoản' : 'Ảnh bìa đã được đồng bộ với tài khoản'), 'success');
     } catch (err) {
-      toast('Không lưu được ảnh', extractError(err), 'error');
+      toast(t('Không lưu được ảnh'), extractError(err), 'error');
     } finally {
       setSavingImage(null);
     }
@@ -78,9 +80,9 @@ export default function Settings() {
     try {
       const updated = await userApi.deleteProfileImage(type);
       updateUser(updated);
-      toast('Đã xóa ảnh', `${type === 'avatar' ? 'Ảnh đại diện' : 'Ảnh bìa'} đã được xóa khỏi hồ sơ`, 'success');
+      toast(t('Đã xóa ảnh'), t(type === 'avatar' ? 'Ảnh đại diện đã được xóa khỏi hồ sơ' : 'Ảnh bìa đã được xóa khỏi hồ sơ'), 'success');
     } catch (err) {
-      toast('Không xóa được ảnh', extractError(err), 'error');
+      toast(t('Không xóa được ảnh'), extractError(err), 'error');
     } finally {
       setSavingImage(null);
     }
@@ -89,11 +91,11 @@ export default function Settings() {
   const changePassword = async (event: FormEvent) => {
     event.preventDefault();
     if (newPassword !== confirmPassword) {
-      toast('Mật khẩu không khớp', 'Vui lòng nhập lại mật khẩu xác nhận', 'warn');
+      toast(t('Mật khẩu không khớp'), t('Vui lòng nhập lại mật khẩu xác nhận'), 'warn');
       return;
     }
     if (newPassword.length < 8) {
-      toast('Mật khẩu quá ngắn', 'Mật khẩu mới cần ít nhất 8 ký tự', 'warn');
+      toast(t('Mật khẩu quá ngắn'), t('Mật khẩu mới cần ít nhất 8 ký tự'), 'warn');
       return;
     }
     setSavingPassword(true);
@@ -102,9 +104,9 @@ export default function Settings() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      toast('Đã đổi mật khẩu', 'Mật khẩu mới có hiệu lực ngay', 'success');
+      toast(t('Đã đổi mật khẩu'), t('Mật khẩu mới có hiệu lực ngay'), 'success');
     } catch (err) {
-      toast('Không đổi được mật khẩu', extractError(err), 'error');
+      toast(t('Không đổi được mật khẩu'), extractError(err), 'error');
     } finally {
       setSavingPassword(false);
     }
@@ -113,8 +115,8 @@ export default function Settings() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">Cài đặt</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Quản lý hồ sơ, bảo mật và tùy chọn giao diện</p>
+        <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{t('Cài đặt')}</h1>
+        <p className="text-sm text-slate-500 mt-0.5">{t('Quản lý hồ sơ, bảo mật và tùy chọn giao diện')}</p>
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
@@ -131,7 +133,7 @@ export default function Settings() {
               className="flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow transition hover:bg-white disabled:opacity-60"
             >
               <Icon name="camera" size={16} />
-              {savingImage === 'cover' ? 'Đang lưu...' : 'Đổi ảnh bìa'}
+              {savingImage === 'cover' ? t('Đang lưu...') : t('Đổi ảnh bìa')}
             </button>
             {user?.coverImageUrl && (
               <button
@@ -154,7 +156,7 @@ export default function Settings() {
             {user?.avatarUrl && (
               <img
                 src={profileImageUrl(user.avatarUrl)}
-                alt={`Ảnh đại diện của ${user.fullName}`}
+                alt={t('Ảnh đại diện của {{name}}', { name: user.fullName })}
                 className="absolute inset-0 h-full w-full object-cover"
                 onError={(event) => { event.currentTarget.style.display = 'none'; }}
               />
@@ -163,7 +165,7 @@ export default function Settings() {
               type="button"
               disabled={savingImage !== null}
               onClick={() => avatarInput.current?.click()}
-              aria-label="Đổi ảnh đại diện"
+              aria-label={t('Đổi ảnh đại diện')}
               className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-white shadow dark:border-slate-900"
             >
               <Icon name="camera" size={14} />
@@ -180,7 +182,7 @@ export default function Settings() {
               onClick={() => void removeImage('avatar')}
               className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 disabled:opacity-60"
             >
-              Xóa ảnh đại diện
+              {t('Xóa ảnh đại diện')}
             </button>
           )}
         </div>
@@ -202,16 +204,16 @@ export default function Settings() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
-          <h2 className="font-bold text-slate-900 dark:text-white">Tài khoản EXA</h2>
-          <p className="mt-1 text-xs text-slate-500">Thông tin được lưu và đồng bộ trên tài khoản của bạn</p>
+          <h2 className="font-bold text-slate-900 dark:text-white">{t('Tài khoản EXA')}</h2>
+          <p className="mt-1 text-xs text-slate-500">{t('Thông tin được lưu và đồng bộ trên tài khoản của bạn')}</p>
           <div className="flex flex-wrap gap-2 mt-4">
             <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 font-semibold">
-              {user?.role === 'TEACHER' ? 'Giáo viên' : user?.role === 'STUDENT' ? 'Học sinh' : 'Quản trị viên'}
+              {t(user?.role === 'TEACHER' ? 'Giáo viên' : user?.role === 'STUDENT' ? 'Học sinh' : 'Quản trị viên')}
             </span>
             <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
               user?.plan === 'PRO' ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white' : 'bg-slate-100 text-slate-500'
             }`}>
-              {user?.plan === 'PRO' ? 'Pro' : user?.plan || 'Free'}
+              {user?.plan === 'PRO' ? t('Pro') : user?.plan || t('Free')}
             </span>
           </div>
         </section>
@@ -219,31 +221,31 @@ export default function Settings() {
         <div className="lg:col-span-2 space-y-6">
           <form onSubmit={saveProfile} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
             <h2 className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
-              <Icon name="user" size={18} className="text-blue-500" /> Thông tin cá nhân
+              <Icon name="user" size={18} className="text-blue-500" /> {t('Thông tin cá nhân')}
             </h2>
-            <Input label="Họ và tên" required maxLength={120} value={fullName} onChange={(event) => setFullName(event.target.value)} />
+            <Input label={t('Họ và tên')} required maxLength={120} value={fullName} onChange={(event) => setFullName(event.target.value)} />
             <div className="grid sm:grid-cols-2 gap-4">
-              <Input label="Số điện thoại" type="tel" maxLength={20} value={phone} onChange={(event) => setPhone(event.target.value)} />
-              <Input label="Ngày sinh" type="date" value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} />
+              <Input label={t('Số điện thoại')} type="tel" maxLength={20} value={phone} onChange={(event) => setPhone(event.target.value)} />
+              <Input label={t('Ngày sinh')} type="date" value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} />
             </div>
-            <Input label="Email" value={user?.email || ''} disabled helper="Email không thể thay đổi" />
+            <Input label={t('Email')} value={user?.email || ''} disabled helper={t('Email không thể thay đổi')} />
             <Button type="submit" variant="primary" loading={savingProfile} icon={<Icon name="save" size={16} />}>Lưu thay đổi</Button>
           </form>
 
           <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
             <h2 className="flex items-center gap-2 font-bold text-slate-900 dark:text-white mb-4">
-              <Icon name="settings" size={18} className="text-blue-500" /> Giao diện
+              <Icon name="settings" size={18} className="text-blue-500" /> {t('Giao diện')}
             </h2>
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-semibold text-sm text-slate-700 dark:text-slate-300">Chế độ tối</div>
-                <div className="text-xs text-slate-500 mt-0.5">Tùy chọn được lưu trên thiết bị này</div>
+                <div className="font-semibold text-sm text-slate-700 dark:text-slate-300">{t('Chế độ tối')}</div>
+                <div className="text-xs text-slate-500 mt-0.5">{t('Tùy chọn được lưu trên thiết bị này')}</div>
               </div>
               <button
                 type="button"
                 role="switch"
                 aria-checked={theme === 'dark'}
-                aria-label="Bật chế độ tối"
+                aria-label={t('Bật chế độ tối')}
                 onClick={toggleTheme}
                 className={`relative w-12 h-7 rounded-full transition-colors ${theme === 'dark' ? 'bg-blue-500' : 'bg-slate-300'}`}
               >
@@ -254,22 +256,22 @@ export default function Settings() {
 
           <form onSubmit={changePassword} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
             <h2 className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
-              <Icon name="lock" size={18} className="text-blue-500" /> Đổi mật khẩu
+              <Icon name="lock" size={18} className="text-blue-500" /> {t('Đổi mật khẩu')}
             </h2>
-            <Input label="Mật khẩu hiện tại" type="password" autoComplete="current-password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
+            <Input label={t('Mật khẩu hiện tại')} type="password" autoComplete="current-password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
             <div className="grid sm:grid-cols-2 gap-4">
-              <Input label="Mật khẩu mới" type="password" autoComplete="new-password" minLength={8} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
-              <Input label="Nhập lại mật khẩu mới" type="password" autoComplete="new-password" minLength={8} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+              <Input label={t('Mật khẩu mới')} type="password" autoComplete="new-password" minLength={8} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+              <Input label={t('Nhập lại mật khẩu mới')} type="password" autoComplete="new-password" minLength={8} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
             </div>
             <Button type="submit" variant="ghost" loading={savingPassword}>Cập nhật mật khẩu</Button>
           </form>
 
           <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 flex items-center justify-between gap-4">
             <div>
-              <h2 className="font-bold text-slate-900 dark:text-white">Phiên đăng nhập</h2>
-              <p className="text-xs text-slate-500 mt-1">Đăng xuất khỏi tài khoản EXA trên thiết bị này</p>
+              <h2 className="font-bold text-slate-900 dark:text-white">{t('Phiên đăng nhập')}</h2>
+              <p className="text-xs text-slate-500 mt-1">{t('Đăng xuất khỏi tài khoản EXA trên thiết bị này')}</p>
             </div>
-            <Button variant="danger" onClick={logout} icon={<Icon name="logout" size={16} />}>Đăng xuất</Button>
+            <Button variant="danger" onClick={logout} icon={<Icon name="logout" size={16} />}>{t('Đăng xuất')}</Button>
           </section>
         </div>
       </div>

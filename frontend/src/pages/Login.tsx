@@ -8,6 +8,8 @@ import { Input } from '../components/Input';
 import { Icon } from '../components/Icon';
 import { extractError } from '../api/client';
 import { firebaseConfigured, signInWithGoogle } from '../lib/firebase';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { useLanguage } from '../i18n';
 
 type Mode = 'login' | 'register';
 
@@ -23,6 +25,7 @@ export default function Login() {
 
   const { login, register, googleLogin } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const returnTo = (location.state as { from?: { pathname?: string; search?: string; hash?: string } } | null)?.from;
@@ -90,6 +93,9 @@ export default function Login() {
 
   return (
     <div className="exa-login min-h-[100dvh] grid place-items-center p-5 sm:p-8 relative overflow-hidden">
+      <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
+        <LanguageSwitcher />
+      </div>
       {/* Decorative blobs */}
       <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-blue-500/20 blur-[120px] pointer-events-none" />
       <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-indigo-500/20 blur-[120px] pointer-events-none" />
@@ -104,12 +110,12 @@ export default function Login() {
             <div className="text-left">
               <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">EXA</h1>
               <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">
-                Exam Extra
+                {t('Exam Extra')}
               </p>
             </div>
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Nền tảng tạo đề thi &amp; quản lý học tập
+            {t('Nền tảng tạo đề thi & quản lý học tập')}
           </p>
         </div>
 
@@ -129,7 +135,7 @@ export default function Login() {
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              Đăng nhập
+              {t('Đăng nhập')}
             </button>
             <button
               onClick={() => {
@@ -143,20 +149,20 @@ export default function Login() {
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              Đăng ký
+              {t('Đăng ký')}
             </button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {pendingGoogleToken && (
               <p role="status" className="text-sm text-center text-slate-600 dark:text-slate-300">
-                Tài khoản Google chưa có hồ sơ EXA. Chọn vai trò để hoàn tất đăng ký.
+                {t('Tài khoản Google chưa có hồ sơ EXA. Chọn vai trò để hoàn tất đăng ký.')}
               </p>
             )}
 
             {mode === 'register' && !pendingGoogleToken && (
               <Input
-                label="Họ tên"
+                label={t('Họ tên')}
                 placeholder="Nguyễn Văn A"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
@@ -167,7 +173,7 @@ export default function Login() {
             {!pendingGoogleToken && (
               <>
                 <Input
-                  label="Email"
+                  label={t('Email')}
                   type="email"
                   placeholder="you@example.com"
                   autoComplete="email"
@@ -177,7 +183,7 @@ export default function Login() {
                 />
 
                 <Input
-                  label="Mật khẩu"
+                  label={t('Mật khẩu')}
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••"
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
@@ -202,7 +208,7 @@ export default function Login() {
             {mode === 'register' && (
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
-                  Vai trò
+                    {t('Vai trò')}
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {(['TEACHER', 'STUDENT'] as const).map((r) => (
@@ -218,7 +224,7 @@ export default function Login() {
                     >
                       <span className="inline-flex items-center justify-center gap-2">
                         <Icon name={r === 'TEACHER' ? 'user' : 'graduationCap'} size={16} />
-                        {r === 'TEACHER' ? 'Giáo viên' : 'Học sinh'}
+                        {t(r === 'TEACHER' ? 'Giáo viên' : 'Học sinh')}
                       </span>
                     </button>
                   ))}
@@ -235,7 +241,7 @@ export default function Login() {
                 loading={loading}
                 icon={<Icon name="login" size={16} />}
               >
-                {mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
+                {t(mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản')}
               </Button>
             )}
           </form>
@@ -247,7 +253,7 @@ export default function Login() {
               </div>
               <div className="relative flex justify-center">
                 <span className="bg-white dark:bg-slate-900 px-3 text-xs text-slate-400">
-                  hoặc tiếp tục với
+                  {t('hoặc tiếp tục với')}
                 </span>
               </div>
             </div>
@@ -259,13 +265,13 @@ export default function Login() {
             loading={loading}
             icon={<Icon name="google" size={18} />}
             onClick={handleGoogleLogin}
-            aria-label={pendingGoogleToken ? 'Hoàn tất đăng ký Google' : 'Đăng nhập bằng Google'}
+            aria-label={t(pendingGoogleToken ? 'Hoàn tất đăng ký Google' : 'Đăng nhập bằng Google')}
           >
-            {pendingGoogleToken ? 'Hoàn tất đăng ký Google' : 'Google'}
+            {t(pendingGoogleToken ? 'Hoàn tất đăng ký Google' : 'Google')}
           </Button>
           {!firebaseConfigured && (
             <p className="mt-3 text-center text-xs text-slate-400">
-              Đăng nhập Google chưa được cấu hình.
+              {t('Đăng nhập Google chưa được cấu hình.')}
             </p>
           )}
 

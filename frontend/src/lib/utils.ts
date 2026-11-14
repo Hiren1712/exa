@@ -13,10 +13,10 @@ export function fmtTime(seconds: number): string {
 }
 
 // Format date
-export function fmtDate(date: string | Date | undefined): string {
+export function fmtDate(date: string | Date | undefined, locale = 'vi-VN'): string {
   if (!date) return '';
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('vi-VN', {
+  return d.toLocaleDateString(locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -24,10 +24,10 @@ export function fmtDate(date: string | Date | undefined): string {
 }
 
 // Format datetime
-export function fmtDateTime(date: string | Date | undefined): string {
+export function fmtDateTime(date: string | Date | undefined, locale = 'vi-VN'): string {
   if (!date) return '';
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleString('vi-VN', {
+  return d.toLocaleString(locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

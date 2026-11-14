@@ -15,6 +15,7 @@ import { extractError } from '../api/client';
 import { ExaBot } from './ExaBot';
 import { Icon } from './Icon';
 import { decodeHtmlEntities, MathText } from './MathText';
+import { useLanguage } from '../i18n';
 
 interface StoredMessage extends ChatTurn {
   id: string;
@@ -203,8 +204,11 @@ function makeTitle(text: string) {
   return normalized.length > 42 ? `${normalized.slice(0, 39)}...` : normalized;
 }
 
-function formatTime(timestamp: number) {
-  return new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit' }).format(timestamp);
+function formatTime(timestamp: number, language: 'vi' | 'en') {
+  return new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(timestamp);
 }
 
 function formatCountdown(seconds: number) {
@@ -226,6 +230,7 @@ function flagLatestUserMessage(messages: StoredMessage[]) {
 }
 
 export function ChatWidget({ userId }: ChatWidgetProps) {
+  const { language, t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [threads, setThreads] = useState<ChatThread[]>(() => readThreads(userId));
@@ -415,7 +420,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
       setCopiedMessageId(message.id);
       window.setTimeout(() => setCopiedMessageId(null), 1500);
     } catch {
-      setError('Không thể sao chép câu trả lời. Hãy chọn và sao chép nội dung thủ công.');
+      setError(t('Không thể sao chép câu trả lời. Hãy chọn và sao chép nội dung thủ công.'));
     }
   };
 
@@ -528,8 +533,8 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
             }
             setOpen(true);
           }}
-          aria-label="Mở trợ lý EXA"
-          title="Kéo để di chuyển · Nhấn để mở trợ lý"
+          aria-label={t('Mở trợ lý EXA')}
+          title={t('Kéo để di chuyển · Nhấn để mở trợ lý')}
           style={{ left: launcherPosition.x, top: launcherPosition.y }}
           className="fixed z-50 flex h-12 w-12 touch-none cursor-grab items-center justify-center rounded-full bg-slate-950 p-0 text-white shadow-xl shadow-blue-950/25 transition hover:scale-105 hover:bg-blue-950 hover:shadow-2xl active:cursor-grabbing focus:outline-none focus:ring-4 focus:ring-blue-300"
         >
@@ -551,16 +556,16 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
               <ExaBot size={36} />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 id="exa-chat-title" className="truncate text-sm font-bold">Gia sư EXA</h2>
+              <h2 id="exa-chat-title" className="truncate text-sm font-bold">{t('Gia sư EXA')}</h2>
               <p className="mt-0.5 truncate text-xs text-slate-300">
-                Giải thích · Luyện tập · Khám phá
+                {t('Giải thích · Luyện tập · Khám phá')}
               </p>
             </div>
             <button
               type="button"
               onClick={() => { setShowHistory((value) => !value); setError(''); }}
-              aria-label={showHistory ? 'Đóng lịch sử trò chuyện' : 'Lịch sử trò chuyện'}
-              title="Lịch sử trò chuyện"
+              aria-label={t(showHistory ? 'Đóng lịch sử trò chuyện' : 'Lịch sử trò chuyện')}
+              title={t('Lịch sử trò chuyện')}
               className={`flex h-10 w-10 items-center justify-center rounded-xl text-white/90 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/70 ${showHistory ? 'bg-white/10' : ''}`}
             >
               <Icon name="history" size={19} />
@@ -568,8 +573,8 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
             <button
               type="button"
               onClick={startNewChat}
-              aria-label="Cuộc trò chuyện mới"
-              title="Cuộc trò chuyện mới"
+              aria-label={t('Cuộc trò chuyện mới')}
+              title={t('Cuộc trò chuyện mới')}
               className="flex h-10 w-10 items-center justify-center rounded-xl text-white/90 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/70"
             >
               <Icon name="plus" size={20} />
@@ -577,8 +582,8 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="Đóng chatbot"
-              title="Đóng"
+              aria-label={t('Đóng chatbot')}
+              title={t('Đóng')}
               className="flex h-10 w-10 items-center justify-center rounded-xl text-white/90 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/70"
             >
               <Icon name="x" size={19} />
@@ -588,7 +593,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
           {showHistory ? (
             <div className="flex min-h-0 flex-1 flex-col bg-white dark:bg-slate-900">
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4 dark:border-slate-800">
-                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Lịch sử trò chuyện</h3>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t('Lịch sử trò chuyện')}</h3>
                 <button type="button" onClick={startNewChat} className="rounded-lg px-2 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/50">
                   + Trò chuyện mới
                 </button>
@@ -607,14 +612,17 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                     >
                       <span className="block truncate text-sm font-medium text-slate-800 dark:text-slate-100">{thread.title}</span>
                       <span className="mt-1 block text-[11px] text-slate-500">
-                        {thread.messages.length} tin nhắn · {formatTime(thread.updatedAt)}
+                        {t('{{count}} tin nhắn · {{time}}', {
+                          count: thread.messages.length,
+                          time: formatTime(thread.updatedAt, language),
+                        })}
                       </span>
                     </button>
                     <button
                       type="button"
                       onClick={() => removeThread(thread.id)}
-                      aria-label={`Xóa cuộc trò chuyện ${thread.title}`}
-                      title="Xóa cuộc trò chuyện"
+                      aria-label={t('Xóa cuộc trò chuyện {{title}}', { title: thread.title })}
+                      title={t('Xóa cuộc trò chuyện')}
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 opacity-100 hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
                     >
                       <Icon name="trash" size={16} />
@@ -623,7 +631,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                 ))}
               </div>
               <p className="border-t border-slate-100 px-4 py-2 text-[10px] text-slate-400 dark:border-slate-800">
-                Lịch sử chỉ được lưu trên trình duyệt và tài khoản đang dùng.
+                {t('Lịch sử chỉ được lưu trên trình duyệt và tài khoản đang dùng.')}
               </p>
             </div>
           ) : (
@@ -634,9 +642,9 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                     <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-600/20">
                       <ExaBot size={48} />
                     </div>
-                    <h3 className="text-center text-lg font-bold tracking-tight text-slate-900 dark:text-white">Bắt đầu từ điều bạn tò mò</h3>
+                    <h3 className="text-center text-lg font-bold tracking-tight text-slate-900 dark:text-white">{t('Bắt đầu từ điều bạn tò mò')}</h3>
                     <p className="mx-auto mt-2 max-w-xs text-center text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                      Hỏi bài, khám phá khái niệm hoặc luyện tập từng bước cùng gia sư EXA.
+                      {t('Hỏi bài, khám phá khái niệm hoặc luyện tập từng bước cùng gia sư EXA.')}
                     </p>
                     <div className="mt-6 space-y-2.5">
                       {[
@@ -650,7 +658,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                           onClick={() => setInput(suggestion)}
                           className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                         >
-                          {suggestion}
+                          {t(suggestion)}
                         </button>
                       ))}
                     </div>
@@ -688,14 +696,14 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                               <button
                                 type="button"
                                 onClick={() => void copyMessage(message)}
-                                aria-label={copiedMessageId === message.id ? 'Đã sao chép câu trả lời' : 'Sao chép câu trả lời'}
-                                title={copiedMessageId === message.id ? 'Đã sao chép' : 'Sao chép'}
+                                aria-label={t(copiedMessageId === message.id ? 'Đã sao chép câu trả lời' : 'Sao chép câu trả lời')}
+                                title={t(copiedMessageId === message.id ? 'Đã sao chép' : 'Sao chép')}
                                 className="rounded px-1 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
                               >
-                                {copiedMessageId === message.id ? 'Đã chép' : 'Sao chép'}
+                                {t(copiedMessageId === message.id ? 'Đã chép' : 'Sao chép')}
                               </button>
                             )}
-                            <time dateTime={new Date(message.createdAt).toISOString()}>{formatTime(message.createdAt)}</time>
+                            <time dateTime={new Date(message.createdAt).toISOString()}>{formatTime(message.createdAt, language)}</time>
                           </div>
                         </div>
                       </div>
@@ -711,7 +719,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:-0.1s]" />
                             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500" />
                           </span>
-                          Gia sư EXA đang suy nghĩ...
+                          {t('Gia sư EXA đang suy nghĩ...')}
                         </div>
                       </div>
                     )}
@@ -728,18 +736,18 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                       : 'border-red-100 bg-red-50 text-red-700 dark:border-red-950 dark:bg-red-950/40 dark:text-red-200'
                   }`}
                 >
-                  <span className="min-w-0 flex-1">{error}</span>
-                  {pendingHistory && <button type="button" onClick={() => void retry()} disabled={sending || cooldownSeconds > 0} className="shrink-0 font-bold underline disabled:opacity-50">Thử lại</button>}
+                  <span className="min-w-0 flex-1">{t(error)}</span>
+                  {pendingHistory && <button type="button" onClick={() => void retry()} disabled={sending || cooldownSeconds > 0} className="shrink-0 font-bold underline disabled:opacity-50">{t('Thử lại')}</button>}
                 </div>
               )}
 
               <form onSubmit={(event) => void submitMessage(event)} className="shrink-0 border-t border-slate-200 bg-white px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 dark:border-slate-800 dark:bg-slate-900 sm:pb-3">
-                <div className="mb-2 grid grid-cols-2 gap-2" role="group" aria-label="Chọn AI cho ExaBot">
+                <div className="mb-2 grid grid-cols-2 gap-2" role="group" aria-label={t('Chọn AI cho ExaBot')}>
                   <button
                     type="button"
                     onClick={() => setProvider('GROQ')}
                     aria-pressed={provider === 'GROQ'}
-                    title="Groq · ưu tiên phản hồi nhanh"
+                    title={t('Groq · ưu tiên phản hồi nhanh')}
                     disabled={sending}
                     className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-60 ${
                       provider === 'GROQ'
@@ -749,15 +757,15 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                   >
                     <Icon name="zap" size={17} className="shrink-0" />
                     <span className="min-w-0">
-                      <span className="block text-xs font-semibold">Groq · Nhanh</span>
-                      <span className="block text-[10px] opacity-75">Trả lời gọn</span>
+                      <span className="block text-xs font-semibold">{t('Groq · Nhanh')}</span>
+                      <span className="block text-[10px] opacity-75">{t('Trả lời gọn')}</span>
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setProvider('GEMINI')}
                     aria-pressed={provider === 'GEMINI'}
-                    title="Gemini · ưu tiên giải thích chi tiết"
+                    title={t('Gemini · ưu tiên giải thích chi tiết')}
                     disabled={sending}
                     className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-60 ${
                       provider === 'GEMINI'
@@ -767,13 +775,13 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                   >
                     <Icon name="exaAi" size={17} className="shrink-0" />
                     <span className="min-w-0">
-                      <span className="block text-xs font-semibold">Gemini · Chi tiết</span>
-                      <span className="block text-[10px] opacity-75">Giải thích từng bước</span>
+                      <span className="block text-xs font-semibold">{t('Gemini · Chi tiết')}</span>
+                      <span className="block text-[10px] opacity-75">{t('Giải thích từng bước')}</span>
                     </span>
                   </button>
                 </div>
                 <p className="mb-2 px-1 text-[10px] text-slate-400">
-                  AI đã chọn được ưu tiên; ExaBot tự chuyển sang AI khác nếu gặp lỗi.
+                  {t('AI đã chọn được ưu tiên; ExaBot tự chuyển sang AI khác nếu gặp lỗi.')}
                 </p>
                 <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2 transition focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:focus-within:ring-blue-950">
                   <textarea
@@ -781,8 +789,8 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                     value={input}
                     onChange={(event) => setInput(event.target.value.slice(0, MAX_INPUT_LENGTH))}
                     onKeyDown={handleKeyDown}
-                    placeholder="Nhắn tin cho EXA AI..."
-                    aria-label="Tin nhắn của bạn"
+                    placeholder={t('Nhắn tin cho EXA AI...')}
+                    aria-label={t('Tin nhắn của bạn')}
                     rows={1}
                     maxLength={MAX_INPUT_LENGTH}
                     disabled={sending}
@@ -791,8 +799,8 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                   <button
                     type="submit"
                     disabled={!input.trim() || sending || cooldownSeconds > 0}
-                    aria-label="Gửi tin nhắn"
-                    title="Gửi"
+                    aria-label={t('Gửi tin nhắn')}
+                    title={t('Gửi')}
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-700"
                   >
                     <Icon name="send" size={16} />
@@ -801,12 +809,12 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                 <div className="mt-1.5 flex justify-between px-1 text-[10px] text-slate-400">
                   <span role="status" aria-live="polite">
                     {sending
-                      ? 'Đang chờ ExaBot phản hồi...'
+                      ? t('Đang chờ ExaBot phản hồi...')
                       : cooldownSeconds > 0
                       ? chatBanned
-                        ? `Chat bị khóa · còn ${formatCountdown(cooldownSeconds)}.`
-                        : `Có thể gửi câu hỏi tiếp theo sau ${formatCountdown(cooldownSeconds)}.`
-                      : 'Enter để gửi · Shift+Enter xuống dòng'}
+                        ? t('Chat bị khóa · còn {{time}}.', { time: formatCountdown(cooldownSeconds) })
+                        : t('Có thể gửi câu hỏi tiếp theo sau {{seconds}} giây.', { seconds: cooldownSeconds })
+                      : t('Enter để gửi · Shift+Enter xuống dòng')}
                   </span>
                   <span>{input.length}/{MAX_INPUT_LENGTH}</span>
                 </div>

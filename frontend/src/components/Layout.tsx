@@ -6,6 +6,8 @@ import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
 import { profileImageUrl } from '../api/user';
 import { Link } from 'react-router-dom';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { useLanguage } from '../i18n';
 
 interface NavItem {
   to: string;
@@ -43,6 +45,7 @@ export function Layout() {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const { user, logout, theme, toggleTheme } = useAuth();
+  const { language, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -91,12 +94,12 @@ export function Layout() {
 
   return (
     <div className="flex min-h-[100dvh] bg-[var(--bg)] exa-surface-gradient">
-      <a href="#exa-main" className="exa-skip-link">Bỏ qua điều hướng, đến nội dung</a>
+      <a href="#exa-main" className="exa-skip-link">{t('Bỏ qua điều hướng, đến nội dung')}</a>
       {/* Sidebar */}
       <aside
         ref={sidebarRef}
         id="exa-sidebar"
-        aria-label="Điều hướng chính"
+        aria-label={t('Điều hướng chính')}
         aria-hidden={isMobileViewport && !sidebarOpen}
         className={cn(
           'exa-sidebar fixed inset-y-0 left-0 z-40 w-[min(19rem,85vw)] flex flex-col transition-transform lg:translate-x-0 lg:w-[272px]',
@@ -111,13 +114,13 @@ export function Layout() {
           <div>
             <h3 className="text-[19px] font-black tracking-[-.055em] text-slate-900 dark:text-white leading-tight">EXA<span className="text-blue-600 dark:text-blue-400">.</span></h3>
             <span className="text-xs tracking-wider text-slate-500 dark:text-slate-400 font-semibold uppercase">
-              EDUCATION PLATFORM
+              {t('NỀN TẢNG GIÁO DỤC')}
             </span>
           </div>
-          <button ref={closeButtonRef} type="button" onClick={closeSidebar} aria-label="Đóng điều hướng" className="lg:hidden ml-auto exa-icon-button"><Icon name="x" size={19} /></button>
+          <button ref={closeButtonRef} type="button" onClick={closeSidebar} aria-label={t('Đóng điều hướng')} className="lg:hidden ml-auto exa-icon-button"><Icon name="x" size={19} /></button>
         </div>
 
-        <p className="exa-nav-eyebrow px-6 pt-7 pb-3 text-[10px] font-extrabold uppercase tracking-[.2em] text-slate-500 dark:text-slate-400">KHÔNG GIAN LÀM VIỆC</p>
+        <p className="exa-nav-eyebrow px-6 pt-7 pb-3 text-[10px] font-extrabold uppercase tracking-[.2em] text-slate-500 dark:text-slate-400">{t('KHÔNG GIAN LÀM VIỆC')}</p>
         {/* Nav */}
         <nav className="exa-navigation flex-1 overflow-y-auto px-3 pb-4 space-y-1">
           {navItems.map((item) => (
@@ -136,7 +139,7 @@ export function Layout() {
               }
             >
               <Icon name={item.icon} size={18} />
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1">{t(item.label)}</span>
               <span className="exa-nav-dot" aria-hidden="true" />
             </NavLink>
           ))}
@@ -152,12 +155,12 @@ export function Layout() {
                 EXA Pro
               </h5>
               <p className="text-xs opacity-95 mt-1 relative z-10 leading-snug">
-                AI soạn đề, giám sát camera &amp; báo cáo nâng cao.
+                {t('AI soạn đề, giám sát phòng thi & báo cáo nâng cao.')}
               </p>
             </div>
           </div>
         )}
-        <div className="exa-sidebar-footer px-5 py-4 text-[11px] font-medium text-slate-400 dark:text-slate-500">EXA 3.0 <span aria-hidden="true">·</span> Designed for learning</div>
+        <div className="exa-sidebar-footer px-5 py-4 text-[11px] font-medium text-slate-400 dark:text-slate-500">EXA 3.0 <span aria-hidden="true">·</span> {t('Thiết kế cho việc học')}</div>
       </aside>
 
       {/* Overlay mobile */}
@@ -177,7 +180,7 @@ export function Layout() {
             ref={menuButtonRef}
             type="button"
             onClick={() => setSidebarOpen(true)}
-            aria-label="Mở menu điều hướng"
+            aria-label={t('Mở menu điều hướng')}
             aria-expanded={sidebarOpen}
             aria-controls="exa-sidebar"
             className="lg:hidden w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -186,32 +189,33 @@ export function Layout() {
           </button>
 
           <div className="flex-1 min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-[.18em] text-slate-500 dark:text-slate-400 hidden sm:block">WORKSPACE <span className="px-1.5">/</span> {user?.role === 'STUDENT' ? 'Học sinh' : 'Giáo viên'}</div>
-            <div className="text-[15px] font-bold tracking-[-.02em] text-slate-900 dark:text-white truncate">{currentPage?.label || 'Không gian học tập'}</div>
+            <div className="text-[10px] font-bold uppercase tracking-[.18em] text-slate-500 dark:text-slate-400 hidden sm:block">{t('KHÔNG GIAN LÀM VIỆC')} <span className="px-1.5">/</span> {t(user?.role === 'STUDENT' ? 'Học sinh' : 'Giáo viên')}</div>
+            <div className="text-[15px] font-bold tracking-[-.02em] text-slate-900 dark:text-white truncate">{t(currentPage?.label || 'Không gian học tập')}</div>
           </div>
 
           <div className="hidden xl:flex exa-topbar-date items-center gap-2 mr-3 text-xs font-semibold text-slate-500 dark:text-slate-400">
             <Icon name="calendar" size={16} />
-            <span>{new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date())}</span>
+            <span>{new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date())}</span>
           </div>
-          <Link to="/exams" className="exa-quick-link hidden sm:inline-flex items-center gap-2 min-h-10 px-3.5 text-[13px] font-semibold rounded-xl" aria-label="Đến danh sách đề thi">
-            <Icon name="exaExam" size={16} /> Đề thi
+          <Link to="/exams" className="exa-quick-link hidden sm:inline-flex items-center gap-2 min-h-10 px-3.5 text-[13px] font-semibold rounded-xl" aria-label={t('Đến danh sách đề thi')}>
+            <Icon name="exaExam" size={16} /> {t('Đề thi')}
           </Link>
           <span className="exa-topbar-divider hidden sm:block" aria-hidden="true" />
+          <LanguageSwitcher />
           <button
             onClick={toggleTheme}
-            aria-label="Chuyển chế độ sáng tối"
+            aria-label={t('Chuyển chế độ sáng tối')}
             className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            title="Đổi giao diện"
+            title={t('Đổi giao diện')}
           >
             <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} />
           </button>
 
           <button
             onClick={handleLogout}
-            aria-label="Đăng xuất khỏi EXA"
+            aria-label={t('Đăng xuất khỏi EXA')}
             className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 transition-colors"
-            title="Đăng xuất"
+            title={t('Đăng xuất')}
           >
             <Icon name="logout" size={18} />
           </button>
@@ -220,7 +224,7 @@ export function Layout() {
             {user?.avatarUrl && (
               <img
                 src={profileImageUrl(user.avatarUrl)}
-                alt={`Ảnh đại diện của ${user.fullName}`}
+                alt={t('Ảnh đại diện của {{name}}', { name: user.fullName })}
                 className="absolute inset-0 w-full h-full object-cover"
                 onError={(event) => { event.currentTarget.style.display = 'none'; }}
               />

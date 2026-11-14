@@ -5,12 +5,14 @@ import { MathText } from '../components/MathText';
 import { QuestionImage } from '../components/QuestionImage';
 import { Button } from '../components/Button';
 import { submissionApi, SubmissionReview } from '../api/submission';
+import { useLanguage } from '../i18n';
 
 export default function ExamResult() {
   const [params] = useSearchParams();
   const [review, setReview] = useState<SubmissionReview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { t } = useLanguage();
   const submissionId = Number(params.get('submissionId'));
 
   useEffect(() => {
@@ -34,13 +36,13 @@ export default function ExamResult() {
   }, [submissionId]);
 
   if (loading) {
-    return <div className="p-12 text-center text-slate-500">Đang tải kết quả bài thi...</div>;
+    return <div className="p-12 text-center text-slate-500">{t('Đang tải kết quả bài thi...')}</div>;
   }
   if (error || !review) {
     return (
       <div className="max-w-xl mx-auto rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-700">
-        <p>{error || 'Không có dữ liệu kết quả.'}</p>
-        <Link to="/exams" className="mt-4 inline-block font-semibold">Quay lại danh sách đề thi</Link>
+        <p>{error ? t(error) : t('Không có dữ liệu kết quả.')}</p>
+        <Link to="/exams" className="mt-4 inline-block font-semibold">{t('Quay lại danh sách đề thi')}</Link>
       </div>
     );
   }
@@ -57,12 +59,12 @@ export default function ExamResult() {
           <div className="w-36 h-36 rounded-full mx-auto mb-5 grid place-items-center" style={{ background: `conic-gradient(#fff ${pct}%, rgba(255,255,255,.22) 0)` }}>
             <div className="w-28 h-28 rounded-full bg-slate-900/40 backdrop-blur-md grid place-items-center flex-col">
               <div className="text-4xl font-extrabold leading-none">{review.totalScore ?? '—'}</div>
-              <div className="text-[10px] uppercase tracking-wider opacity-85 mt-1">Điểm</div>
+              <div className="text-[10px] uppercase tracking-wider opacity-85 mt-1">{t('Điểm')}</div>
             </div>
           </div>
           <h1 className="text-2xl font-extrabold mb-1">{review.examTitle}</h1>
-          <p className="opacity-90 text-sm">Bài thi đã được nộp</p>
-          {review.needsManualGrading && <p className="mt-2 text-sm font-semibold">Câu tự luận đang chờ giáo viên chấm.</p>}
+          <p className="opacity-90 text-sm">{t('Bài thi đã được nộp')}</p>
+          {review.needsManualGrading && <p className="mt-2 text-sm font-semibold">{t('Câu tự luận đang chờ giáo viên chấm.')}</p>}
         </div>
       </div>
 
@@ -70,20 +72,20 @@ export default function ExamResult() {
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 text-center">
           <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center mx-auto mb-2"><Icon name="check" size={20} /></div>
           <div className="text-2xl font-extrabold text-slate-900 dark:text-white">{review.totalScore ?? '—'} / {totalPoints}</div>
-          <div className="text-xs text-slate-500">Điểm số</div>
+          <div className="text-xs text-slate-500">{t('Điểm số')}</div>
         </div>
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 text-center">
           <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center mx-auto mb-2"><Icon name="clock" size={20} /></div>
           <div className="text-2xl font-extrabold text-slate-900 dark:text-white">{review.durationSec == null ? '—' : Math.ceil(review.durationSec / 60)}</div>
-          <div className="text-xs text-slate-500">Phút làm bài</div>
+          <div className="text-xs text-slate-500">{t('Phút làm bài')}</div>
         </div>
       </div>
 
       <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-        <h2 className="font-bold text-slate-900 dark:text-white mb-4">Chi tiết bài làm</h2>
-        {review.needsManualGrading && <p className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Điểm tổng sẽ hiển thị sau khi giáo viên chấm xong phần tự luận.</p>}
-        {review.teacherFeedback && <p className="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800"><strong>Nhận xét của giáo viên:</strong> {review.teacherFeedback}</p>}
-        {!review.answersRevealed && <p className="mb-4 text-sm text-amber-700">Đáp án và lời giải sẽ hiển thị theo cài đặt của giáo viên.</p>}
+        <h2 className="font-bold text-slate-900 dark:text-white mb-4">{t('Chi tiết bài làm')}</h2>
+        {review.needsManualGrading && <p className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{t('Điểm tổng sẽ hiển thị sau khi giáo viên chấm xong phần tự luận.')}</p>}
+        {review.teacherFeedback && <p className="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800"><strong>{t('Nhận xét của giáo viên')}:</strong> {review.teacherFeedback}</p>}
+        {!review.answersRevealed && <p className="mb-4 text-sm text-amber-700">{t('Đáp án và lời giải sẽ hiển thị theo cài đặt của giáo viên.')}</p>}
         <div className="space-y-4">
           {review.questions.map((question, index) => {
             let options: string[] = [];
@@ -101,13 +103,13 @@ export default function ExamResult() {
             return (
               <article key={question.id} className="rounded-xl border border-slate-100 dark:border-slate-800 p-4">
                 <h3 className="font-semibold text-sm text-slate-900 dark:text-white">{index + 1}. <MathText>{question.content}</MathText></h3>
-                <div className="mt-2"><QuestionImage src={question.imageUrl} alt="Hình minh họa câu hỏi" /></div>
-                {options.length > 0 && <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-300">{options.map((option, optionIndex) => <li key={optionIndex}><MathText>{option}</MathText><div><QuestionImage src={optionImages[optionIndex]} alt={`Hình phương án ${optionIndex + 1}`} /></div></li>)}</ul>}
-                <p className="mt-3 text-sm"><span className="text-slate-500">Câu trả lời của bạn: </span><strong>{question.studentAnswer ? <MathText>{question.studentAnswer}</MathText> : 'Chưa trả lời'}</strong></p>
+                <div className="mt-2"><QuestionImage src={question.imageUrl} alt={t('Hình minh họa câu hỏi')} /></div>
+                {options.length > 0 && <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-300">{options.map((option, optionIndex) => <li key={optionIndex}><MathText>{option}</MathText><div><QuestionImage src={optionImages[optionIndex]} alt={t('Hình phương án {{number}}', { number: optionIndex + 1 })} /></div></li>)}</ul>}
+                <p className="mt-3 text-sm"><span className="text-slate-500">{t('Câu trả lời của bạn')}: </span><strong>{question.studentAnswer ? <MathText>{question.studentAnswer}</MathText> : t('Chưa trả lời')}</strong></p>
                 {review.answersRevealed && (
                   <>
-                    {question.correctAnswer && <p className="mt-1 text-sm text-emerald-700"><span className="text-slate-500">Đáp án đúng: </span><strong><MathText>{question.correctAnswer}</MathText></strong></p>}
-                    {question.answerText && <p className="mt-1 text-sm text-emerald-700"><span className="text-slate-500">Đáp án: </span><strong><MathText>{question.answerText}</MathText></strong></p>}
+                    {question.correctAnswer && <p className="mt-1 text-sm text-emerald-700"><span className="text-slate-500">{t('Đáp án đúng')}: </span><strong><MathText>{question.correctAnswer}</MathText></strong></p>}
+                    {question.answerText && <p className="mt-1 text-sm text-emerald-700"><span className="text-slate-500">{t('Đáp án')}: </span><strong><MathText>{question.answerText}</MathText></strong></p>}
                     {question.explanation && <p className="mt-2 text-sm text-slate-500"><MathText>{question.explanation}</MathText></p>}
                   </>
                 )}
@@ -118,8 +120,8 @@ export default function ExamResult() {
       </section>
 
       <div className="flex gap-3">
-        <Link to="/" className="flex-1"><Button variant="ghost" block icon={<Icon name="home" size={16} />}>Về trang chủ</Button></Link>
-        <Link to="/exams" className="flex-1"><Button variant="primary" block icon={<Icon name="file" size={16} />}>Xem đề khác</Button></Link>
+        <Link to="/" className="flex-1"><Button variant="ghost" block icon={<Icon name="home" size={16} />}>{t('Về trang chủ')}</Button></Link>
+        <Link to="/exams" className="flex-1"><Button variant="primary" block icon={<Icon name="file" size={16} />}>{t('Xem đề khác')}</Button></Link>
       </div>
     </div>
   );

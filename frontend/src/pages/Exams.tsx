@@ -8,6 +8,7 @@ import { submissionApi, Submission } from '../api/submission';
 import { extractError } from '../api/client';
 import { fmtDate, EXAM_STATUS_LABELS } from '../lib/utils';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../i18n';
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-100',
@@ -19,6 +20,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function Exams() {
   const { user } = useAuth();
+  const { language, t } = useLanguage();
   const isStudent = user?.role === 'STUDENT';
   const [exams, setExams] = useState<ExamSummary[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -40,11 +42,11 @@ export default function Exams() {
       setExams(data || []);
       setSubmissions(studentSubmissions);
     } catch (err) {
-      toast('Lỗi tải đề thi', extractError(err), 'error');
+      toast(t('Lỗi tải đề thi'), extractError(err), 'error');
     } finally {
       setLoading(false);
     }
-  }, [isStudent, toast]);
+  }, [isStudent, t, toast]);
 
   useEffect(() => {
     void loadExams();
@@ -54,20 +56,20 @@ export default function Exams() {
     if (!confirm(`Xóa đề thi "${title}"?`)) return;
     try {
       await examApi.delete(id);
-      toast('Đã xóa', title, 'success');
+      toast(t('Đã xóa'), title, 'success');
       loadExams();
     } catch (err) {
-      toast('Lỗi', extractError(err), 'error');
+      toast(t('Lỗi'), extractError(err), 'error');
     }
   };
 
   const handlePublish = async (id: number) => {
     try {
       await examApi.publish(id);
-      toast('Đã công khai', 'Học sinh có thể làm bài', 'success');
+      toast(t('Đã công khai'), t('Học sinh có thể làm bài'), 'success');
       loadExams();
     } catch (err) {
-      toast('Lỗi', extractError(err), 'error');
+      toast(t('Lỗi'), extractError(err), 'error');
     }
   };
 
@@ -79,7 +81,7 @@ export default function Exams() {
       const invite = await examApi.resolveInvite(roomCode);
       navigate(`/exam/${invite.examId}?invite=${encodeURIComponent(invite.code)}`);
     } catch (err) {
-      toast('Không vào được phòng', extractError(err), 'error');
+      toast(t('Không vào được phòng'), extractError(err), 'error');
     } finally {
       setJoiningRoom(false);
     }
@@ -100,7 +102,7 @@ export default function Exams() {
       const invite = await examApi.getInvite(id);
       setInviteByExam((current) => ({ ...current, [id]: invite }));
     } catch (err) {
-      toast('Không tạo được mã phòng', extractError(err), 'error');
+      toast(t('Không tạo được mã phòng'), extractError(err), 'error');
     } finally {
       setLoadingInviteId(null);
     }
@@ -109,9 +111,9 @@ export default function Exams() {
   const copyInviteValue = async (value: string, label: string) => {
     try {
       await navigator.clipboard.writeText(value);
-      toast('Đã sao chép', label, 'success');
+      toast(t('Đã sao chép'), t(label), 'success');
     } catch {
-      toast('Không sao chép được', 'Trình duyệt không cho phép truy cập clipboard. Hãy chọn và sao chép nội dung.', 'error');
+      toast(t('Không sao chép được'), t('Trình duyệt không cho phép truy cập clipboard. Hãy chọn và sao chép nội dung.'), 'error');
     }
   };
 
@@ -120,16 +122,16 @@ export default function Exams() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">
-            {isStudent ? 'Bài tập được giao' : 'Đề thi & Bài tập'}
+            {t(isStudent ? 'Bài tập được giao' : 'Đề thi & Bài tập')}
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {isStudent ? 'Các đề thi đang mở cho lớp học của bạn' : 'Quản lý và giao đề cho lớp học'}
+            {t(isStudent ? 'Các đề thi đang mở cho lớp học của bạn' : 'Quản lý và giao đề cho lớp học')}
           </p>
         </div>
         {!isStudent && (
           <Link to="/exams/new">
             <Button variant="primary" icon={<Icon name="plus" size={16} />}>
-              Tạo đề thi mới
+              {t('Tạo đề thi mới')}
             </Button>
           </Link>
         )}
@@ -138,18 +140,18 @@ export default function Exams() {
       {isStudent && (
         <form onSubmit={(event) => void handleJoinRoom(event)} className="flex flex-wrap items-end gap-3 rounded-2xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/20">
           <label className="min-w-48 flex-1 text-xs font-semibold text-slate-700 dark:text-slate-200">
-            Mã phòng thi
+            {t('Mã phòng thi')}
             <input
               value={roomCode}
               onChange={(event) => setRoomCode(event.target.value.toUpperCase().replace(/[^2-9A-HJ-NP-Z]/g, '').slice(0, 10))}
-              placeholder="Nhập mã 10 ký tự"
+              placeholder={t('Nhập mã 10 ký tự')}
               maxLength={10}
               autoComplete="off"
               className="exa-field mt-1 w-full px-3 py-2.5 text-sm uppercase tracking-wider"
             />
           </label>
           <Button type="submit" variant="primary" disabled={roomCode.length !== 10 || joiningRoom}>
-            {joiningRoom ? 'Đang vào...' : 'Vào phòng thi'}
+            {t(joiningRoom ? 'Đang vào...' : 'Vào phòng thi')}
           </Button>
         </form>
       )}
@@ -164,15 +166,15 @@ export default function Exams() {
             <Icon name="file" size={28} />
           </div>
           <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-1">
-            {isStudent ? 'Chưa có bài tập được giao' : 'Chưa có đề thi nào'}
+            {t(isStudent ? 'Chưa có bài tập được giao' : 'Chưa có đề thi nào')}
           </h4>
           <p className="text-sm text-slate-400 mb-5">
-            {isStudent ? 'Bài tập mới sẽ xuất hiện tại đây khi giáo viên giao đề.' : 'Bắt đầu bằng cách tạo đề thi đầu tiên của bạn'}
+            {t(isStudent ? 'Bài tập mới sẽ xuất hiện tại đây khi giáo viên giao đề.' : 'Bắt đầu bằng cách tạo đề thi đầu tiên của bạn')}
           </p>
           {!isStudent && (
             <Link to="/exams/new">
               <Button variant="primary" icon={<Icon name="plus" size={16} />}>
-                Tạo đề thi
+                {t('Tạo đề thi')}
               </Button>
             </Link>
           )}
@@ -187,9 +189,9 @@ export default function Exams() {
               <div className="p-5 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-start justify-between mb-3">
                   <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${STATUS_COLORS[exam.status] || STATUS_COLORS.DRAFT}`}>
-                    {EXAM_STATUS_LABELS[exam.status] || exam.status}
+                    {t(EXAM_STATUS_LABELS[exam.status] || exam.status)}
                   </span>
-                  <span className="text-xs text-slate-400">{fmtDate(exam.createdAt)}</span>
+                  <span className="text-xs text-slate-400">{fmtDate(exam.createdAt, language === 'en' ? 'en-US' : 'vi-VN')}</span>
                 </div>
                 <h3 className="font-bold text-slate-900 dark:text-white leading-snug mb-2 line-clamp-2">
                   {exam.title}
@@ -197,9 +199,9 @@ export default function Exams() {
                 <div className="flex items-center gap-2 text-xs text-slate-500">
                   <span>{exam.subject}</span>
                   <span>•</span>
-                  <span>{exam.durationMin} phút</span>
+                  <span>{t('{{count}} phút', { count: exam.durationMin })}</span>
                   <span>•</span>
-                  <span>{exam.questionCount || 0} câu</span>
+                  <span>{t('{{count}} câu', { count: exam.questionCount || 0 })}</span>
                 </div>
               </div>
 
@@ -209,13 +211,13 @@ export default function Exams() {
                     <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
                       {exam.submissionCount || 0}
                     </div>
-                    <div className="text-[10px] text-slate-400 uppercase tracking-wide">Bài nộp</div>
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wide">{t('Bài nộp')}</div>
                   </div>
                   <div className="p-3 text-center">
                     <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
                       {exam.status === 'OPEN' ? '🟢' : '⚪'}
                     </div>
-                    <div className="text-[10px] text-slate-400 uppercase tracking-wide">Trạng thái</div>
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wide">{t('Trạng thái')}</div>
                   </div>
                 </div>
               )}
@@ -231,7 +233,7 @@ export default function Exams() {
                         onClick={() => navigate(`/exam/${exam.id}`)}
                         className="w-full py-2 text-xs font-semibold rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                       >
-                        Tiếp tục bài làm
+                        {t('Tiếp tục bài làm')}
                       </button>
                     );
                   }
@@ -241,7 +243,7 @@ export default function Exams() {
                         onClick={() => navigate(`/exam/${exam.id}/result?submissionId=${latestSubmission.id}`)}
                         className="w-full py-2 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
                       >
-                        Xem kết quả lần gần nhất
+                        {t('Xem kết quả lần gần nhất')}
                       </button>
                     );
                   }
@@ -251,7 +253,7 @@ export default function Exams() {
                       disabled={exam.status !== 'OPEN'}
                       className="w-full py-2 text-xs font-semibold rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      Làm bài
+                      {t('Làm bài')}
                     </button>
                   );
                 })() : (
@@ -260,20 +262,20 @@ export default function Exams() {
                       onClick={() => navigate(`/exam/${exam.id}?preview=1`)}
                       className="flex-1 py-2 text-xs font-semibold rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                     >
-                      Thử đề
+                      {t('Thử đề')}
                     </button>
                     <button
                       onClick={() => navigate(`/exams/${exam.id}/edit`)}
                       className="flex-1 py-2 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 hover:bg-slate-200 transition-colors"
                     >
-                      ✏️ Sửa
+                      ✏️ {t('Sửa')}
                     </button>
                     {exam.status === 'DRAFT' && (
                       <button
                         onClick={() => handlePublish(exam.id)}
                         className="flex-1 py-2 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
                       >
-                        🚀 Mở
+                        🚀 {t('Mở')}
                       </button>
                     )}
                     <button
@@ -282,8 +284,8 @@ export default function Exams() {
                       className="w-full rounded-lg bg-indigo-50 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 dark:bg-indigo-950/40 dark:text-indigo-200 dark:hover:bg-indigo-950"
                     >
                       {loadingInviteId === exam.id
-                        ? 'Đang tạo mã...'
-                        : inviteByExam[exam.id] ? 'Ẩn mã phòng & link mời' : 'Mã phòng & link mời'}
+                        ? t('Đang tạo mã...')
+                        : inviteByExam[exam.id] ? t('Ẩn mã phòng & link mời') : t('Mã phòng & link mời')}
                     </button>
                     <button
                       onClick={() => handleDelete(exam.id, exam.title)}
@@ -297,7 +299,7 @@ export default function Exams() {
               {!isStudent && inviteByExam[exam.id] && (
                 <div className="space-y-3 border-t border-slate-100 bg-indigo-50/60 p-4 dark:border-slate-800 dark:bg-indigo-950/20">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Mã phòng</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t('Mã phòng')}</p>
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <code className="text-lg font-extrabold tracking-[.18em] text-indigo-800 dark:text-indigo-200">{inviteByExam[exam.id].code}</code>
                       <button
@@ -305,16 +307,16 @@ export default function Exams() {
                         onClick={() => void copyInviteValue(inviteByExam[exam.id].code, 'Mã phòng')}
                         className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm dark:bg-slate-900 dark:text-indigo-200"
                       >
-                        Sao chép mã
+                        {t('Sao chép mã')}
                       </button>
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Link mời học sinh</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t('Link mời học sinh')}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <input
                         readOnly
-                        aria-label={`Link mời vào bài ${exam.title}`}
+                        aria-label={`${t('Link mời vào bài')} ${exam.title}`}
                         value={`${window.location.origin}/join/${inviteByExam[exam.id].code}`}
                         onFocus={(event) => event.currentTarget.select()}
                         className="exa-field min-w-0 flex-1 px-2 py-2 text-xs"
@@ -324,14 +326,14 @@ export default function Exams() {
                         onClick={() => void copyInviteValue(`${window.location.origin}/join/${inviteByExam[exam.id].code}`, 'Link mời')}
                         className="shrink-0 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
                       >
-                        Sao chép link
+                        {t('Sao chép link')}
                       </button>
                     </div>
                   </div>
                   <p className="text-[11px] text-slate-500">
                     {exam.status === 'OPEN'
-                      ? 'Học sinh đăng nhập tài khoản EXA rồi mở link hoặc nhập mã để làm bài.'
-                      : 'Mở đề thi trước để học sinh có thể vào bằng mã hoặc link.'}
+                      ? t('Học sinh đăng nhập tài khoản EXA rồi mở link hoặc nhập mã để làm bài.')
+                      : t('Mở đề thi trước để học sinh có thể vào bằng mã hoặc link.')}
                   </p>
                 </div>
               )}

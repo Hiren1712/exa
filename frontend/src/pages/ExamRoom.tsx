@@ -12,6 +12,7 @@ import { submissionApi } from '../api/submission';
 import { extractError } from '../api/client';
 import { cn } from '../lib/utils';
 import { useAuth } from '../hooks/useAuth';
+import { useLanguage } from '../i18n';
 
 function shuffledIndexes(length: number): number[] {
   const indexes = Array.from({ length }, (_, index) => index);
@@ -28,6 +29,7 @@ export default function ExamRoom() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const isPreview = searchParams.get('preview') === '1'
     && (user?.role === 'TEACHER' || user?.role === 'ADMIN');
 
@@ -50,7 +52,7 @@ export default function ExamRoom() {
     durationMin: exam?.durationMin || 45,
     autoStart: false,
     onExpire: () => {
-      toast('Hết giờ', isPreview ? 'Đã kết thúc lượt thử đề' : 'Bài đã được nộp tự động', 'warn');
+      toast(t('Hết giờ'), t(isPreview ? 'Đã kết thúc lượt thử đề' : 'Bài đã được nộp tự động'), 'warn');
       handleSubmit(true);
     },
   });
@@ -60,10 +62,13 @@ export default function ExamRoom() {
     enabled: !isPreview && submissionId !== null && submissionId > 0 && (exam?.proctorEnabled ?? false),
     sessionId: submissionId,
     onViolation: (type, total) => {
-      toast('Cảnh báo', `${type === 'TAB_SWITCH' ? 'Rời tab' : type === 'COPY' ? 'Copy' : 'Thoát fullscreen'} lần ${total}`, 'warn');
+      toast(t('Cảnh báo'), t('{{event}} lần {{count}}', {
+        event: t(type === 'TAB_SWITCH' ? 'Rời tab' : type === 'COPY' ? 'Copy' : 'Thoát fullscreen'),
+        count: total,
+      }), 'warn');
       if (submissionId && !isPreview) {
         void submissionApi.logProctorEvent(submissionId, type)
-          .catch((err: unknown) => toast('Không ghi được nhật ký giám sát', extractError(err), 'error'));
+          .catch((err: unknown) => toast(t('Không ghi được nhật ký giám sát'), extractError(err), 'error'));
       }
     },
   });
@@ -98,11 +103,11 @@ export default function ExamRoom() {
         resetTimer(data.durationMin * 60);
       })
       .catch((err) => {
-        toast('Lỗi', extractError(err), 'error');
+        toast(t('Lỗi'), extractError(err), 'error');
         navigate('/');
       })
       .finally(() => setLoading(false));
-  }, [id, navigate, resetTimer, searchParams, toast]);
+  }, [id, navigate, resetTimer, searchParams, t, toast]);
 
   const handleStart = async () => {
     if (!exam || !id) return;
@@ -121,10 +126,10 @@ export default function ExamRoom() {
           await proctor.requestFullscreen();
         } catch {
           if (exam.lockScreen) {
-            toast('Cần bật toàn màn hình', 'Trình duyệt không cho phép vào bài thi khi chưa bật toàn màn hình.', 'error');
+            toast(t('Cần bật toàn màn hình'), t('Trình duyệt không cho phép vào bài thi khi chưa bật toàn màn hình.'), 'error');
             return;
           }
-          toast('Không bật được toàn màn hình', 'Bạn vẫn có thể tiếp tục, nhưng sự kiện này có thể được ghi nhận.', 'warn');
+          toast(t('Không bật được toàn màn hình'), t('Bạn vẫn có thể tiếp tục, nhưng sự kiện này có thể được ghi nhận.'), 'warn');
         }
       }
       const submission = await submissionApi.start(
@@ -148,7 +153,7 @@ export default function ExamRoom() {
       timer.start();
     } catch (error) {
       await proctor.exitFullscreen();
-      toast('Không vào được bài thi', extractError(error), 'error');
+      toast(t('Không vào được bài thi'), extractError(error), 'error');
     } finally {
       setStarting(false);
     }
@@ -166,13 +171,13 @@ export default function ExamRoom() {
         .then(() => setAutoSaveErrorShown(false))
         .catch((err: unknown) => {
           if (!autoSaveErrorShown) {
-            toast('Chưa lưu được đáp án tự động', extractError(err), 'error');
+            toast(t('Chưa lưu được đáp án tự động'), extractError(err), 'error');
             setAutoSaveErrorShown(true);
           }
         });
     }, 10_000);
     return () => window.clearInterval(interval);
-  }, [submissionId, exam, autoSaveErrorShown, toast]);
+  }, [submissionId, exam, autoSaveErrorShown, t, toast]);
 
   const handleAnswer = (qIdx: number, answer: string) => {
     const questionId = exam?.questions?.[qIdx]?.id ?? qIdx + 1;
@@ -209,15 +214,15 @@ export default function ExamRoom() {
         }
         setPreviewResult({ score: Number(score.toFixed(2)), needsManualGrading });
         timer.pause();
-        toast('Đã kết thúc lượt thử', 'Lượt thử không được lưu vào kết quả hoặc số lần làm bài.', 'success');
+        toast(t('Đã kết thúc lượt thử'), t('Lượt thử không được lưu vào kết quả hoặc số lần làm bài.'), 'success');
         return;
       }
       const result = await submissionApi.submit(submissionId, answers);
-      toast('Nộp bài thành công', `Điểm: ${result.totalScore}/${exam.totalPoints || 10}`, 'success');
+      toast(t('Nộp bài thành công'), t('Điểm: {{score}}/{{total}}', { score: result.totalScore ?? 0, total: exam.totalPoints || 10 }), 'success');
       proctor.exitFullscreen();
       navigate(`/exam/${id}/result?submissionId=${submissionId}`);
     } catch (err) {
-      toast('Lỗi', extractError(err), 'error');
+      toast(t('Lỗi'), extractError(err), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -237,25 +242,25 @@ export default function ExamRoom() {
         <section className="w-full max-w-xl rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-7 shadow-xl">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40"><Icon name="file" size={25} /></div>
           <h1 className="mt-4 text-center text-xl font-extrabold text-slate-900 dark:text-white">{exam.title}</h1>
-          <p className="mt-2 text-center text-sm text-slate-500">{exam.subject} · {exam.durationMin} phút · {exam.questions?.length || 0} câu</p>
+          <p className="mt-2 text-center text-sm text-slate-500">{exam.subject} · {t('{{count}} phút', { count: exam.durationMin })} · {t('{{count}} câu', { count: exam.questions?.length || 0 })}</p>
           {isPreview ? (
             <p className="mt-4 rounded-xl bg-blue-50 p-3 text-center text-sm text-blue-800">
-              Chế độ thử dành cho giáo viên. Lượt này không được lưu và không ảnh hưởng số lần thi của học sinh.
+              {t('Chế độ thử dành cho giáo viên. Lượt này không được lưu và không ảnh hưởng số lần thi của học sinh.')}
             </p>
           ) : exam.passwordProtected && (
-            <label className="mt-6 block text-xs font-semibold text-slate-600 dark:text-slate-400">Mật khẩu đề thi
+            <label className="mt-6 block text-xs font-semibold text-slate-600 dark:text-slate-400">{t('Mật khẩu đề thi')}
               <input type="password" value={examPassword} onChange={(event) => setExamPassword(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-3.5 py-2.5 text-sm" />
             </label>
           )}
-          {!isPreview && exam.lockScreen && <p className="mt-4 text-center text-xs text-amber-700">Đề thi yêu cầu bật chế độ toàn màn hình trước khi bắt đầu.</p>}
+          {!isPreview && exam.lockScreen && <p className="mt-4 text-center text-xs text-amber-700">{t('Đề thi yêu cầu bật chế độ toàn màn hình trước khi bắt đầu.')}</p>}
           {!isPreview && exam.proctorEnabled && (
             <p className="mt-4 rounded-xl bg-amber-50 p-3 text-center text-xs leading-relaxed text-amber-800">
-              Bài thi ghi nhận một số tín hiệu từ trình duyệt như rời tab, thoát toàn màn hình và thao tác copy/dán.
-              Các tín hiệu có thể báo nhầm và không tự động kết luận vi phạm; hãy dùng trình duyệt hỗ trợ toàn màn hình.
+              {t('Bài thi ghi nhận một số tín hiệu từ trình duyệt như rời tab, thoát toàn màn hình và thao tác copy/dán.')}
+              {' '}{t('Các tín hiệu có thể báo nhầm và không tự động kết luận vi phạm; hãy dùng trình duyệt hỗ trợ toàn màn hình.')}
             </p>
           )}
           <Button variant="primary" block loading={starting} onClick={() => void handleStart()} className="mt-6">
-            {isPreview ? 'Bắt đầu thử đề' : 'Bắt đầu làm bài'}
+            {t(isPreview ? 'Bắt đầu thử đề' : 'Bắt đầu làm bài')}
           </Button>
         </section>
       </div>
@@ -270,19 +275,19 @@ export default function ExamRoom() {
     return (
       <div className="mx-auto mt-10 max-w-xl rounded-3xl border border-blue-200 bg-white p-8 text-center shadow-lg dark:border-slate-700 dark:bg-slate-900">
         <Icon name="check" size={32} className="mx-auto text-emerald-500" />
-        <h1 className="mt-4 text-2xl font-extrabold text-slate-900 dark:text-white">Kết quả thử đề</h1>
+        <h1 className="mt-4 text-2xl font-extrabold text-slate-900 dark:text-white">{t('Kết quả thử đề')}</h1>
         <p className="mt-2 text-slate-600 dark:text-slate-300">{exam.title}</p>
         <p className="mt-5 text-4xl font-extrabold text-blue-600">
           {previewResult.score} / {exam.totalPoints || 10}
         </p>
         {previewResult.needsManualGrading > 0 && (
           <p className="mt-3 text-sm text-amber-700">
-            {previewResult.needsManualGrading} câu tự luận cần giáo viên chấm; điểm trên chỉ tính câu khách quan.
+            {t('{{count}} câu tự luận cần giáo viên chấm; điểm trên chỉ tính câu khách quan.', { count: previewResult.needsManualGrading })}
           </p>
         )}
-        <p className="mt-3 text-xs text-slate-500">Lượt thử không được lưu vào hệ thống.</p>
+        <p className="mt-3 text-xs text-slate-500">{t('Lượt thử không được lưu vào hệ thống.')}</p>
         <div className="mt-6 flex justify-center gap-3">
-          <Button variant="ghost" onClick={() => navigate('/exams')}>Quay lại đề thi</Button>
+          <Button variant="ghost" onClick={() => navigate('/exams')}>{t('Quay lại đề thi')}</Button>
           <Button variant="primary" onClick={() => {
             setAnswers({});
             setPreviewResult(null);
@@ -300,7 +305,7 @@ export default function ExamRoom() {
       <div className="min-h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-2">
         {isPreview && (
           <span className="hidden sm:inline-flex rounded-lg bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
-            ĐANG THỬ — KHÔNG LƯU KẾT QUẢ
+            {t('ĐANG THỬ — KHÔNG LƯU KẾT QUẢ')}
           </span>
         )}
         <div
@@ -321,13 +326,13 @@ export default function ExamRoom() {
             {exam.title}
           </div>
           <div className="text-xs text-slate-500">
-            {questions.length} câu hỏi {isPreview ? '• Chế độ thử' : exam.proctorEnabled && '• 🛡️ Proctoring Pro'}
+            {t('{{count}} câu hỏi', { count: questions.length })} {isPreview ? `• ${t('Chế độ thử')}` : exam.proctorEnabled && '• 🛡️ Proctoring Pro'}
           </div>
         </div>
         {!isPreview && exam.proctorEnabled && (
           <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-red-500">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span>Rời tab: {proctor.stats.tabSwitches}</span>
+            <span>{t('Rời tab')}: {proctor.stats.tabSwitches}</span>
           </div>
         )}
         <Button
@@ -337,22 +342,22 @@ export default function ExamRoom() {
           onClick={() => handleSubmit()}
           icon={<Icon name="send" size={14} />}
         >
-          Nộp bài
+          {t('Nộp bài')}
         </Button>
       </div>
 
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Question area */}
         <div className="flex-1 min-w-0 overflow-y-auto p-3 sm:p-6">
-          <nav aria-label="Chuyển nhanh câu hỏi" className="md:hidden max-w-3xl mx-auto mb-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3">
+          <nav aria-label={t('Chuyển nhanh câu hỏi')} className="md:hidden max-w-3xl mx-auto mb-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3">
             <div className="flex justify-between items-center mb-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
-              <span>Danh sách câu hỏi</span>
-              <span>{questions.filter((question, i) => !!answers[question.id ?? i + 1]).length}/{questions.length} đã trả lời</span>
+              <span>{t('Danh sách câu hỏi')}</span>
+              <span>{t('{{answered}}/{{total}} đã trả lời', { answered: questions.filter((question, i) => !!answers[question.id ?? i + 1]).length, total: questions.length })}</span>
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Chọn câu">
+            <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label={t('Chọn câu')}>
               {questions.map((question, i) => {
                 const questionId = question.id ?? i + 1;
-                return <button key={questionId} type="button" aria-label={`Đến câu ${i + 1}${answers[questionId] ? ', đã trả lời' : ''}`} aria-current={i === currentIdx ? 'step' : undefined} onClick={() => setCurrentIdx(i)} className={cn('shrink-0 min-w-11 h-11 px-2 rounded-xl border text-sm font-bold', i === currentIdx ? 'bg-blue-700 text-white border-blue-700' : flagged.has(questionId) ? 'bg-amber-50 text-amber-800 border-amber-300' : answers[questionId] ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700')}>{i + 1}</button>;
+                return <button key={questionId} type="button" aria-label={t('Đến câu {{number}}{{answered}}', { number: i + 1, answered: answers[questionId] ? `, ${t('đã trả lời')}` : '' })} aria-current={i === currentIdx ? 'step' : undefined} onClick={() => setCurrentIdx(i)} className={cn('shrink-0 min-w-11 h-11 px-2 rounded-xl border text-sm font-bold', i === currentIdx ? 'bg-blue-700 text-white border-blue-700' : flagged.has(questionId) ? 'bg-amber-50 text-amber-800 border-amber-300' : answers[questionId] ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700')}>{i + 1}</button>;
               })}
             </div>
           </nav>
@@ -360,7 +365,7 @@ export default function ExamRoom() {
             <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
                 <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-bold">
-                  Câu {currentIdx + 1} / {questions.length}
+                  {t('Câu {{number}} / {{total}}', { number: currentIdx + 1, total: questions.length })}
                 </span>
                 <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">
                   {current.type}
@@ -369,7 +374,7 @@ export default function ExamRoom() {
 
               <p className="text-base font-semibold text-slate-900 dark:text-white leading-relaxed mb-5 whitespace-pre-wrap">
                 <MathText>{current.content}</MathText>
-                <div className="mt-3"><QuestionImage src={current.imageUrl} alt="Hình minh họa câu hỏi" /></div>
+                <div className="mt-3"><QuestionImage src={current.imageUrl} alt={t('Hình minh họa câu hỏi')} /></div>
               </p>
 
               {current.options && current.options.length > 0 ? (
@@ -401,7 +406,7 @@ export default function ExamRoom() {
                           {letter}
                         </div>
                         <div className="min-w-0 flex-1"><MathText className="text-sm pt-1.5">{opt}</MathText>
-                          <div className="mt-2"><QuestionImage src={current.optionImages?.[i]} alt={`Hình phương án ${letter}`} /></div>
+                          <div className="mt-2"><QuestionImage src={current.optionImages?.[i]} alt={t('Hình phương án {{letter}}', { letter })} /></div>
                         </div>
                       </button>
                     );
@@ -411,7 +416,7 @@ export default function ExamRoom() {
                 <textarea
                   value={answers[currentQuestionId] || ''}
                   onChange={(e) => handleAnswer(currentIdx, e.target.value)}
-                  placeholder="Nhập câu trả lời..."
+                  placeholder={t('Nhập câu trả lời...')}
                   rows={6}
                   className="w-full p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-blue-500 resize-y bg-white dark:bg-slate-950 text-slate-900 dark:text-white"
                 />
@@ -424,7 +429,7 @@ export default function ExamRoom() {
                   onClick={() => setCurrentIdx(currentIdx - 1)}
                   icon={<Icon name="chevronL" size={16} />}
                 >
-                  Câu trước
+                  {t('Câu trước')}
                 </Button>
                 <Button
                   variant="ghost"
@@ -436,7 +441,7 @@ export default function ExamRoom() {
                   })}
                   icon={<Icon name="flag" size={16} />}
                 >
-                  {flagged.has(currentQuestionId) ? 'Bỏ đánh dấu' : 'Đánh dấu xem lại'}
+                  {t(flagged.has(currentQuestionId) ? 'Bỏ đánh dấu' : 'Đánh dấu xem lại')}
                 </Button>
                 {currentIdx < questions.length - 1 ? (
                   <Button
@@ -444,7 +449,7 @@ export default function ExamRoom() {
                     onClick={() => setCurrentIdx(currentIdx + 1)}
                     iconRight={<Icon name="chevronR" size={16} />}
                   >
-                    Câu tiếp
+                    {t('Câu tiếp')}
                   </Button>
                 ) : (
                   <Button
@@ -453,7 +458,7 @@ export default function ExamRoom() {
                     onClick={() => handleSubmit()}
                     icon={<Icon name="send" size={16} />}
                   >
-                    Nộp bài
+                    {t('Nộp bài')}
                   </Button>
                 )}
               </div>
@@ -463,7 +468,7 @@ export default function ExamRoom() {
 
         {/* Palette */}
         <div className="hidden md:block w-72 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 p-5 overflow-y-auto">
-          <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-3">Bảng câu hỏi</h3>
+          <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-3">{t('Bảng câu hỏi')}</h3>
           <div className="grid grid-cols-5 gap-2">
             {questions.map((_, i) => {
               const questionId = _.id ?? i + 1;
@@ -474,7 +479,7 @@ export default function ExamRoom() {
                 <button
                   key={i}
                   onClick={() => setCurrentIdx(i)}
-                  aria-label={`Đến câu ${i + 1}${answered ? ', đã trả lời' : ''}`}
+                  aria-label={t('Đến câu {{number}}{{answered}}', { number: i + 1, answered: answered ? `, ${t('đã trả lời')}` : '' })}
                   aria-current={isCur ? 'step' : undefined}
                   className={cn(
                     'aspect-square rounded-lg text-xs font-bold transition-all',
@@ -496,18 +501,18 @@ export default function ExamRoom() {
           <div className="mt-5 pt-5 border-t border-slate-100 dark:border-slate-800 space-y-2 text-xs">
             <div className="flex items-center gap-2 text-slate-500">
               <div className="w-4 h-4 rounded bg-emerald-100 border-2 border-emerald-200" />
-              Đã trả lời
+              {t('Đã trả lời')}
             </div>
             <div className="flex items-center gap-2 text-slate-500">
               <div className="w-4 h-4 rounded bg-blue-500" />
-              Câu hiện tại
+              {t('Câu hiện tại')}
             </div>
           </div>
 
           {!isPreview && exam.proctorEnabled && (
             <div className="mt-6 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-xs text-red-600">
               <div className="font-bold mb-1">🛡️ Proctoring Pro</div>
-              <div>Rời tab: {proctor.stats.tabSwitches}</div>
+              <div>{t('Rời tab')}: {proctor.stats.tabSwitches}</div>
               <div>Copy: {proctor.stats.copyAttempts}</div>
             </div>
           )}

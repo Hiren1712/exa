@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useState, ReactNode } from 'react';
 import { Icon } from './Icon';
 import { cn } from '../lib/utils';
+import { useLanguage } from '../i18n';
 
 type ToastType = 'success' | 'error' | 'warn' | 'info';
 
@@ -30,6 +31,7 @@ const typeConfig: Record<ToastType, { color: string; icon: string }> = {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const { t: translate } = useLanguage();
 
   const toast = useCallback((title: string, message?: string, type: ToastType = 'info') => {
     const id = Date.now() + Math.random();
@@ -67,9 +69,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 <Icon name={cfg.icon} size={18} />
               </div>
               <div className="flex-1 min-w-0">
-                <h5 className="break-words text-sm font-semibold text-slate-900 dark:text-white">{t.title}</h5>
+                <h5 className="break-words text-sm font-semibold text-slate-900 dark:text-white">{translate(t.title)}</h5>
                 {t.message && (
-                  <p className="break-words text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t.message}</p>
+                  <p className="break-words text-xs text-slate-500 dark:text-slate-400 mt-0.5">{translate(t.message)}</p>
                 )}
               </div>
               <button
