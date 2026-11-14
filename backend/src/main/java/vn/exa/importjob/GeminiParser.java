@@ -127,7 +127,7 @@ public class GeminiParser {
         }
 
         List<ParsedQuestion> deduped = dedupe(all);
-        return new ParseResult(deduped, totalTokens);
+        return resolveMissingAnswers(new ParseResult(deduped, totalTokens), List.of());
     }
 
     public ParseResult parsePdf(byte[] pdfBytes, String subjectHint) {
@@ -166,7 +166,10 @@ public class GeminiParser {
                         "maxOutputTokens", 16384,
                         "responseMimeType", "application/json"));
 
-        return parseResponse(callTaskAi(body));
+        ParseResult result = parseResponse(callTaskAi(body));
+        return mode == ImportMode.EXTRACT
+                ? resolveMissingAnswers(result, List.of(pdfPart))
+                : result;
     }
 
     public ParseResult processImage(byte[] imageBytes, String mimeType, String subjectHint,
@@ -196,7 +199,10 @@ public class GeminiParser {
                         "temperature", 0.1,
                         "maxOutputTokens", 16384,
                         "responseMimeType", "application/json"));
-        return parseResponse(callTaskAi(body));
+        ParseResult result = parseResponse(callTaskAi(body));
+        return mode == ImportMode.EXTRACT
+                ? resolveMissingAnswers(result, List.of(imagePart))
+                : result;
     }
 
     public ParseResult generateQuestionsFromText(String sourceText, String subject, int grade,
@@ -460,6 +466,107 @@ public class GeminiParser {
             log.error("Failed to parse AI response", e);
             throw BusinessException.badRequest("AI trả về dữ liệu không hợp lệ. Vui lòng thử lại.");
         }
+    }
+
+    ParseResult resolveMissingAnswers(ParseResult result, List<Map<String, Object>> sourceParts) {
+        List<ParsedQuestion> unanswered = result.questions().stream()
+                .filter(this::needsAnswer)
+                .toList();
+        if (unanswered.isEmpty()) return result;
+
+        List<Map<String, Object>> questionInputs = new ArrayList<>();
+        for (int i = 0; i < unanswered.size(); i++) {
+            ParsedQuestion question = unanswered.get(i);
+            questionInputs.add(Map.of(
+                    "id", i + 1,
+                    "number", question.getNumber() == null ? 0 : question.getNumber(),
+                    "type", question.getType() == null ? "MCQ" : question.getType(),
+                    "content", question.getContent(),
+                    "options", question.getOptions() == null ? List.of() : question.getOptions()));
+        }
+
+        String prompt;
+        try {
+            prompt = """
+                    Đây là lượt giải đáp án cho các câu hỏi đã trích xuất. Không tạo, xóa hoặc sửa nội dung câu hỏi/phương án.
+                    Tự giải độc lập từng câu bằng kiến thức môn học; nếu có hình ảnh/tài liệu đính kèm, dùng dữ kiện nhìn thấy được.
+                    Với MCQ/TRUE_FALSE, điền correctAnswer bằng chữ cái phương án đúng (A/B/C/D). Với SHORT_ANSWER/ESSAY, điền answerText. Kèm giải thích ngắn.
+                    Nếu dữ kiện không đủ hoặc không thể xác định duy nhất đáp án, chỉ câu đó được để null; không chọn ngẫu nhiên.
+                    Trả về duy nhất JSON array theo đúng id đầu vào, schema:
+                    [{"id":1,"correctAnswer":"B","answerText":null,"explanation":"..."}].
+                    Câu hỏi cần giải:
+                    %s
+                    """.formatted(objectMapper.writeValueAsString(questionInputs));
+        } catch (JsonProcessingException error) {
+            throw new IllegalStateException("Could not serialize questions for answer solving", error);
+        }
+
+        List<Map<String, Object>> parts = new ArrayList<>();
+        parts.add(Map.of("text", prompt));
+        parts.addAll(sourceParts);
+        Map<String, Object> body = Map.of(
+                "contents", List.of(Map.of("parts", parts)),
+                "generationConfig", Map.of(
+                        "temperature", 0.1,
+                        "maxOutputTokens", 8192,
+                        "responseMimeType", "application/json"));
+
+        try {
+            JsonNode response = objectMapper.readTree(callTaskAi(body));
+            JsonNode answers = objectMapper.readTree(cleanJsonResponse(extractResponseText(response)));
+            if (!answers.isArray()) {
+                throw new IllegalArgumentException("AI answer response must be a JSON array");
+            }
+
+            for (JsonNode answer : answers) {
+                int index = answer.path("id").asInt(0) - 1;
+                if (index < 0 || index >= unanswered.size()) continue;
+                ParsedQuestion question = unanswered.get(index);
+                String type = question.getType() == null
+                        ? "MCQ" : question.getType().toUpperCase(Locale.ROOT);
+                String candidate = normalizeCorrectAnswer(
+                        answer.path("correctAnswer").asText(null));
+                if (("MCQ".equals(type) || "TRUE_FALSE".equals(type))
+                        && candidate != null && candidate.matches("^[A-D]$")
+                        && question.getOptions() != null
+                        && candidate.charAt(0) - 'A' < question.getOptions().size()) {
+                    question.setCorrectAnswer(candidate);
+                }
+                String answerText = answer.path("answerText").asText(null);
+                if (answerText != null && !answerText.isBlank()) {
+                    question.setAnswerText(answerText.trim());
+                }
+                String explanation = answer.path("explanation").asText(null);
+                if (explanation != null && !explanation.isBlank()) {
+                    question.setExplanation(explanation.trim());
+                }
+            }
+            int additionalTokens = response.path("usageMetadata").path("totalTokenCount").asInt(0);
+            return new ParseResult(result.questions(), result.tokensUsed() + additionalTokens);
+        } catch (BusinessException error) {
+            throw error;
+        } catch (Exception error) {
+            log.error("Failed to solve missing answers for imported questions", error);
+            throw BusinessException.badRequest(
+                    "AI chưa thể hoàn thành đáp án cho câu hỏi. Vui lòng thử lại hoặc kiểm tra nội dung nguồn.");
+        }
+    }
+
+    private boolean needsAnswer(ParsedQuestion question) {
+        String type = question.getType() == null
+                ? "MCQ" : question.getType().toUpperCase(Locale.ROOT);
+        if ("MCQ".equals(type) || "TRUE_FALSE".equals(type)) {
+            return question.getCorrectAnswer() == null || question.getCorrectAnswer().isBlank();
+        }
+        return question.getAnswerText() == null || question.getAnswerText().isBlank();
+    }
+
+    private String cleanJsonResponse(String response) {
+        String cleaned = response.trim();
+        if (cleaned.startsWith("```json")) cleaned = cleaned.substring(7);
+        else if (cleaned.startsWith("```")) cleaned = cleaned.substring(3);
+        if (cleaned.endsWith("```")) cleaned = cleaned.substring(0, cleaned.length() - 3);
+        return cleaned.trim();
     }
 
     private String buildPrompt(String chunk, String subjectHint) {
@@ -1031,12 +1138,7 @@ public class GeminiParser {
     }
 
     private List<ParsedQuestion> parseAiResponse(String aiText) throws Exception {
-        String cleaned = aiText.trim();
-        if (cleaned.startsWith("```json")) cleaned = cleaned.substring(7);
-        else if (cleaned.startsWith("```")) cleaned = cleaned.substring(3);
-        if (cleaned.endsWith("```")) cleaned = cleaned.substring(0, cleaned.length() - 3);
-
-        JsonNode arr = objectMapper.readTree(cleaned.trim());
+        JsonNode arr = objectMapper.readTree(cleanJsonResponse(aiText));
         List<ParsedQuestion> result = new ArrayList<>();
 
         if (!arr.isArray()) {

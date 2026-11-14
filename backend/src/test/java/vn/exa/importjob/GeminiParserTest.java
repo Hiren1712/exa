@@ -156,6 +156,42 @@ class GeminiParserTest {
     }
 
     @Test
+    void imageImportUsesASecondAiPassToFillMissingAnswers() {
+        List<String> responses = new ArrayList<>(List.of("""
+                {"candidates":[{"content":{"parts":[{"text":"[{\\"number\\":1,\\"type\\":\\"MCQ\\",\\"content\\":\\"Dao ham cua x^2?\\",\\"options\\":[\\"x\\",\\"2x\\",\\"x^3\\",\\"2\\"],\\"correctAnswer\\":null}]"}]}}],
+                 "usageMetadata":{"totalTokenCount":12}}
+                """, """
+                {"candidates":[{"content":{"parts":[{"text":"[{\\"id\\":1,\\"correctAnswer\\":\\"B\\",\\"answerText\\":null,\\"explanation\\":\\"(x^2)' = 2x.\\"}]"}]}}],
+                 "usageMetadata":{"totalTokenCount":8}}
+                """));
+        List<String> requestedHosts = new ArrayList<>();
+        ExchangeFunction exchange = request -> Mono.just(ClientResponse.create(HttpStatus.OK)
+                .header("Content-Type", "application/json")
+                .body(responses.remove(0))
+                .build());
+        ExchangeFunction recordingExchange = request -> {
+            requestedHosts.add(request.url().getHost());
+            return exchange.exchange(request);
+        };
+        GeminiParser parser = new GeminiParser(
+                WebClient.builder().exchangeFunction(recordingExchange), objectMapper);
+        ReflectionTestUtils.setField(parser, "apiKey", "gemini-test-key");
+        ReflectionTestUtils.setField(parser, "model", "gemini-test-model");
+        ReflectionTestUtils.setField(parser, "timeoutMs", 1000L);
+
+        GeminiParser.ParseResult result = parser.processImage(
+                new byte[]{1, 2, 3}, "image/png", "Toán", "", ImportMode.EXTRACT, 10, 12);
+
+        assertThat(result.questions()).hasSize(1);
+        assertThat(result.questions().get(0).getCorrectAnswer()).isEqualTo("B");
+        assertThat(result.questions().get(0).getExplanation()).isEqualTo("(x^2)' = 2x.");
+        assertThat(result.tokensUsed()).isEqualTo(20);
+        assertThat(requestedHosts).containsExactly(
+                "generativelanguage.googleapis.com", "generativelanguage.googleapis.com");
+        assertThat(responses).isEmpty();
+    }
+
+    @Test
     void generatedQuestionCountIsAllocatedAcrossTextChunks() {
         GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
 
