@@ -12,6 +12,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -31,6 +32,7 @@ import java.util.List;
 public class AiController {
 
     private final AiService aiService;
+    private final ChatModerationService chatModerationService;
 
     @PostMapping("/generate-questions")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
@@ -60,11 +62,27 @@ public class AiController {
     public ResponseEntity<ApiResponse<ChatResponse>> chat(
             @Valid @RequestBody ChatRequest request,
             @AuthenticationPrincipal CurrentUser user) {
+        ChatMessage latestMessage = request.getMessages().get(request.getMessages().size() - 1);
+        ChatModerationService.Admission admission =
+                chatModerationService.admit(user.getId(), latestMessage.getContent());
+        if ("CHAT_WARNING".equals(admission.code())) {
+            ChatResponse warning = new ChatResponse(
+                    admission.message(), ChatModerationService.COOLDOWN_SECONDS, true, admission.warningCount());
+            return ResponseEntity.ok(ApiResponse.ok(warning, "Cảnh báo quy tắc ứng xử"));
+        }
+        if (!admission.allowed()) {
+            return ResponseEntity.status(429)
+                    .header(HttpHeaders.RETRY_AFTER, Long.toString(admission.retryAfterSeconds()))
+                    .body(ApiResponse.error(admission.code(), admission.message()));
+        }
+
         List<GeminiParser.ChatTurn> history = request.getMessages().stream()
                 .map(message -> new GeminiParser.ChatTurn(message.getRole(), message.getContent()))
                 .toList();
         String reply = aiService.chat(history, user.isStudent(), request.getProvider());
-        return ResponseEntity.ok(ApiResponse.ok(new ChatResponse(reply), "Đã nhận câu trả lời"));
+        return ResponseEntity.ok(ApiResponse.ok(
+                new ChatResponse(reply, ChatModerationService.COOLDOWN_SECONDS, false, 0),
+                "Đã nhận câu trả lời"));
     }
 
     @Data
@@ -105,7 +123,7 @@ public class AiController {
         private String content;
     }
 
-    public record ChatResponse(String reply) {}
+    public record ChatResponse(String reply, int cooldownSeconds, boolean moderationWarning, int warningCount) {}
 
     @Data
     public static class GenerateQuestionsRequest {

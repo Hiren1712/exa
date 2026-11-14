@@ -51,6 +51,12 @@ public class SubmissionService {
         Exam exam = examRepository.findByIdAndDeletedAtIsNull(examId)
                 .orElseThrow(() -> BusinessException.notFound("Đề thi không tồn tại"));
 
+        var inProgress = submissionRepository.findFirstByExamIdAndStudentIdAndStatusOrderByStartedAtDesc(
+                examId, studentId, Submission.Status.IN_PROGRESS);
+        if (inProgress.isPresent()) {
+            return inProgress.get();
+        }
+
         if (exam.getStatus() != Exam.Status.OPEN) {
             throw BusinessException.badRequest("Đề thi chưa mở hoặc đã đóng");
         }
@@ -63,12 +69,6 @@ public class SubmissionService {
         if (exam.getPasswordHash() != null
                 && (password == null || !passwordEncoder.matches(password, exam.getPasswordHash()))) {
             throw BusinessException.forbidden("Mật khẩu đề thi không chính xác");
-        }
-
-        var inProgress = submissionRepository.findFirstByExamIdAndStudentIdAndStatusOrderByStartedAtDesc(
-                examId, studentId, Submission.Status.IN_PROGRESS);
-        if (inProgress.isPresent()) {
-            return inProgress.get();
         }
 
         // Kiểm tra số lần làm bài
@@ -326,6 +326,11 @@ public class SubmissionService {
         if (submission.getStatus() != Submission.Status.IN_PROGRESS) {
             throw BusinessException.badRequest("Không thể ghi sự kiện cho bài thi đã nộp");
         }
+        Exam exam = examRepository.findByIdAndDeletedAtIsNull(submission.getExamId())
+                .orElseThrow(() -> BusinessException.notFound("Đề thi không tồn tại"));
+        if (!Boolean.TRUE.equals(exam.getProctorEnabled())) {
+            throw BusinessException.forbidden("Đề thi này chưa bật chức năng giám sát");
+        }
         ProctorEvent event = ProctorEvent.builder()
                 .submissionId(submissionId)
                 .eventType(type)
@@ -358,6 +363,38 @@ public class SubmissionService {
         return getProctorSummary(submissionId);
     }
 
+    @Transactional(readOnly = true)
+    public List<ProctorMonitorItem> getProctorOverview(Long examId, Long userId, boolean admin) {
+        Exam exam = examRepository.findByIdAndDeletedAtIsNull(examId)
+                .orElseThrow(() -> BusinessException.notFound("Đề thi không tồn tại"));
+        if (!admin && !exam.getOwnerId().equals(userId)) {
+            throw BusinessException.forbidden("Bạn không có quyền giám sát đề thi này");
+        }
+        if (!Boolean.TRUE.equals(exam.getProctorEnabled())) {
+            throw BusinessException.badRequest("Đề thi này chưa bật chức năng giám sát");
+        }
+
+        List<Submission> activeSubmissions = submissionRepository
+                .findByExamIdAndStatusOrderByStartedAtDesc(examId, Submission.Status.IN_PROGRESS);
+        if (activeSubmissions.isEmpty()) return List.of();
+
+        List<Long> submissionIds = activeSubmissions.stream().map(Submission::getId).toList();
+        Map<Long, Map<String, Long>> eventCounts = new HashMap<>();
+        for (ProctorEventRepository.EventCountProjection count
+                : proctorEventRepository.summarizeBySubmissionIds(submissionIds)) {
+            eventCounts.computeIfAbsent(count.getSubmissionId(), ignored -> new HashMap<>())
+                    .put(count.getEventType().name(), count.getEventCount());
+        }
+
+        return activeSubmissions.stream()
+                .map(submission -> new ProctorMonitorItem(
+                        submission.getId(),
+                        submission.getStudentId(),
+                        submission.getStartedAt(),
+                        Map.copyOf(eventCounts.getOrDefault(submission.getId(), Map.of()))))
+                .toList();
+    }
+
     public record SubmissionReview(String examTitle, BigDecimal totalScore, BigDecimal totalPoints,
                                    Integer durationSec,
                                    boolean answersRevealed, boolean needsManualGrading,
@@ -367,6 +404,9 @@ public class SubmissionService {
                               Long studentId,
                               LocalDateTime submittedAt, BigDecimal currentScore,
                               List<ReviewQuestion> essayResponses) {}
+
+    public record ProctorMonitorItem(Long submissionId, Long studentId, LocalDateTime startedAt,
+                                     Map<String, Long> proctorEvents) {}
 
     public record ReviewQuestion(Long id, String type, String content, String options, String imageUrl, String optionImages,
                                  String studentAnswer, String correctAnswer,

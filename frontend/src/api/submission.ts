@@ -53,6 +53,13 @@ export interface GradingItem {
   essayResponses: SubmissionReview['questions'];
 }
 
+export interface ProctorMonitorItem {
+  submissionId: number;
+  studentId: number;
+  startedAt: string;
+  proctorEvents: Record<string, number>;
+}
+
 export const submissionApi = {
   mine: async (): Promise<Submission[]> => {
     const res = await apiClient.get<ApiResponse<Submission[]>>('/v1/submissions/mine');
@@ -66,6 +73,13 @@ export const submissionApi = {
 
   proctorSummary: async (id: number): Promise<Record<string, number>> => {
     const res = await apiClient.get<ApiResponse<Record<string, number>>>(`/v1/submissions/${id}/proctor-events`);
+    return res.data.data;
+  },
+
+  proctorOverview: async (examId: number): Promise<ProctorMonitorItem[]> => {
+    const res = await apiClient.get<ApiResponse<ProctorMonitorItem[]>>('/v1/submissions/proctor-overview', {
+      params: { examId },
+    });
     return res.data.data;
   },
 

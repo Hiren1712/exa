@@ -19,16 +19,23 @@ export interface ChatTurn {
   content: string;
 }
 
+export interface ChatResponse {
+  reply: string;
+  cooldownSeconds: number;
+  moderationWarning: boolean;
+  warningCount: number;
+}
+
 export type ChatProvider = 'GEMINI' | 'GROQ';
 
 export const aiApi = {
-  chat: async (messages: ChatTurn[], provider?: ChatProvider): Promise<string> => {
-    const response = await apiClient.post<ApiResponse<{ reply: string }>>(
+  chat: async (messages: ChatTurn[], provider?: ChatProvider): Promise<ChatResponse> => {
+    const response = await apiClient.post<ApiResponse<ChatResponse>>(
       '/v1/ai/chat',
       { messages, provider },
       { timeout: 180_000 },
     );
-    return response.data.data.reply;
+    return response.data.data;
   },
 
   generateQuestions: async (data: GenerateQuestionsRequest): Promise<Question[]> => {

@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import vn.exa.common.BusinessException;
 import vn.exa.question.Question;
 import vn.exa.question.QuestionRepository;
+import vn.exa.submission.Submission;
 import vn.exa.submission.SubmissionRepository;
 
 import java.math.BigDecimal;
@@ -94,6 +95,11 @@ public class ExamService {
     public Exam getById(Long id) {
         return examRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> BusinessException.notFound("Đề thi không tồn tại"));
+    }
+
+    public boolean hasInProgressSubmission(Long examId, Long studentId) {
+        return submissionRepository.existsByExamIdAndStudentIdAndStatus(
+                examId, studentId, Submission.Status.IN_PROGRESS);
     }
 
     @Transactional

@@ -89,7 +89,7 @@ public class SubmissionController {
     @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<ApiResponse<ProctorEvent>> logProctorEvent(
             @PathVariable Long id,
-            @RequestBody ProctorEventRequest req,
+            @Valid @RequestBody ProctorEventRequest req,
             @AuthenticationPrincipal CurrentUser user) {
         ProctorEvent event = submissionService.logProctorEvent(
                 id, user.getId(), req.getEventType(), req.getSeverity(), req.getPayload());
@@ -102,6 +102,15 @@ public class SubmissionController {
             @PathVariable Long id, @AuthenticationPrincipal CurrentUser user) {
         return ResponseEntity.ok(ApiResponse.ok(
                 submissionService.getProctorSummary(id, user.getId(), user.isTeacher(), user.isAdmin())));
+    }
+
+    @GetMapping("/proctor-overview")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public ResponseEntity<ApiResponse<List<SubmissionService.ProctorMonitorItem>>> getProctorOverview(
+            @RequestParam Long examId,
+            @AuthenticationPrincipal CurrentUser user) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                submissionService.getProctorOverview(examId, user.getId(), user.isAdmin())));
     }
 
     @GetMapping("/grading-queue")
@@ -141,8 +150,11 @@ public class SubmissionController {
 
     @Data
     public static class ProctorEventRequest {
+        @NotNull
         private ProctorEvent.EventType eventType;
+        @NotNull
         private ProctorEvent.Severity severity;
+        @Size(max = 2000)
         private String payload;
     }
 

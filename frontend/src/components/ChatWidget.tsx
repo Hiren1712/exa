@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
+import axios from 'axios';
 import type { ChatProvider, ChatTurn } from '../api/ai';
 import { aiApi } from '../api/ai';
 import { extractError } from '../api/client';
@@ -18,6 +19,7 @@ import { decodeHtmlEntities, MathText } from './MathText';
 interface StoredMessage extends ChatTurn {
   id: string;
   createdAt: number;
+  moderationFlagged?: boolean;
 }
 
 interface ChatThread {
@@ -70,6 +72,14 @@ function clampLauncherPosition(position: FloatingPosition, viewport: ViewportSiz
 
 function launcherStorageKey(userId: number) {
   return `exa-chat-launcher-position-${userId}`;
+}
+
+function saveLauncherPosition(userId: number, position: FloatingPosition) {
+  try {
+    localStorage.setItem(launcherStorageKey(userId), JSON.stringify(position));
+  } catch (error) {
+    console.error('Không thể lưu vị trí nút ExaBot trên thiết bị:', error);
+  }
 }
 
 function readLauncherPosition(userId: number): FloatingPosition {
@@ -197,6 +207,24 @@ function formatTime(timestamp: number) {
   return new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit' }).format(timestamp);
 }
 
+function formatCountdown(seconds: number) {
+  if (seconds < 60) return `${seconds} giây`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+}
+
+function flagLatestUserMessage(messages: StoredMessage[]) {
+  const updatedMessages = [...messages];
+  for (let index = updatedMessages.length - 1; index >= 0; index -= 1) {
+    if (updatedMessages[index].role === 'user') {
+      updatedMessages[index] = { ...updatedMessages[index], moderationFlagged: true };
+      break;
+    }
+  }
+  return updatedMessages;
+}
+
 export function ChatWidget({ userId }: ChatWidgetProps) {
   const [open, setOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -205,6 +233,9 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
   const [input, setInput] = useState('');
   const [provider, setProvider] = useState<ChatProvider>(() => readChatProvider(userId));
   const [sending, setSending] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [moderationWarning, setModerationWarning] = useState(false);
+  const [chatBanned, setChatBanned] = useState(false);
   const [error, setError] = useState('');
   const [pendingHistory, setPendingHistory] = useState<ChatTurn[] | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
@@ -219,6 +250,8 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
     startX: number;
     startY: number;
     moved: boolean;
+    latestPosition: FloatingPosition;
+    frameId: number | null;
   } | null>(null);
   const suppressLauncherClick = useRef(false);
 
@@ -251,14 +284,6 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
   }, [provider, userId]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(launcherStorageKey(userId), JSON.stringify(launcherPosition));
-    } catch (error) {
-      console.error('Không thể lưu vị trí nút ExaBot trên thiết bị:', error);
-    }
-  }, [launcherPosition, userId]);
-
-  useEffect(() => {
     const handleResize = () => {
       const nextViewport = getViewportSize();
       setViewport(nextViewport);
@@ -274,18 +299,45 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
   }, [messages, open, sending, showHistory]);
 
   useEffect(() => {
+    if (cooldownSeconds <= 0) return undefined;
+    const timer = window.setTimeout(
+      () => setCooldownSeconds((remaining) => Math.max(0, remaining - 1)),
+      1000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [cooldownSeconds]);
+
+  useEffect(() => {
+    if (cooldownSeconds === 0) setChatBanned(false);
+  }, [cooldownSeconds]);
+
+  useEffect(() => {
     if (open && !showHistory) inputRef.current?.focus();
   }, [open, showHistory]);
 
   const ask = async (history: ChatTurn[], threadId: string, selectedProvider: ChatProvider) => {
     setSending(true);
     setError('');
+    setModerationWarning(false);
+    setCooldownSeconds(7);
     try {
-      const reply = await aiApi.chat(history, selectedProvider);
+      const response = await aiApi.chat(history, selectedProvider);
+      setCooldownSeconds(response.cooldownSeconds);
+      if (response.moderationWarning) {
+        setModerationWarning(true);
+        setError(response.reply);
+        setPendingHistory(null);
+        setThreads((current) => current.map((thread) => {
+          if (thread.id !== threadId) return thread;
+          return { ...thread, messages: flagLatestUserMessage(thread.messages) };
+        }));
+        return;
+      }
+
       const assistantMessage: StoredMessage = {
         id: createId(),
         role: 'assistant',
-        content: reply,
+        content: response.reply,
         createdAt: Date.now(),
       };
       setThreads((current) => current.map((thread) => thread.id === threadId
@@ -294,7 +346,25 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
       setPendingHistory(null);
     } catch (requestError) {
       setError(extractError(requestError));
-      setPendingHistory(history);
+      const errorResponse = axios.isAxiosError(requestError)
+        ? requestError.response?.data as { code?: unknown } | undefined
+        : undefined;
+      const responseCode = typeof errorResponse?.code === 'string' ? errorResponse.code : '';
+      const retryAfter = axios.isAxiosError(requestError)
+        ? Number(requestError.response?.headers?.['retry-after'])
+        : 0;
+      if (retryAfter > 0) {
+        setCooldownSeconds(retryAfter);
+        setChatBanned(responseCode === 'CHAT_VIOLATION_BANNED' || responseCode === 'CHAT_TEMPORARILY_BANNED');
+        setModerationWarning(responseCode.startsWith('CHAT_'));
+        setPendingHistory(null);
+        setThreads((current) => current.map((thread) => {
+          if (thread.id !== threadId) return thread;
+          return { ...thread, messages: flagLatestUserMessage(thread.messages) };
+        }));
+      } else {
+        setPendingHistory(history);
+      }
     } finally {
       setSending(false);
     }
@@ -303,7 +373,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
   const submitMessage = async (event?: FormEvent) => {
     event?.preventDefault();
     const content = input.trim();
-    if (!content || sending) return;
+    if (!content || sending || cooldownSeconds > 0) return;
 
     const threadId = activeThread?.id ?? createId();
     const userMessage: StoredMessage = {
@@ -327,6 +397,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
     setInput('');
 
     const history: ChatTurn[] = nextThread.messages
+      .filter((message) => !message.moderationFlagged)
       .slice(-11)
       .map(({ role, content: messageContent }) => ({ role, content: messageContent }));
     if (history[0]?.role === 'assistant') history.shift();
@@ -334,7 +405,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
   };
 
   const retry = async () => {
-    if (!pendingHistory || !activeThreadId || sending) return;
+    if (!pendingHistory || !activeThreadId || sending || cooldownSeconds > 0) return;
     await ask(pendingHistory, activeThreadId, provider);
   };
 
@@ -352,6 +423,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
     setActiveThreadId(null);
     setShowHistory(false);
     setError('');
+    setModerationWarning(false);
     setPendingHistory(null);
     setInput('');
   };
@@ -382,6 +454,8 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
       startX: event.clientX,
       startY: event.clientY,
       moved: false,
+      latestPosition: launcherPosition,
+      frameId: null,
     };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
@@ -392,19 +466,34 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
     if (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 4) {
       drag.moved = true;
     }
+    drag.latestPosition = clampLauncherPosition({
+      x: event.clientX - drag.offsetX,
+      y: event.clientY - drag.offsetY,
+    }, viewport);
     if (drag.moved) {
       event.preventDefault();
-      setLauncherPosition(clampLauncherPosition({
-        x: event.clientX - drag.offsetX,
-        y: event.clientY - drag.offsetY,
-      }, viewport));
+      if (drag.frameId === null) {
+        drag.frameId = window.requestAnimationFrame(() => {
+          drag.frameId = null;
+          if (launcherDrag.current === drag) setLauncherPosition(drag.latestPosition);
+        });
+      }
     }
   };
 
   const handleLauncherPointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (launcherDrag.current?.pointerId !== event.pointerId) return;
-    suppressLauncherClick.current = launcherDrag.current.moved;
+    const drag = launcherDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (drag.frameId !== null) window.cancelAnimationFrame(drag.frameId);
+    suppressLauncherClick.current = drag.moved;
+    if (drag.moved) {
+      setLauncherPosition(drag.latestPosition);
+      saveLauncherPosition(userId, drag.latestPosition);
+    }
     launcherDrag.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
   };
 
   const chatPanelStyle = useMemo(() => {
@@ -431,6 +520,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
           onPointerMove={handleLauncherPointerMove}
           onPointerUp={handleLauncherPointerUp}
           onPointerCancel={handleLauncherPointerUp}
+          onLostPointerCapture={handleLauncherPointerUp}
           onClick={() => {
             if (suppressLauncherClick.current) {
               suppressLauncherClick.current = false;
@@ -630,9 +720,16 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
               </div>
 
               {error && (
-                <div role="alert" className="flex shrink-0 items-center gap-2 border-t border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-950 dark:bg-red-950/40 dark:text-red-200">
+                <div
+                  role="alert"
+                  className={`flex shrink-0 items-center gap-2 border-t px-3 py-2 text-xs ${
+                    moderationWarning
+                      ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-950 dark:bg-amber-950/40 dark:text-amber-200'
+                      : 'border-red-100 bg-red-50 text-red-700 dark:border-red-950 dark:bg-red-950/40 dark:text-red-200'
+                  }`}
+                >
                   <span className="min-w-0 flex-1">{error}</span>
-                  {pendingHistory && <button type="button" onClick={() => void retry()} disabled={sending} className="shrink-0 font-bold underline disabled:opacity-50">Thử lại</button>}
+                  {pendingHistory && <button type="button" onClick={() => void retry()} disabled={sending || cooldownSeconds > 0} className="shrink-0 font-bold underline disabled:opacity-50">Thử lại</button>}
                 </div>
               )}
 
@@ -693,7 +790,7 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                   />
                   <button
                     type="submit"
-                    disabled={!input.trim() || sending}
+                    disabled={!input.trim() || sending || cooldownSeconds > 0}
                     aria-label="Gửi tin nhắn"
                     title="Gửi"
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-700"
@@ -702,7 +799,15 @@ export function ChatWidget({ userId }: ChatWidgetProps) {
                   </button>
                 </div>
                 <div className="mt-1.5 flex justify-between px-1 text-[10px] text-slate-400">
-                  <span>Enter để gửi · Shift+Enter xuống dòng</span>
+                  <span role="status" aria-live="polite">
+                    {sending
+                      ? 'Đang chờ ExaBot phản hồi...'
+                      : cooldownSeconds > 0
+                      ? chatBanned
+                        ? `Chat bị khóa · còn ${formatCountdown(cooldownSeconds)}.`
+                        : `Có thể gửi câu hỏi tiếp theo sau ${formatCountdown(cooldownSeconds)}.`
+                      : 'Enter để gửi · Shift+Enter xuống dòng'}
+                  </span>
                   <span>{input.length}/{MAX_INPUT_LENGTH}</span>
                 </div>
               </form>

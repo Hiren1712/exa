@@ -56,10 +56,11 @@ public class ExamController {
             throw BusinessException.forbidden("Bạn không có quyền xem đề thi này");
         }
         if (user.isStudent()) {
-            if (exam.getStatus() != Exam.Status.OPEN) {
+            boolean hasInProgressSubmission = examService.hasInProgressSubmission(id, user.getId());
+            if (exam.getStatus() != Exam.Status.OPEN && !hasInProgressSubmission) {
                 throw BusinessException.badRequest("Đề thi hiện không mở");
             }
-            if (exam.getClassroomId() != null
+            if (!hasInProgressSubmission && exam.getClassroomId() != null
                     && !classroomMemberRepository.existsByClassroomIdAndStudentIdAndStatus(
                     exam.getClassroomId(), user.getId(), ClassroomMember.Status.ACTIVE)
                     && !examService.inviteCodeMatches(exam, inviteCode)) {

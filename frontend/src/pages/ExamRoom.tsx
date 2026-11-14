@@ -57,7 +57,8 @@ export default function ExamRoom() {
   const resetTimer = timer.reset;
 
   const proctor = useProctor({
-    enabled: !isPreview && (exam?.proctorEnabled ?? false),
+    enabled: !isPreview && submissionId !== null && submissionId > 0 && (exam?.proctorEnabled ?? false),
+    sessionId: submissionId,
     onViolation: (type, total) => {
       toast('Cảnh báo', `${type === 'TAB_SWITCH' ? 'Rời tab' : type === 'COPY' ? 'Copy' : 'Thoát fullscreen'} lần ${total}`, 'warn');
       if (submissionId && !isPreview) {
@@ -247,6 +248,12 @@ export default function ExamRoom() {
             </label>
           )}
           {!isPreview && exam.lockScreen && <p className="mt-4 text-center text-xs text-amber-700">Đề thi yêu cầu bật chế độ toàn màn hình trước khi bắt đầu.</p>}
+          {!isPreview && exam.proctorEnabled && (
+            <p className="mt-4 rounded-xl bg-amber-50 p-3 text-center text-xs leading-relaxed text-amber-800">
+              Bài thi ghi nhận một số tín hiệu từ trình duyệt như rời tab, thoát toàn màn hình và thao tác copy/dán.
+              Các tín hiệu có thể báo nhầm và không tự động kết luận vi phạm; hãy dùng trình duyệt hỗ trợ toàn màn hình.
+            </p>
+          )}
           <Button variant="primary" block loading={starting} onClick={() => void handleStart()} className="mt-6">
             {isPreview ? 'Bắt đầu thử đề' : 'Bắt đầu làm bài'}
           </Button>

@@ -14,6 +14,8 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
     List<Submission> findByExamIdOrderBySubmittedAtDesc(Long examId);
 
+    List<Submission> findByExamIdAndStatusOrderByStartedAtDesc(Long examId, Submission.Status status);
+
     List<Submission> findByExamIdIn(List<Long> examIds);
 
     List<Submission> findByStudentIdOrderBySubmittedAtDesc(Long studentId);
@@ -22,6 +24,8 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
     Optional<Submission> findFirstByExamIdAndStudentIdAndStatusOrderByStartedAtDesc(
             Long examId, Long studentId, Submission.Status status);
+
+    boolean existsByExamIdAndStudentIdAndStatus(Long examId, Long studentId, Submission.Status status);
 
     long countByExamId(Long examId);
 

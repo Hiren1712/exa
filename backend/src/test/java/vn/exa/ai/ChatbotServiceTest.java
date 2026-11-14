@@ -62,6 +62,7 @@ class ChatbotServiceTest {
                 .contains("ExaBot là trợ lý trong phân hệ EXA, không phải ChemAI")
                 .contains("PhysicsAI, MathAI, BioAI và ITAI là định hướng tương lai")
                 .contains("Không bịa tên bài học, mô-đun, thí nghiệm")
+                .contains("Không chửi tục, công kích hoặc tạo nội dung khiêu dâm")
                 .contains("Lê Hữu Nghĩa (12A1.1): đội trưởng")
                 .contains("Lê Minh Đăng (12D3)")
                 .contains("Đỗ Cao Minh (12A6)")

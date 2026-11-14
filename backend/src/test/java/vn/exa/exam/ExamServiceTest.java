@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import vn.exa.question.Question;
 import vn.exa.question.QuestionRepository;
+import vn.exa.submission.Submission;
 import vn.exa.submission.SubmissionRepository;
 
 import java.math.BigDecimal;
@@ -16,8 +17,24 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class ExamServiceTest {
+
+    @Test
+    void identifiesExistingActiveSubmissionForExamResume() {
+        SubmissionRepository submissionRepository = mock(SubmissionRepository.class);
+        when(submissionRepository.existsByExamIdAndStudentIdAndStatus(
+                7L, 23L, Submission.Status.IN_PROGRESS)).thenReturn(true);
+        ExamService service = new ExamService(
+                mock(ExamRepository.class),
+                mock(ExamQuestionRepository.class),
+                mock(QuestionRepository.class),
+                mock(PasswordEncoder.class),
+                submissionRepository);
+
+        assertThat(service.hasInProgressSubmission(7L, 23L)).isTrue();
+    }
 
     @Test
     void flushesRemovedQuestionLinksBeforeReinsertingTheSameQuestions() {
