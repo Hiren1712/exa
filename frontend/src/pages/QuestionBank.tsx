@@ -216,7 +216,7 @@ export default function QuestionBank() {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
         <Input
-          placeholder="Tìm nội dung câu hỏi..."
+          placeholder={t('Tìm nội dung câu hỏi...')}
           value={filter.keyword || ''}
           onChange={(event) => updateFilter({ keyword: event.target.value || undefined })}
           icon={<Icon name="search" size={16} />}
@@ -230,22 +230,31 @@ export default function QuestionBank() {
           onChange={(subject) => updateFilter({ subject: subject || undefined })}
         />
         <Select
-          aria-label="Khối lớp"
+          aria-label={t('Khối lớp')}
           value={filter.grade || ''}
           onChange={(event) => updateFilter({ grade: event.target.value ? Number(event.target.value) : undefined })}
-          options={[{ value: '', label: 'Tất cả khối' }, ...[6, 7, 8, 9, 10, 11, 12].map((grade) => ({ value: grade, label: `Khối ${grade}` }))]}
+          options={[
+            { value: '', label: t('Tất cả khối') },
+            ...[6, 7, 8, 9, 10, 11, 12].map((grade) => ({ value: grade, label: t('Khối {{grade}}', { grade }) })),
+          ]}
         />
         <Select
-          aria-label="Độ khó"
+          aria-label={t('Độ khó')}
           value={filter.difficulty || ''}
           onChange={(event) => updateFilter({ difficulty: (event.target.value || undefined) as Difficulty | undefined })}
-          options={[{ value: '', label: 'Tất cả độ khó' }, ...difficultyOptions]}
+          options={[
+            { value: '', label: t('Tất cả độ khó') },
+            ...difficultyOptions.map((option) => ({ ...option, label: t(option.label) })),
+          ]}
         />
         <Select
-          aria-label="Loại câu hỏi"
+          aria-label={t('Loại câu hỏi')}
           value={filter.type || ''}
           onChange={(event) => updateFilter({ type: (event.target.value || undefined) as QuestionType | undefined })}
-          options={[{ value: '', label: 'Tất cả loại' }, ...typeOptions]}
+          options={[
+            { value: '', label: t('Tất cả loại') },
+            ...typeOptions.map((option) => ({ ...option, label: t(option.label) })),
+          ]}
         />
       </div>
 
