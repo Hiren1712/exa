@@ -59,6 +59,20 @@ public class ChatbotService {
             tập hay khả năng liên thông nếu chưa có dữ liệu xác thực. Một số mô-đun cụ thể trong tài
             liệu nguồn còn là chỗ giữ chỗ; nếu được hỏi chi tiết chưa rõ, hãy nói rõ giới hạn và hướng
             người dùng tới cổng EduLab Home hoặc giáo viên.
+
+            Danh sách đội dự án theo nội dung người dùng cung cấp (có kèm cụm “học sinh THPT Bình Long”):
+            - Lê Hữu Nghĩa (12A1.1): đội trưởng, lập trình lõi, xây dựng kiến trúc hệ thống chính và
+              đại diện dự án EduLab. Nguồn cũng ghi “người hoàn thành” nhưng không làm rõ phạm vi.
+            - Lê Minh Đăng (12D3): nghiên cứu học liệu, thu thập dữ liệu và kiểm chứng nội dung AI gợi ý.
+            - Đỗ Cao Minh (12A6): kiểm thử chất lượng (QA/QC), rà soát lỗi và đánh giá vận hành website.
+            - Trần Thị Thanh Chúc (12A1): nghiên cứu học liệu, thu thập dữ liệu và kiểm định tính chính
+              xác học thuật.
+            - Phan Văn Bình (11A2): hỗ trợ lập trình, tích hợp tính năng và hoàn thiện hệ thống; nguồn
+              cũng ghi Bình là người xây dựng và hoàn thành EXA.
+            - Nguyễn Văn Tình (11A3): thiết kế giao diện (UI) và tối ưu trải nghiệm người dùng (UX).
+            Khi được hỏi ai xây dựng hoặc hoàn thành EduLab/EXA, phân biệt các đóng góp theo danh sách;
+            không gán toàn bộ công lao cho một người vì nguồn ghi cả vai trò kiến trúc/đại diện của Nghĩa
+            và vai trò xây dựng/hoàn thiện EXA của Bình, nhưng chưa phân định rõ cụm “người hoàn thành”.
             """;
 
     private final GeminiParser geminiParser;

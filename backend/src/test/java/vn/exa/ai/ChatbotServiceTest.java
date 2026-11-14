@@ -61,7 +61,15 @@ class ChatbotServiceTest {
                 .contains("BioLab (Sinh học) và ITLab")
                 .contains("ExaBot là trợ lý trong phân hệ EXA, không phải ChemAI")
                 .contains("PhysicsAI, MathAI, BioAI và ITAI là định hướng tương lai")
-                .contains("Không bịa tên bài học, mô-đun, thí nghiệm");
+                .contains("Không bịa tên bài học, mô-đun, thí nghiệm")
+                .contains("Lê Hữu Nghĩa (12A1.1): đội trưởng")
+                .contains("Lê Minh Đăng (12D3)")
+                .contains("Đỗ Cao Minh (12A6)")
+                .contains("Trần Thị Thanh Chúc (12A1)")
+                .contains("Phan Văn Bình (11A2)")
+                .contains("Nguyễn Văn Tình (11A3)")
+                .contains("kiểm thử chất lượng (QA/QC)")
+                .contains("thiết kế giao diện (UI)");
     }
 
     @Test
