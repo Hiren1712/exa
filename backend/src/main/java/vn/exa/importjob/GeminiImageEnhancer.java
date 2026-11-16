@@ -18,7 +18,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Component
@@ -61,22 +63,23 @@ public class GeminiImageEnhancer {
         WebClientResponseException lastProviderError = null;
         for (String apiKey : apiKeys) {
             try {
-                String response = webClientBuilder.build()
-                        .post()
-                        .uri(INTERACTIONS_URL)
-                        .header("x-goog-api-key", apiKey.trim())
-                        .header("Api-Revision", API_REVISION)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(request)
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .timeout(Duration.ofMillis(timeoutMs))
-                        .block();
+                String response = sendRequest(request, apiKey);
                 return parseEnhancedImage(response, source.getWidth(), source.getHeight());
             } catch (WebClientResponseException error) {
                 lastProviderError = error;
-                log.warn("Gemini image enhancement returned HTTP {}", error.getStatusCode().value());
-                if (!List.of(401, 403, 429).contains(error.getStatusCode().value())) break;
+                if (isResponseFormatError(error)) {
+                    log.warn("Gemini Image rejected response_format; retrying without image output options: {}",
+                            providerErrorMessage(error));
+                    try {
+                        String response = sendRequest(buildRequest(imageModel, sourceBytes, false), apiKey);
+                        return parseEnhancedImage(response, source.getWidth(), source.getHeight());
+                    } catch (WebClientResponseException fallbackError) {
+                        lastProviderError = fallbackError;
+                    }
+                }
+                log.warn("Gemini image enhancement returned HTTP {}: {}",
+                        lastProviderError.getStatusCode().value(), providerErrorMessage(lastProviderError));
+                if (!List.of(401, 403, 429).contains(lastProviderError.getStatusCode().value())) break;
             } catch (BusinessException error) {
                 throw error;
             } catch (Exception error) {
@@ -94,7 +97,12 @@ public class GeminiImageEnhancer {
             }
             if (status == 401 || status == 403 || status == 404) {
                 throw BusinessException.badRequest(
-                        "Gemini Image không khả dụng với API key/model hiện tại. Kiểm tra GEMINI_API_KEY và GEMINI_IMAGE_MODEL.");
+                        "Gemini Image không khả dụng với API key/model hiện tại. "
+                                + providerErrorMessage(lastProviderError));
+            }
+            if (status == 400) {
+                throw BusinessException.badRequest(
+                        "Gemini Image từ chối yêu cầu: " + providerErrorMessage(lastProviderError));
             }
             throw BusinessException.badRequest(
                     "Gemini Image gặp lỗi HTTP " + status + ". Vui lòng thử lại sau.");
@@ -103,19 +111,62 @@ public class GeminiImageEnhancer {
     }
 
     Map<String, Object> buildRequest(String model, byte[] sourceBytes) {
-        return Map.of(
-                "model", model,
-                "input", List.of(
-                        Map.of("type", "text", "text", ENHANCEMENT_PROMPT),
-                        Map.of(
-                                "type", "image",
-                                "mime_type", "image/png",
-                                "data", Base64.getEncoder().encodeToString(sourceBytes))),
-                "response_format", Map.of(
+        return buildRequest(model, sourceBytes, true);
+    }
+
+    Map<String, Object> buildRequest(String model, byte[] sourceBytes, boolean includeResponseFormat) {
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("model", model);
+        request.put("input", List.of(
+                Map.of("type", "text", "text", ENHANCEMENT_PROMPT),
+                Map.of(
                         "type", "image",
                         "mime_type", "image/png",
-                        "image_size", "2K"),
-                "store", false);
+                        "data", Base64.getEncoder().encodeToString(sourceBytes))));
+        if (includeResponseFormat) {
+            request.put("response_format", Map.of(
+                        "type", "image",
+                        "mime_type", "image/png",
+                        "image_size", "2K"));
+        }
+        request.put("store", false);
+        return request;
+    }
+
+    boolean isResponseFormatError(WebClientResponseException error) {
+        if (error.getStatusCode().value() != 400) return false;
+        String responseBody = error.getResponseBodyAsString().toLowerCase(Locale.ROOT);
+        return responseBody.contains("response_format")
+                || responseBody.contains("image_size")
+                || responseBody.contains("imageresponseformat");
+    }
+
+    private String sendRequest(Map<String, Object> request, String apiKey) {
+        return webClientBuilder.build()
+                .post()
+                .uri(INTERACTIONS_URL)
+                .header("x-goog-api-key", apiKey.trim())
+                .header("Api-Revision", API_REVISION)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .retrieve()
+                .bodyToMono(String.class)
+                .timeout(Duration.ofMillis(timeoutMs))
+                .block();
+    }
+
+    String providerErrorMessage(WebClientResponseException error) {
+        try {
+            String message = objectMapper.readTree(error.getResponseBodyAsString())
+                    .path("error").path("message").asText();
+            if (!message.isBlank()) {
+                String singleLine = message.replaceAll("[\\r\\n\\t]+", " ").trim();
+                return singleLine.length() <= 400 ? singleLine : singleLine.substring(0, 400);
+            }
+        } catch (IOException ignored) {
+            // Fall through to a status-only diagnostic when the provider body is not JSON.
+        }
+        return "Không có chi tiết lỗi từ Gemini.";
     }
 
     BufferedImage parseEnhancedImage(String responseBody, int sourceWidth, int sourceHeight) {

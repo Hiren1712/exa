@@ -3,6 +3,7 @@ package vn.exa.importjob;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import vn.exa.common.BusinessException;
 
 import javax.imageio.ImageIO;
@@ -57,5 +58,34 @@ class GeminiImageEnhancerTest {
         assertThat(request.get("store")).isEqualTo(false);
         assertThat(request.get("response_format")).isEqualTo(
                 Map.of("type", "image", "mime_type", "image/png", "image_size", "2K"));
+    }
+
+    @Test
+    void retriesWithoutImageOutputOptionsOnlyWhenGeminiRejectsThem() {
+        WebClientResponseException responseFormatError = WebClientResponseException.create(
+                400, "Bad Request", null, """
+                        {"error":{"message":"Unknown name \\"response_format\\""}}
+                        """.getBytes(java.nio.charset.StandardCharsets.UTF_8), null);
+        Map<String, Object> fallbackRequest = enhancer.buildRequest(
+                "gemini-3.1-flash-image", new byte[]{1, 2}, false);
+
+        assertThat(enhancer.isResponseFormatError(responseFormatError)).isTrue();
+        assertThat(fallbackRequest).doesNotContainKey("response_format");
+        assertThat(fallbackRequest.get("store")).isEqualTo(false);
+        assertThat(enhancer.providerErrorMessage(responseFormatError))
+                .isEqualTo("Unknown name \"response_format\"");
+    }
+
+    @Test
+    void capsAndFlattensProviderErrorMessages() {
+        String longMessage = "x".repeat(450);
+        WebClientResponseException error = WebClientResponseException.create(
+                400, "Bad Request", null, objectMapper.valueToTree(
+                        Map.of("error", Map.of("message", "  " + longMessage + "\nmore  "))).toString()
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8), null);
+
+        assertThat(enhancer.providerErrorMessage(error))
+                .hasSize(400)
+                .doesNotContain("\n");
     }
 }
