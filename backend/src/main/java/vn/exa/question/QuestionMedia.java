@@ -16,4 +16,8 @@ public class QuestionMedia {
     private String mimeType;
     @Lob @Column(name = "image_data", nullable = false, columnDefinition = "LONGBLOB")
     private byte[] imageData;
+    @Column(name = "original_mime_type", length = 30)
+    private String originalMimeType;
+    @Lob @Column(name = "original_image_data", columnDefinition = "LONGBLOB")
+    private byte[] originalImageData;
 }

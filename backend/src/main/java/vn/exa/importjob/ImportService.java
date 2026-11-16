@@ -272,7 +272,7 @@ public class ImportService {
     private String validateImageUrl(String imageUrl, Long userId) {
         if (imageUrl == null || imageUrl.isBlank()) return null;
         java.util.regex.Matcher matcher = java.util.regex.Pattern
-                .compile("^/api/v1/question-media/([0-9a-fA-F-]{36})$")
+                .compile("^/api/v1/question-media/([0-9a-fA-F-]{36})(?:\\?ai=1)?$")
                 .matcher(imageUrl);
         if (!matcher.matches()) {
             throw BusinessException.badRequest("Đường dẫn ảnh câu hỏi không hợp lệ");

@@ -159,6 +159,7 @@ public class QuestionService {
             throw BusinessException.badRequest("Ảnh câu hỏi phải được tải lên EXA");
         }
         String id = url.substring(prefix.length());
+        if (id.endsWith("?ai=1")) id = id.substring(0, id.length() - "?ai=1".length());
         try {
             if (!UUID.fromString(id).toString().equalsIgnoreCase(id)) {
                 throw BusinessException.badRequest("Đường dẫn ảnh không hợp lệ");

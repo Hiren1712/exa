@@ -36,11 +36,12 @@ import java.util.UUID;
 public class QuestionImageCropper {
     private static final long MAX_IMAGE_PIXELS = 40_000_000L;
     private static final int MAX_CROP_BYTES = 5 * 1024 * 1024;
-    private static final int MAX_CROP_DIMENSION = 1800;
+    private static final int MAX_CROP_DIMENSION = 4096;
     private static final int PDF_RENDER_MAX_DIMENSION = 2400;
     private static final float[] JPEG_QUALITIES = {0.9f, 0.8f, 0.7f, 0.6f, 0.5f};
 
     private final QuestionMediaRepository questionMediaRepository;
+    private final GeminiImageEnhancer imageEnhancer;
 
     public void attachRasterImages(List<ParsedQuestion> questions, byte[] source, Long ownerId) {
         List<ParsedQuestion> withRegions = questionsWithRegions(questions);
@@ -102,16 +103,33 @@ public class QuestionImageCropper {
     }
 
     private void saveCrop(ParsedQuestion question, BufferedImage crop, Long ownerId) {
-        EncodedImage encodedImage = encodeCrop(crop);
+        EncodedImage originalImage = encodeCrop(crop);
+        EncodedImage encodedImage = originalImage;
+        boolean enhancedSuccessfully = false;
+        try {
+            BufferedImage enhanced = imageEnhancer.enhance(crop);
+            encodedImage = encodeCrop(resizeIfNeeded(enhanced));
+            enhancedSuccessfully = true;
+        } catch (BusinessException error) {
+            log.warn("AI enhancement failed for imported question {}; keeping the original crop: {}",
+                    question.getNumber(), error.getMessage());
+            question.setImageCropWarning(
+                    "AI chưa làm nét được hình; ảnh gốc vẫn được giữ nguyên. " + error.getMessage());
+        }
         QuestionMedia media = new QuestionMedia();
         media.setId(UUID.randomUUID().toString());
         media.setOwnerId(ownerId);
         media.setMimeType(encodedImage.mimeType());
         media.setImageData(encodedImage.bytes());
+        if (enhancedSuccessfully) {
+            media.setOriginalMimeType(originalImage.mimeType());
+            media.setOriginalImageData(originalImage.bytes());
+        }
         questionMediaRepository.save(media);
-        question.setImageUrl("/api/v1/question-media/" + media.getId());
+        question.setImageUrl("/api/v1/question-media/" + media.getId()
+                + (enhancedSuccessfully ? "?ai=1" : ""));
         question.setImageRegion(null);
-        question.setImageCropWarning(null);
+        if (enhancedSuccessfully) question.setImageCropWarning(null);
     }
 
     private EncodedImage encodeCrop(BufferedImage image) {

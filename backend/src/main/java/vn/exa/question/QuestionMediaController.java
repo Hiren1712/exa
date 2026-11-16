@@ -52,14 +52,24 @@ public class QuestionMediaController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<byte[]> get(@PathVariable String id) {
+    public ResponseEntity<byte[]> get(@PathVariable String id,
+                                      @RequestParam(defaultValue = "false") boolean original) {
         QuestionMedia media = repository.findById(id)
             .orElseThrow(() -> BusinessException.notFound("Không tìm thấy hình ảnh"));
+        byte[] imageData = media.getImageData();
+        String mimeType = media.getMimeType();
+        if (original) {
+            imageData = media.getOriginalImageData();
+            mimeType = media.getOriginalMimeType();
+            if (imageData == null || mimeType == null) {
+                throw BusinessException.notFound("Không có ảnh gốc cho hình minh họa này");
+            }
+        }
         return ResponseEntity.ok()
-            .contentType(MediaType.parseMediaType(media.getMimeType()))
+            .contentType(MediaType.parseMediaType(mimeType))
             .cacheControl(CacheControl.maxAge(java.time.Duration.ofDays(7)).cachePublic())
             .header("X-Content-Type-Options", "nosniff")
             .header("Content-Security-Policy", "default-src 'none'; sandbox")
-            .body(media.getImageData());
+            .body(imageData);
     }
 }

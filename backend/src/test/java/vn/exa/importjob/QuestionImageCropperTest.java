@@ -5,6 +5,7 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.junit.jupiter.api.Test;
+import vn.exa.common.BusinessException;
 import vn.exa.question.QuestionMedia;
 import vn.exa.question.QuestionMediaRepository;
 
@@ -25,7 +26,12 @@ class QuestionImageCropperTest {
     void cropsOnlyTheImageRegionAssignedToTheQuestion() throws Exception {
         QuestionMediaRepository repository = mock(QuestionMediaRepository.class);
         when(repository.save(any(QuestionMedia.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        QuestionImageCropper cropper = new QuestionImageCropper(repository);
+        GeminiImageEnhancer enhancer = mockEnhancer();
+        when(enhancer.enhance(any(BufferedImage.class))).thenAnswer(invocation -> {
+            BufferedImage input = invocation.getArgument(0);
+            return new BufferedImage(input.getWidth() * 2, input.getHeight() * 2, BufferedImage.TYPE_INT_RGB);
+        });
+        QuestionImageCropper cropper = new QuestionImageCropper(repository, enhancer);
 
         BufferedImage source = new BufferedImage(100, 100, BufferedImage.TYPE_INT_RGB);
         var graphics = source.createGraphics();
@@ -40,7 +46,7 @@ class QuestionImageCropperTest {
 
         cropper.attachRasterImages(List.of(question), sourceBytes.toByteArray(), 7L);
 
-        assertThat(question.getImageUrl()).startsWith("/api/v1/question-media/");
+        assertThat(question.getImageUrl()).startsWith("/api/v1/question-media/").endsWith("?ai=1");
         assertThat(question.getImageRegion()).isNull();
         assertThat(question.getImageCropWarning()).isNull();
         var mediaCaptor = org.mockito.ArgumentCaptor.forClass(QuestionMedia.class);
@@ -49,16 +55,19 @@ class QuestionImageCropperTest {
         assertThat(saved.getOwnerId()).isEqualTo(7L);
         assertThat(saved.getMimeType()).isEqualTo("image/png");
         BufferedImage crop = ImageIO.read(new java.io.ByteArrayInputStream(saved.getImageData()));
-        assertThat(crop.getWidth()).isEqualTo(20);
-        assertThat(crop.getHeight()).isEqualTo(20);
-        assertThat(crop.getRGB(10, 10)).isEqualTo(Color.RED.getRGB());
+        assertThat(crop.getWidth()).isEqualTo(40);
+        assertThat(crop.getHeight()).isEqualTo(40);
+        BufferedImage original = ImageIO.read(new java.io.ByteArrayInputStream(saved.getOriginalImageData()));
+        assertThat(saved.getOriginalMimeType()).isEqualTo("image/png");
+        assertThat(original.getWidth()).isEqualTo(20);
+        assertThat(original.getHeight()).isEqualTo(20);
     }
 
     @Test
     void cropsPdfPageRegionAndPersistsTheImageForTheOwner() throws Exception {
         QuestionMediaRepository repository = mock(QuestionMediaRepository.class);
         when(repository.save(any(QuestionMedia.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        QuestionImageCropper cropper = new QuestionImageCropper(repository);
+        QuestionImageCropper cropper = new QuestionImageCropper(repository, mockEnhancer());
 
         byte[] pdfBytes;
         try (PDDocument document = new PDDocument();
@@ -77,7 +86,7 @@ class QuestionImageCropperTest {
 
         cropper.attachPdfImages(List.of(question), pdfBytes, 9L);
 
-        assertThat(question.getImageUrl()).startsWith("/api/v1/question-media/");
+        assertThat(question.getImageUrl()).startsWith("/api/v1/question-media/").endsWith("?ai=1");
         assertThat(question.getImageRegion()).isNull();
         var mediaCaptor = org.mockito.ArgumentCaptor.forClass(QuestionMedia.class);
         org.mockito.Mockito.verify(repository).save(mediaCaptor.capture());
@@ -92,7 +101,7 @@ class QuestionImageCropperTest {
     @Test
     void invalidCropCoordinatesProduceAnExplicitPreviewWarning() throws Exception {
         QuestionMediaRepository repository = mock(QuestionMediaRepository.class);
-        QuestionImageCropper cropper = new QuestionImageCropper(repository);
+        QuestionImageCropper cropper = new QuestionImageCropper(repository, mockEnhancer());
         ParsedQuestion question = questionWithRegion(
                 new ImageRegion(1, Integer.MAX_VALUE, 0, 1, 1000));
         BufferedImage source = new BufferedImage(10, 10, BufferedImage.TYPE_INT_RGB);
@@ -106,11 +115,42 @@ class QuestionImageCropperTest {
         assertThat(question.getImageCropWarning()).contains("không xác định được vùng ảnh hợp lệ");
     }
 
+    @Test
+    void preservesOriginalCropAndReportsWarningWhenAiEnhancementFails() throws Exception {
+        QuestionMediaRepository repository = mock(QuestionMediaRepository.class);
+        when(repository.save(any(QuestionMedia.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        GeminiImageEnhancer enhancer = mock(GeminiImageEnhancer.class);
+        when(enhancer.enhance(any(BufferedImage.class)))
+                .thenThrow(BusinessException.badRequest("Gemini hết quota"));
+        QuestionImageCropper cropper = new QuestionImageCropper(repository, enhancer);
+        BufferedImage source = new BufferedImage(10, 10, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream sourceBytes = new ByteArrayOutputStream();
+        ImageIO.write(source, "png", sourceBytes);
+        ParsedQuestion question = questionWithRegion(new ImageRegion(1, 0, 0, 1000, 1000));
+
+        cropper.attachRasterImages(List.of(question), sourceBytes.toByteArray(), 7L);
+
+        assertThat(question.getImageUrl()).startsWith("/api/v1/question-media/").doesNotContain("?ai=1");
+        assertThat(question.getImageCropWarning()).contains("ảnh gốc vẫn được giữ nguyên", "hết quota");
+        var mediaCaptor = org.mockito.ArgumentCaptor.forClass(QuestionMedia.class);
+        org.mockito.Mockito.verify(repository).save(mediaCaptor.capture());
+        BufferedImage stored = ImageIO.read(
+                new java.io.ByteArrayInputStream(mediaCaptor.getValue().getImageData()));
+        assertThat(stored.getWidth()).isEqualTo(10);
+        assertThat(mediaCaptor.getValue().getOriginalImageData()).isNull();
+    }
+
     private ParsedQuestion questionWithRegion(ImageRegion region) {
         return ParsedQuestion.builder()
                 .number(1)
                 .content("Câu hỏi có hình")
                 .imageRegion(region)
                 .build();
+    }
+
+    private GeminiImageEnhancer mockEnhancer() {
+        GeminiImageEnhancer enhancer = mock(GeminiImageEnhancer.class);
+        when(enhancer.enhance(any(BufferedImage.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        return enhancer;
     }
 }

@@ -874,7 +874,7 @@ public class GeminiParser {
         return ordered.stream().distinct().toList();
     }
 
-    private List<String> configuredApiKeys() {
+    List<String> configuredApiKeys() {
         Map<String, String> numberedKeys = new LinkedHashMap<>();
         if (environment != null) {
             for (PropertySource<?> source : environment.getPropertySources()) {

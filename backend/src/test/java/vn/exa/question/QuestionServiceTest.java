@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import vn.exa.common.BusinessException;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -48,6 +50,25 @@ class QuestionServiceTest {
 
         assertThat(saved.getCorrectAnswer()).isEqualTo("TFFT");
         verify(repository).save(any(Question.class));
+    }
+
+    @Test
+    void acceptsAiEnhancedMediaUrlWhenCreatingQuestion() {
+        QuestionRepository repository = mock(QuestionRepository.class);
+        QuestionMediaRepository mediaRepository = mock(QuestionMediaRepository.class);
+        when(repository.save(any(Question.class))).thenAnswer(call -> call.getArgument(0));
+        String mediaId = UUID.randomUUID().toString();
+        QuestionMedia media = new QuestionMedia();
+        media.setOwnerId(1L);
+        when(mediaRepository.findById(mediaId)).thenReturn(Optional.of(media));
+        QuestionService service = new QuestionService(repository, mediaRepository, new ObjectMapper());
+        QuestionService.QuestionRequest request = trueFalseRequest(
+                List.of("Một", "Hai", "Ba", "Bốn"), "TFFT");
+        request.setImageUrl("/api/v1/question-media/" + mediaId + "?ai=1");
+
+        Question saved = service.create(1L, request);
+
+        assertThat(saved.getImageUrl()).isEqualTo(request.getImageUrl());
     }
 
     private QuestionService service(QuestionRepository repository) {

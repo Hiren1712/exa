@@ -165,7 +165,8 @@ Giữ secret trong môi trường local hoặc kho bí mật của nhà cung c�
 | `MYSQLHOST`, `MYSQLPORT`, `MYSQLDATABASE`, `MYSQLUSER`, `MYSQLPASSWORD` | Kết nối MySQL production; thường do Railway cung cấp. |
 | `JWT_SECRET` | Secret ký token. Dùng giá trị ngẫu nhiên riêng tối thiểu 32 byte. |
 | `CORS_ORIGINS` | Danh sách origin frontend, phân tách bằng dấu phẩy, có scheme và không có path. |
-| `GEMINI_API_KEY`, `GEMINI_MODEL` | Khóa truy cập Gemini và lựa chọn model tùy chọn. |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | Khóa truy cập Gemini và model xử lý văn bản tùy chọn. |
+| `GEMINI_IMAGE_MODEL` | Model Gemini làm nét tự động cho mỗi hình import; mặc định `gemini-3.1-flash-image` và dùng thêm quota tạo ảnh. |
 | `GROQ_API_KEY`, `GROQ_MODEL` | Khóa truy cập Groq và lựa chọn model tùy chọn. Model phải hỗ trợ vision cho tác vụ ảnh/PDF scan. |
 | `EXABOT_PROVIDER_ORDER` | Thứ tự ưu tiên ExaBot; mặc định `gemini,openrouter,openai,groq,deepseek`. |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | Nhà cung cấp chat OpenRouter tùy chọn. |
