@@ -64,7 +64,7 @@ export function QuestionImage({ src, alt, className = '' }: Props) {
       >
         {t('Đóng')}
       </button>
-      <img src={url} alt={alt} className="h-auto w-[90vw] max-h-[90vh] max-w-[1200px] cursor-zoom-out object-contain" />
+      <img src={url} alt={alt} className="h-auto max-h-[90vh] max-w-[90vw] cursor-zoom-out object-contain" />
     </div>}
   </>;
 }

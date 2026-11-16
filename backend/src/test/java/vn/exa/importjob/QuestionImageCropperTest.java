@@ -47,13 +47,11 @@ class QuestionImageCropperTest {
         org.mockito.Mockito.verify(repository).save(mediaCaptor.capture());
         QuestionMedia saved = mediaCaptor.getValue();
         assertThat(saved.getOwnerId()).isEqualTo(7L);
-        assertThat(saved.getMimeType()).isEqualTo("image/jpeg");
+        assertThat(saved.getMimeType()).isEqualTo("image/png");
         BufferedImage crop = ImageIO.read(new java.io.ByteArrayInputStream(saved.getImageData()));
         assertThat(crop.getWidth()).isEqualTo(20);
         assertThat(crop.getHeight()).isEqualTo(20);
-        Color center = new Color(crop.getRGB(10, 10));
-        assertThat(center.getRed()).isGreaterThan(200);
-        assertThat(center.getBlue()).isLessThan(80);
+        assertThat(crop.getRGB(10, 10)).isEqualTo(Color.RED.getRGB());
     }
 
     @Test
@@ -83,6 +81,7 @@ class QuestionImageCropperTest {
         assertThat(question.getImageRegion()).isNull();
         var mediaCaptor = org.mockito.ArgumentCaptor.forClass(QuestionMedia.class);
         org.mockito.Mockito.verify(repository).save(mediaCaptor.capture());
+        assertThat(mediaCaptor.getValue().getMimeType()).isEqualTo("image/png");
         BufferedImage crop = ImageIO.read(new java.io.ByteArrayInputStream(mediaCaptor.getValue().getImageData()));
         Color center = new Color(crop.getRGB(crop.getWidth() / 2, crop.getHeight() / 2));
         assertThat(center.getRed()).isGreaterThan(200);

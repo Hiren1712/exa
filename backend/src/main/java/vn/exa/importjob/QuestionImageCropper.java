@@ -102,16 +102,28 @@ public class QuestionImageCropper {
     }
 
     private void saveCrop(ParsedQuestion question, BufferedImage crop, Long ownerId) {
-        byte[] imageBytes = encodeJpeg(crop);
+        EncodedImage encodedImage = encodeCrop(crop);
         QuestionMedia media = new QuestionMedia();
         media.setId(UUID.randomUUID().toString());
         media.setOwnerId(ownerId);
-        media.setMimeType("image/jpeg");
-        media.setImageData(imageBytes);
+        media.setMimeType(encodedImage.mimeType());
+        media.setImageData(encodedImage.bytes());
         questionMediaRepository.save(media);
         question.setImageUrl("/api/v1/question-media/" + media.getId());
         question.setImageRegion(null);
         question.setImageCropWarning(null);
+    }
+
+    private EncodedImage encodeCrop(BufferedImage image) {
+        ByteArrayOutputStream pngBytes = new ByteArrayOutputStream();
+        try {
+            if (ImageIO.write(image, "png", pngBytes) && pngBytes.size() <= MAX_CROP_BYTES) {
+                return new EncodedImage(pngBytes.toByteArray(), "image/png");
+            }
+        } catch (IOException error) {
+            throw BusinessException.badRequest("Không thể mã hóa ảnh minh họa đã cắt");
+        }
+        return new EncodedImage(encodeJpeg(image), "image/jpeg");
     }
 
     private void setCropWarning(ParsedQuestion question, String warning) {
@@ -211,4 +223,6 @@ public class QuestionImageCropper {
         }
         throw BusinessException.badRequest("Ảnh minh họa đã cắt quá lớn để lưu");
     }
+
+    private record EncodedImage(byte[] bytes, String mimeType) {}
 }
