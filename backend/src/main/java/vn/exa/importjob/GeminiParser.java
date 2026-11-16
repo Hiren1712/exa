@@ -285,9 +285,11 @@ public class GeminiParser {
                     Ưu tiên thông tin cụ thể trong tài liệu. Nếu tài liệu chỉ nêu chủ đề hoặc yêu cầu chung, hãy dùng kiến thức phù hợp với môn học và khối lớp; không trả về [] chỉ vì tài liệu ngắn hoặc không có câu hỏi sẵn.
                     Làm theo yêu cầu về dạng câu hỏi trong nội dung bổ sung nếu có; nếu không, mặc định tạo trắc nghiệm 4 lựa chọn với một đáp án đúng. Với câu Đúng/Sai, dùng options ["Đúng","Sai"] và đáp án A hoặc B. Với câu Trả lời ngắn hoặc Tự luận, dùng options [] và điền đáp án vào answerText. Cung cấp giải thích ngắn.
                     Dùng $...$ cho công thức toán và $\\ce{...}$ cho công thức/phản ứng hóa học; giữ chỉ số, số mũ, đơn vị, ký hiệu sinh học và tiếng Việt chính xác.
+                    Nếu câu hỏi phụ thuộc vào hình minh họa, biểu đồ hoặc sơ đồ trong ảnh/PDF, hãy xác định đúng vùng hình cần gắn vào câu hỏi. Trả imageRegion với page (số trang bắt đầu từ 1), x, y, width, height; các tọa độ là số nguyên trong khoảng 0–1000, tính theo tỉ lệ chiều rộng/cao của trang hoặc ảnh. Hộp phải ôm sát hình minh họa, không lấy nội dung của câu khác; không trả imageRegion nếu câu hỏi không có hình cần đính kèm hoặc hình không xác định rõ. Với ảnh đơn, page luôn là 1.
                     Nếu tài liệu có ảnh, đọc chữ tiếng Việt và ký hiệu trong ảnh; phân tích bảng, biểu đồ, sơ đồ và hình vẽ có liên quan. Khi câu hỏi phụ thuộc vào hình ảnh, mô tả ngắn gọn các chi tiết nhìn thấy được ngay trong content theo dạng [Hình: ...], không tự bịa chi tiết bị mờ hoặc không đọc được. Chỉ đưa ra đáp án dựa trên bằng chứng đọc được.
                     Trả về duy nhất JSON array theo schema:
-                    [{"number":1,"type":"MCQ","content":"...","options":["...","...","...","..."],"correctAnswer":"A","answerText":null,"difficulty":"COMPREHENSION","explanation":"..."}].
+                    [{"number":1,"type":"MCQ","content":"...","options":["...","...","...","..."],"correctAnswer":"A","answerText":null,"difficulty":"COMPREHENSION","explanation":"...","imageRegion":{"page":1,"x":100,"y":200,"width":300,"height":250}}].
+                    imageRegion có thể là null nếu không có hình minh họa gắn với câu hỏi.
                     type phải là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY; correctAnswer có thể là null khi phù hợp với dạng câu hỏi.
                     Chỉ trả về [] nếu tài liệu và nội dung bổ sung thực sự không có chủ đề/yêu cầu nào để tạo câu hỏi.
                     """.formatted(questionCount, subject, grade);
@@ -298,9 +300,12 @@ public class GeminiParser {
                 Nếu tài liệu có đáp án được đánh dấu, giữ nguyên đáp án đó. Nếu không có, hãy tự giải từ nội dung câu hỏi và phương án đọc được; điền đáp án và giải thích ngắn để người dùng rà soát trước khi lưu. Với câu SHORT_ANSWER/ESSAY, điền answerText nếu đủ dữ kiện.
                 Chỉ để đáp án null khi câu hỏi thiếu dữ kiện, ảnh mờ/bị cắt hoặc không thể xác định duy nhất đáp án; tuyệt đối không chọn ngẫu nhiên.
                 Với câu hỏi dựa trên hình, ghi lại các chi tiết nhìn thấy được trong content theo dạng [Hình: ...]; đọc chính xác tiếng Việt, công thức, bảng, biểu đồ và sơ đồ. Không suy diễn chi tiết hình ảnh không nhìn thấy rõ.
+                Nếu câu hỏi cần gắn một hình minh họa, biểu đồ hoặc sơ đồ có sẵn trong tài liệu, hãy trả imageRegion với page (số trang từ 1), x, y, width, height là số nguyên trong khoảng 0–1000 theo tỉ lệ trang. Hộp phải ôm đúng hình minh họa của câu đó, không bao gồm hình của câu khác. Với tệp ảnh đơn, page luôn là 1. Trả imageRegion:null nếu câu không có hình cần đính kèm hoặc không xác định được vùng ảnh đáng tin cậy.
                 Môn học gợi ý: %s. Trả về duy nhất JSON array theo schema:
                 [{"number":1,"type":"MCQ","content":"...","options":["...","..."],
-                "correctAnswer":"A","answerText":null,"difficulty":"RECOGNITION","explanation":null}].
+                "correctAnswer":"A","answerText":null,"difficulty":"RECOGNITION","explanation":null,
+                "imageRegion":{"page":1,"x":100,"y":200,"width":300,"height":250}}].
+                imageRegion có thể là null.
                 type chỉ được là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY.
                 difficulty chỉ được là RECOGNITION, COMPREHENSION, APPLICATION hoặc HIGH_APPLICATION.
                 Giữ ký hiệu toán, hóa, sinh, chỉ số dưới/trên và đơn vị chính xác; dùng $...$ cho công thức toán và $\\ce{...}$ cho công thức hóa học. Không trả markdown hay văn bản ngoài JSON.
@@ -1164,6 +1169,20 @@ public class GeminiParser {
             q.setAnswerText(node.path("answerText").asText(null));
             q.setDifficulty(normalizeDifficulty(node.path("difficulty").asText("RECOGNITION")));
             q.setExplanation(node.path("explanation").asText(null));
+            JsonNode imageRegion = node.path("imageRegion");
+            if (imageRegion.isObject()
+                    && imageRegion.path("page").canConvertToInt()
+                    && imageRegion.path("x").canConvertToInt()
+                    && imageRegion.path("y").canConvertToInt()
+                    && imageRegion.path("width").canConvertToInt()
+                    && imageRegion.path("height").canConvertToInt()) {
+                q.setImageRegion(new ImageRegion(
+                        imageRegion.path("page").intValue(),
+                        imageRegion.path("x").intValue(),
+                        imageRegion.path("y").intValue(),
+                        imageRegion.path("width").intValue(),
+                        imageRegion.path("height").intValue()));
+            }
 
             if (!q.getContent().isBlank()) result.add(q);
         }

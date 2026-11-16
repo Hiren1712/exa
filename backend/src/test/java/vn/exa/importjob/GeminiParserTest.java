@@ -148,10 +148,13 @@ class GeminiParserTest {
                 .contains("biểu đồ và sơ đồ")
                 .contains("tự giải từ nội dung câu hỏi và phương án đọc được")
                 .contains("không thể xác định duy nhất đáp án")
-                .contains("điền answerText nếu đủ dữ kiện");
+                .contains("điền answerText nếu đủ dữ kiện")
+                .contains("imageRegion")
+                .contains("Hộp phải ôm đúng hình minh họa");
         assertThat(generatePrompt)
                 .contains("đọc chữ tiếng Việt")
                 .contains("[Hình: ...]")
+                .contains("tọa độ là số nguyên trong khoảng 0–1000")
                 .contains("không tự bịa chi tiết");
     }
 
@@ -228,6 +231,29 @@ class GeminiParserTest {
                 "generativelanguage.googleapis.com",
                 "generativelanguage.googleapis.com");
         assertThat(responses).isEmpty();
+    }
+
+    @Test
+    void imageImportParsesPerQuestionImageCropCoordinates() {
+        ExchangeFunction exchange = request -> Mono.just(ClientResponse.create(HttpStatus.OK)
+                .header("Content-Type", "application/json")
+                .body("""
+                        {"candidates":[{"content":{"parts":[{"text":"[{\\"number\\":1,\\"type\\":\\"MCQ\\",\\"content\\":\\"Quan sát hình vẽ.\\",\\"options\\":[\\"A\\",\\"B\\"],\\"correctAnswer\\":\\"A\\",\\"imageRegion\\":{\\"page\\":1,\\"x\\":120,\\"y\\":240,\\"width\\":360,\\"height\\":280}}]"}]}}],
+                         "usageMetadata":{"totalTokenCount":12}}
+                        """)
+                .build());
+        GeminiParser parser = new GeminiParser(
+                WebClient.builder().exchangeFunction(exchange), objectMapper);
+        ReflectionTestUtils.setField(parser, "apiKey", "gemini-test-key");
+        ReflectionTestUtils.setField(parser, "model", "gemini-test-model");
+        ReflectionTestUtils.setField(parser, "timeoutMs", 1000L);
+
+        GeminiParser.ParseResult result = parser.processImage(
+                new byte[]{1, 2, 3}, "image/png", "Toán", "", ImportMode.EXTRACT, 10, 12);
+
+        assertThat(result.questions()).hasSize(1);
+        assertThat(result.questions().get(0).getImageRegion())
+                .isEqualTo(new ImageRegion(1, 120, 240, 360, 280));
     }
 
     @Test

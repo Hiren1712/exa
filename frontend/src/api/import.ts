@@ -11,6 +11,7 @@ export interface ParsedQuestion {
   explanation: string | null;
   imageUrl?: string | null;
   optionImages?: string[];
+  imageCropWarning?: string | null;
 }
 
 export interface ImportPreview {

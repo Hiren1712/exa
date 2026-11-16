@@ -22,6 +22,7 @@ public class ImportProcessingService {
     private final ImportJobRepository importJobRepository;
     private final DocumentParser documentParser;
     private final GeminiParser geminiParser;
+    private final QuestionImageCropper questionImageCropper;
     private final ObjectMapper objectMapper;
 
     @Async("importTaskExecutor")
@@ -89,6 +90,11 @@ public class ImportProcessingService {
             } else {
                 job.setExtractedText(text);
                 result = geminiParser.parse(text, subjectHint);
+            }
+            if (imageFile) {
+                questionImageCropper.attachRasterImages(result.questions(), fileBytes, job.getUserId());
+            } else if ("pdf".equals(fileType) && (extractedText == null || extractedText.isBlank())) {
+                questionImageCropper.attachPdfImages(result.questions(), fileBytes, job.getUserId());
             }
             saveResult(job, result, geminiParser.getAndClearLastTaskModel());
         } catch (BusinessException error) {

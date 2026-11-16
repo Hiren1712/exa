@@ -20,4 +20,6 @@ public class ParsedQuestion {
     private String explanation;
     private String imageUrl;
     private List<String> optionImages;
+    private ImageRegion imageRegion;
+    private String imageCropWarning;
 }

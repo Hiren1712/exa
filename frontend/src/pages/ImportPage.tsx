@@ -654,6 +654,11 @@ export default function ImportPage() {
                         )}
                       </div>
                       {q.imageUrl && <QuestionImage src={q.imageUrl} alt={t('Hình minh họa câu {{number}}', { number: idx + 1 })} className="mt-2" />}
+                      {q.imageCropWarning && (
+                        <p role="status" className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                          {t(q.imageCropWarning)}
+                        </p>
+                      )}
                       <details className="mt-2 text-xs text-slate-500" onClick={(event) => event.stopPropagation()}>
                         <summary className="w-fit cursor-pointer select-none">{t('Sửa nội dung câu hỏi')}</summary>
                         <textarea
