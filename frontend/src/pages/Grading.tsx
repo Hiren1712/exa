@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
+import { MathText } from '../components/MathText';
 import { useToast } from '../components/Toast';
 import { extractError } from '../api/client';
 import { GradingItem, submissionApi } from '../api/submission';
@@ -75,8 +76,13 @@ export default function Grading() {
           <div className="space-y-3">
             {item.essayResponses.map((question, index) => (
               <div key={question.id} className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-4">
-                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{t('Câu tự luận {{number}}:', { number: index + 1 })} {question.content}</h3>
-                <p className="mt-3 whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-300">{question.studentAnswer || t('Học sinh không trả lời câu này.')}</p>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                  {t('Câu tự luận {{number}}:', { number: index + 1 })}{' '}
+                  <MathText>{question.content}</MathText>
+                </h3>
+                <MathText className="mt-3 block whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-300">
+                  {question.studentAnswer || t('Học sinh không trả lời câu này.')}
+                </MathText>
               </div>
             ))}
           </div>

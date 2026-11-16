@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
+import { MathText } from '../components/MathText';
 import { useToast } from '../components/Toast';
 import { examApi, ExamSummary } from '../api/exam';
 import { ExamReport, reportApi } from '../api/report';
@@ -172,7 +173,7 @@ export default function Reports() {
                   <div key={question.questionId} className="p-4 flex flex-wrap items-center gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{t('Câu {{number}} · {{type}}', { number: index + 1, type: t(question.type) })}</p>
-                      <p className="mt-1 text-xs text-slate-500 line-clamp-2">{question.content}</p>
+                      <MathText className="mt-1 line-clamp-2 text-xs text-slate-500">{question.content}</MathText>
                     </div>
                     <span className="text-xs text-slate-500">{t('{{count}} lượt trả lời', { count: question.responses })}</span>
                     {question.accuracyRate == null
