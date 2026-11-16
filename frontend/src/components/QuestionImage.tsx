@@ -6,7 +6,8 @@ interface Props { src?: string | null; alt: string; className?: string; }
 export function QuestionImage({ src, alt, className = '' }: Props) {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const isValidImageUrl = !!src && /^\/api\/v1\/question-media\/[0-9a-f-]{36}$/.test(src);
 
   useEffect(() => {
@@ -14,18 +15,32 @@ export function QuestionImage({ src, alt, className = '' }: Props) {
       setIsOpen(false);
       return;
     }
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (isOpen && !dialog.open) dialog.showModal();
-    if (!isOpen && dialog.open) dialog.close();
+    if (!isOpen) return;
+    closeButtonRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      } else if (event.key === 'Tab') {
+        event.preventDefault();
+        closeButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
   }, [isOpen, isValidImageUrl]);
 
   if (!isValidImageUrl || !src) return null;
   const base = apiClient.defaults.baseURL || '/api';
   const url = `${base.replace(/\/api\/?$/, '')}${src}`;
+  const closeViewer = () => {
+    setIsOpen(false);
+    triggerRef.current?.focus();
+  };
 
   return <>
     <button
+      ref={triggerRef}
       type="button"
       onClick={() => setIsOpen(true)}
       className={`inline-block max-w-full cursor-zoom-in border-0 bg-transparent p-0 ${className}`}
@@ -34,26 +49,26 @@ export function QuestionImage({ src, alt, className = '' }: Props) {
     >
       <img src={url} alt={alt} loading="lazy" className="max-h-80 w-auto max-w-full rounded-xl border border-slate-200 bg-white object-contain dark:border-slate-700" />
     </button>
-    <dialog
-      ref={dialogRef}
+    {isOpen && <div
+      role="dialog"
+      tabIndex={-1}
+      aria-modal="true"
       aria-label={alt}
-      onClose={() => setIsOpen(false)}
       onClick={(event) => {
-        if (event.target === event.currentTarget) setIsOpen(false);
+        if (event.target === event.currentTarget) closeViewer();
       }}
-      className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none overflow-hidden border-0 bg-transparent p-0 backdrop:bg-black/80"
+      className="fixed inset-0 z-[100] flex h-dvh w-screen items-center justify-center overflow-hidden bg-black/80 p-4"
     >
-      <div className="relative flex h-full w-full items-center justify-center p-4">
-        <button
-          type="button"
-          onClick={() => setIsOpen(false)}
-          className="absolute right-4 top-4 z-10 rounded-full bg-slate-950/70 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-950"
-          aria-label={t('Đóng ảnh')}
-        >
-          {t('Đóng')}
-        </button>
-        <img src={url} alt={alt} className="h-auto w-[90vw] max-h-[90vh] max-w-[1200px] cursor-zoom-out object-contain" />
-      </div>
-    </dialog>
+      <button
+        ref={closeButtonRef}
+        type="button"
+        onClick={closeViewer}
+        className="absolute right-4 top-4 z-10 rounded-full bg-slate-950/70 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-950"
+        aria-label={t('Đóng ảnh')}
+      >
+        {t('Đóng')}
+      </button>
+      <img src={url} alt={alt} className="h-auto w-[90vw] max-h-[90vh] max-w-[1200px] cursor-zoom-out object-contain" />
+    </div>}
   </>;
 }
