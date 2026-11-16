@@ -23,18 +23,18 @@ class GeminiImageEnhancerTest {
             mock(GeminiParser.class), mock(WebClient.Builder.class), objectMapper);
 
     @Test
-    void parsesLargerPngFromTheGeminiInteractionResponse() throws Exception {
+    void parsesLargerPngFromGenerateContentResponse() throws Exception {
         BufferedImage generated = new BufferedImage(4, 2, BufferedImage.TYPE_INT_RGB);
         ByteArrayOutputStream imageBytes = new ByteArrayOutputStream();
         ImageIO.write(generated, "png", imageBytes);
         String response = objectMapper.writeValueAsString(Map.of(
-                "interaction", Map.of(
-                        "steps", java.util.List.of(Map.of(
-                                "type", "model_output",
-                                "content", java.util.List.of(Map.of(
-                                        "type", "image",
-                                        "mime_type", "image/png",
-                                        "data", Base64.getEncoder().encodeToString(imageBytes.toByteArray()))))))));
+                "candidates", java.util.List.of(Map.of(
+                        "content", Map.of(
+                                "parts", java.util.List.of(Map.of(
+                                        "inlineData", Map.of(
+                                                "mimeType", "image/png",
+                                                "data", Base64.getEncoder().encodeToString(
+                                                        imageBytes.toByteArray())))))))));
 
         BufferedImage result = enhancer.parseEnhancedImage(response, 2, 1);
 
@@ -44,7 +44,7 @@ class GeminiImageEnhancerTest {
 
     @Test
     void rejectsResponsesWithoutAnUpscaledImage() throws Exception {
-        String response = objectMapper.writeValueAsString(Map.of("interaction", Map.of()));
+        String response = objectMapper.writeValueAsString(Map.of("candidates", java.util.List.of()));
 
         assertThatThrownBy(() -> enhancer.parseEnhancedImage(response, 2, 1))
                 .isInstanceOf(BusinessException.class)
@@ -52,28 +52,15 @@ class GeminiImageEnhancerTest {
     }
 
     @Test
-    void sendsImageEnhancementAsAStatelessTwoKRequest() {
-        Map<String, Object> request = enhancer.buildRequest("gemini-3.1-flash-image", new byte[]{1, 2});
+    void buildsGenerateContentRequestWithImageOutputConfigAndSourceAspectRatio() {
+        Map<String, Object> request = enhancer.buildRequest(new byte[]{1, 2}, 16, 9);
 
-        assertThat(request.get("store")).isEqualTo(false);
-        assertThat(request.get("response_format")).isEqualTo(
-                Map.of("type", "image", "mime_type", "image/png", "image_size", "2K"));
-    }
-
-    @Test
-    void retriesWithoutImageOutputOptionsOnlyWhenGeminiRejectsThem() {
-        WebClientResponseException responseFormatError = WebClientResponseException.create(
-                400, "Bad Request", null, """
-                        {"error":{"message":"Unknown name \\"response_format\\""}}
-                        """.getBytes(java.nio.charset.StandardCharsets.UTF_8), null);
-        Map<String, Object> fallbackRequest = enhancer.buildRequest(
-                "gemini-3.1-flash-image", new byte[]{1, 2}, false);
-
-        assertThat(enhancer.isResponseFormatError(responseFormatError)).isTrue();
-        assertThat(fallbackRequest).doesNotContainKey("response_format");
-        assertThat(fallbackRequest.get("store")).isEqualTo(false);
-        assertThat(enhancer.providerErrorMessage(responseFormatError))
-                .isEqualTo("Unknown name \"response_format\"");
+        assertThat(request).containsKey("contents");
+        assertThat(request.get("generationConfig")).isEqualTo(Map.of(
+                "responseModalities", java.util.List.of("TEXT", "IMAGE"),
+                "imageConfig", Map.of("imageSize", "2K", "aspectRatio", "16:9")));
+        assertThat(enhancer.closestAspectRatio(16, 9)).isEqualTo("16:9");
+        assertThat(enhancer.closestAspectRatio(1, 1)).isEqualTo("1:1");
     }
 
     @Test

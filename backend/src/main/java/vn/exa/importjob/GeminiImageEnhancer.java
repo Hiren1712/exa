@@ -18,7 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Base64;
-import java.util.LinkedHashMap;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -27,10 +27,13 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class GeminiImageEnhancer {
-    private static final String INTERACTIONS_URL = "https://generativelanguage.googleapis.com/v1beta/interactions";
-    private static final String API_REVISION = "2026-05-20";
+    private static final String GENERATE_CONTENT_URL =
+            "https://generativelanguage.googleapis.com/v1/models/{model}:generateContent";
     private static final long MAX_OUTPUT_BYTES = 20L * 1024 * 1024;
     private static final long MAX_OUTPUT_PIXELS = 40_000_000L;
+    private static final List<String> SUPPORTED_ASPECT_RATIOS = List.of(
+            "1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3",
+            "4:5", "5:4", "8:1", "9:16", "16:9", "21:9");
     private static final String ENHANCEMENT_PROMPT = """
             Create a faithful high-resolution enhancement of this exact image.
             Keep the same aspect ratio, framing, layout, colors, labels, numbers,
@@ -58,7 +61,7 @@ public class GeminiImageEnhancer {
         }
 
         byte[] sourceBytes = encodePng(source);
-        Map<String, Object> request = buildRequest(imageModel, sourceBytes);
+        Map<String, Object> request = buildRequest(sourceBytes, source.getWidth(), source.getHeight());
 
         WebClientResponseException lastProviderError = null;
         for (String apiKey : apiKeys) {
@@ -67,16 +70,6 @@ public class GeminiImageEnhancer {
                 return parseEnhancedImage(response, source.getWidth(), source.getHeight());
             } catch (WebClientResponseException error) {
                 lastProviderError = error;
-                if (isResponseFormatError(error)) {
-                    log.warn("Gemini Image rejected response_format; retrying without image output options: {}",
-                            providerErrorMessage(error));
-                    try {
-                        String response = sendRequest(buildRequest(imageModel, sourceBytes, false), apiKey);
-                        return parseEnhancedImage(response, source.getWidth(), source.getHeight());
-                    } catch (WebClientResponseException fallbackError) {
-                        lastProviderError = fallbackError;
-                    }
-                }
                 log.warn("Gemini image enhancement returned HTTP {}: {}",
                         lastProviderError.getStatusCode().value(), providerErrorMessage(lastProviderError));
                 if (!List.of(401, 403, 429).contains(lastProviderError.getStatusCode().value())) break;
@@ -110,43 +103,37 @@ public class GeminiImageEnhancer {
         throw BusinessException.badRequest("Gemini Image không thể làm nét ảnh. Vui lòng thử lại.");
     }
 
-    Map<String, Object> buildRequest(String model, byte[] sourceBytes) {
-        return buildRequest(model, sourceBytes, true);
+    Map<String, Object> buildRequest(byte[] sourceBytes, int width, int height) {
+        return Map.of(
+                "contents", List.of(Map.of("parts", List.of(
+                        Map.of("text", ENHANCEMENT_PROMPT),
+                        Map.of("inline_data", Map.of(
+                                "mime_type", "image/png",
+                                "data", Base64.getEncoder().encodeToString(sourceBytes)))))),
+                "generationConfig", Map.of(
+                        "responseModalities", List.of("TEXT", "IMAGE"),
+                        "imageConfig", Map.of(
+                                "imageSize", "2K",
+                                "aspectRatio", closestAspectRatio(width, height))));
     }
 
-    Map<String, Object> buildRequest(String model, byte[] sourceBytes, boolean includeResponseFormat) {
-        Map<String, Object> request = new LinkedHashMap<>();
-        request.put("model", model);
-        request.put("input", List.of(
-                Map.of("type", "text", "text", ENHANCEMENT_PROMPT),
-                Map.of(
-                        "type", "image",
-                        "mime_type", "image/png",
-                        "data", Base64.getEncoder().encodeToString(sourceBytes))));
-        if (includeResponseFormat) {
-            request.put("response_format", Map.of(
-                        "type", "image",
-                        "mime_type", "image/png",
-                        "image_size", "2K"));
-        }
-        request.put("store", false);
-        return request;
+    String closestAspectRatio(int width, int height) {
+        double sourceRatio = (double) width / height;
+        return SUPPORTED_ASPECT_RATIOS.stream()
+                .min(Comparator.comparingDouble(ratio -> Math.abs(Math.log(sourceRatio / ratioValue(ratio)))))
+                .orElseThrow();
     }
 
-    boolean isResponseFormatError(WebClientResponseException error) {
-        if (error.getStatusCode().value() != 400) return false;
-        String responseBody = error.getResponseBodyAsString().toLowerCase(Locale.ROOT);
-        return responseBody.contains("response_format")
-                || responseBody.contains("image_size")
-                || responseBody.contains("imageresponseformat");
+    private double ratioValue(String ratio) {
+        String[] parts = ratio.split(":");
+        return Double.parseDouble(parts[0]) / Double.parseDouble(parts[1]);
     }
 
     private String sendRequest(Map<String, Object> request, String apiKey) {
         return webClientBuilder.build()
                 .post()
-                .uri(INTERACTIONS_URL)
+                .uri(GENERATE_CONTENT_URL, imageModel)
                 .header("x-goog-api-key", apiKey.trim())
-                .header("Api-Revision", API_REVISION)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .retrieve()
@@ -179,8 +166,8 @@ public class GeminiImageEnhancer {
                 throw BusinessException.badRequest(
                         "Gemini Image không trả về ảnh đã làm nét. Hãy thử lại hoặc kiểm tra model.");
             }
-            String mimeType = image.path("mime_type").asText("image/png");
-            if (!"image/png".equalsIgnoreCase(mimeType)) {
+            String mimeType = image.path("mimeType").asText(image.path("mime_type").asText("image/png"));
+            if (!List.of("image/png", "image/jpeg").contains(mimeType.toLowerCase(Locale.ROOT))) {
                 throw BusinessException.badRequest(
                         "Gemini Image trả về định dạng không được hỗ trợ.");
             }
@@ -209,6 +196,18 @@ public class GeminiImageEnhancer {
     }
 
     private JsonNode findOutputImage(JsonNode interaction) {
+        JsonNode candidates = interaction.path("candidates");
+        if (candidates.isArray()) {
+            for (JsonNode candidate : candidates) {
+                JsonNode parts = candidate.path("content").path("parts");
+                if (!parts.isArray()) continue;
+                for (JsonNode part : parts) {
+                    JsonNode inlineData = part.hasNonNull("inlineData")
+                            ? part.path("inlineData") : part.path("inline_data");
+                    if (inlineData.hasNonNull("data")) return inlineData;
+                }
+            }
+        }
         JsonNode outputImage = interaction.path("output_image");
         if (outputImage.hasNonNull("data")) return outputImage;
         JsonNode steps = interaction.path("steps");

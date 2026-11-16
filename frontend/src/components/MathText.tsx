@@ -8,6 +8,8 @@ interface MathTextProps {
 }
 
 const MATH_SEGMENT = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\$[^$\n]+?\$|\\\([\s\S]+?\\\))/g;
+const COMPLETE_MATH_SEGMENT = /^(?:\$\$[\s\S]+\$\$|\\\[[\s\S]+\\\]|\$[^$\n]+\$|\\\([\s\S]+\\\))$/;
+const BARE_MATH_ENVIRONMENT = /\\begin\{(array|aligned|alignedat|gathered|matrix|pmatrix|bmatrix|Bmatrix|vmatrix|Vmatrix|cases|smallmatrix|split|subarray)\}[\s\S]*?\\end\{\1\}/g;
 
 export function decodeHtmlEntities(value: string): string {
   if (typeof document === 'undefined' || !/[&][#A-Za-z]/.test(value)) return value;
@@ -23,13 +25,18 @@ export function decodeHtmlEntities(value: string): string {
 }
 
 export function MathText({ children, className }: MathTextProps) {
-  const text = decodeHtmlEntities(children ?? '');
+  const decodedText = decodeHtmlEntities(children ?? '');
+  const text = decodedText.split(MATH_SEGMENT).map((segment) => (
+    COMPLETE_MATH_SEGMENT.test(segment)
+      ? segment
+      : segment.replace(BARE_MATH_ENVIRONMENT, (environment) => `$$${environment}$$`)
+  )).join('');
   const segments = text.split(MATH_SEGMENT);
 
   return (
     <span className={className}>
       {segments.map((segment, index) => {
-        if (!segment || !/^(?:\$\$[\s\S]+\$\$|\\\[[\s\S]+\\\]|\$[^$\n]+\$|\\\([\s\S]+\\\))$/.test(segment)) {
+        if (!segment || !COMPLETE_MATH_SEGMENT.test(segment)) {
           return segment;
         }
 
