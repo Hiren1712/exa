@@ -234,6 +234,7 @@ const english: Record<string, string> = {
   'Dùng môn này': 'Use this subject',
   '+ Thêm môn khác': '+ Add another subject',
   'Mở ảnh kích thước đầy đủ': 'Open full-size image',
+  'Đóng ảnh': 'Close image',
   'Hộp thoại': 'Dialog',
   'Đóng hộp thoại': 'Close dialog',
   'TEACHER WORKSPACE': 'TEACHER WORKSPACE',
