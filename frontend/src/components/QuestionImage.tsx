@@ -17,17 +17,6 @@ export function QuestionImage({ src, alt, className = '' }: Props) {
     }
     if (!isOpen) return;
     closeButtonRef.current?.focus();
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsOpen(false);
-        triggerRef.current?.focus();
-      } else if (event.key === 'Tab') {
-        event.preventDefault();
-        closeButtonRef.current?.focus();
-      }
-    };
-    document.addEventListener('keydown', closeOnEscape);
-    return () => document.removeEventListener('keydown', closeOnEscape);
   }, [isOpen, isValidImageUrl]);
 
   if (!isValidImageUrl || !src) return null;
@@ -54,6 +43,13 @@ export function QuestionImage({ src, alt, className = '' }: Props) {
       tabIndex={-1}
       aria-modal="true"
       aria-label={alt}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') closeViewer();
+        if (event.key === 'Tab') {
+          event.preventDefault();
+          closeButtonRef.current?.focus();
+        }
+      }}
       onClick={(event) => {
         if (event.target === event.currentTarget) closeViewer();
       }}
