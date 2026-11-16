@@ -1,8 +1,9 @@
 import { apiClient, ApiResponse } from './client';
+import type { QuestionType } from './question';
 
 export interface ParsedQuestion {
   number: number;
-  type: string;
+  type: QuestionType;
   content: string;
   options: string[];
   correctAnswer: string | null;

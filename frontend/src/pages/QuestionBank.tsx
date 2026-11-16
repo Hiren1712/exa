@@ -11,6 +11,7 @@ import { useToast } from '../components/Toast';
 import { extractError } from '../api/client';
 import { Difficulty, Question, QuestionFilter, QuestionType, questionApi } from '../api/question';
 import { DIFFICULTY_LABELS, QUESTION_TYPE_LABELS } from '../lib/utils';
+import { isFourStatementTrueFalse, updateTrueFalseKey } from '../lib/questionAnswers';
 import { useLanguage } from '../i18n';
 
 const emptyQuestion: Question = {
@@ -72,11 +73,17 @@ export default function QuestionBank() {
 
   const beginEdit = (question: Question) => {
     setEditing(question);
+    const options = question.type === 'TRUE_FALSE'
+      ? question.options?.length === 4 ? [...question.options] : ['', '', '', '']
+      : question.options?.length ? [...question.options] : ['', '', '', ''];
     setForm({
       ...emptyQuestion,
       ...question,
-      options: question.options?.length ? [...question.options] : ['', '', '', ''],
+      options,
       optionImages: question.optionImages?.length ? [...question.optionImages] : ['', '', '', ''],
+      correctAnswer: question.type === 'TRUE_FALSE'
+        ? /^[TF]{4}$/i.test(question.correctAnswer || '') ? question.correctAnswer?.toUpperCase() : 'FFFF'
+        : question.correctAnswer,
     });
     setModalOpen(true);
   };
@@ -91,8 +98,19 @@ export default function QuestionBank() {
       toast(t('Thiếu nội dung'), t('Vui lòng nhập nội dung câu hỏi'), 'warn');
       return;
     }
+    const trueFalseStatements = (form.options || []).map((statement) => statement.trim());
+    if (form.type === 'TRUE_FALSE' && (trueFalseStatements.length !== 4 || trueFalseStatements.some((statement) => !statement))) {
+      toast(t('Thiếu mệnh đề'), t('Câu Đúng/Sai cần đủ bốn mệnh đề'), 'warn');
+      return;
+    }
+    if (form.type === 'TRUE_FALSE' && !/^[TF]{4}$/i.test(form.correctAnswer || '')) {
+      toast(t('Thiếu đáp án'), t('Hãy chọn Đúng hoặc Sai cho đủ bốn mệnh đề'), 'warn');
+      return;
+    }
     const validIndexes = (form.options || []).map((option, index) => ({ index, text: option.trim(), image: form.optionImages?.[index] || '' })).filter((item) => item.text || item.image);
-    const options = form.type === 'MCQ' ? validIndexes.map((item) => item.text) : undefined;
+    const options = form.type === 'MCQ' ? validIndexes.map((item) => item.text)
+      : form.type === 'TRUE_FALSE' ? trueFalseStatements
+        : undefined;
     const optionImages = form.type === 'MCQ' ? validIndexes.map((item) => item.image) : undefined;
     if (form.type === 'MCQ' && (options?.length ?? 0) < 2) {
       toast(t('Thiếu phương án'), t('Câu trắc nghiệm cần ít nhất hai phương án'), 'warn');
@@ -106,7 +124,9 @@ export default function QuestionBank() {
         subject: form.subject.trim(),
         options,
         optionImages,
-        correctAnswer: form.type === 'MCQ' ? String.fromCharCode(65 + Math.max(0, validIndexes.findIndex((item) => String.fromCharCode(65 + item.index) === form.correctAnswer))) : form.type === 'TRUE_FALSE' ? form.correctAnswer : undefined,
+        correctAnswer: form.type === 'MCQ'
+          ? String.fromCharCode(65 + Math.max(0, validIndexes.findIndex((item) => String.fromCharCode(65 + item.index) === form.correctAnswer)))
+          : form.type === 'TRUE_FALSE' ? form.correctAnswer?.toUpperCase() : undefined,
       };
       if (editing?.id) {
         await questionApi.update(editing.id, payload);
@@ -176,9 +196,13 @@ export default function QuestionBank() {
     setForm((current) => ({
       ...current,
       type,
-      options: type === 'MCQ' ? (current.options?.length ? current.options : ['', '', '', '']) : undefined,
+      options: type === 'TRUE_FALSE'
+        ? current.options?.length === 4 ? current.options : ['', '', '', '']
+        : type === 'MCQ' ? (current.options?.length ? current.options : ['', '', '', '']) : undefined,
       optionImages: type === 'MCQ' ? (current.optionImages?.length ? current.optionImages : ['', '', '', '']) : undefined,
-      correctAnswer: type === 'TRUE_FALSE' ? 'Đúng' : '',
+      correctAnswer: type === 'TRUE_FALSE'
+        ? /^[TF]{4}$/i.test(current.correctAnswer || '') ? current.correctAnswer?.toUpperCase() || 'FFFF' : 'FFFF'
+        : '',
     }));
   };
 
@@ -290,7 +314,16 @@ export default function QuestionBank() {
                   </div>
                   <MathText className="whitespace-pre-wrap text-sm font-semibold leading-relaxed text-slate-900 dark:text-white">{question.content}</MathText>
                   <div className="mt-2"><QuestionImage src={question.imageUrl} alt={t('Hình minh họa câu hỏi')} /></div>
-                  {question.options && (
+                  {isFourStatementTrueFalse(question.type, question.options) ? (
+                    <div className="mt-3 space-y-2">
+                      {question.options?.map((statement, index) => (
+                        <div key={`${question.id}-${index}`} className="rounded-lg bg-slate-50 dark:bg-slate-800 px-3 py-2 text-xs">
+                          <span className="font-semibold text-blue-700 dark:text-blue-300">{t('Mệnh đề {{number}}', { number: index + 1 })} · {question.correctAnswer?.[index] === 'T' ? t('Đúng') : t('Sai')}</span>
+                          <MathText className="mt-1 block text-slate-700 dark:text-slate-200">{statement}</MathText>
+                        </div>
+                      ))}
+                    </div>
+                  ) : question.options && (
                     <div className="mt-3 grid sm:grid-cols-2 gap-2">
                       {question.options.map((option, index) => {
                         const answerLabel = String.fromCharCode(65 + index);
@@ -329,7 +362,7 @@ export default function QuestionBank() {
             <Input label="Đơn vị kiến thức" value={form.unit || ''} onChange={(event) => setForm({ ...form, unit: event.target.value })} placeholder="Ví dụ: Hàm số" />
             <Select label="Độ khó" value={form.difficulty} onChange={(event) => setForm({ ...form, difficulty: event.target.value as Difficulty })} options={difficultyOptions} />
           </div>
-          <Select label="Loại câu hỏi" value={form.type} onChange={(event) => updateType(event.target.value as QuestionType)} options={typeOptions} />
+          <Select label="Loại câu hỏi" value={form.type} onChange={(event) => updateType(event.target.value as QuestionType)} options={typeOptions.map((option) => ({ ...option, label: t(option.label) }))} />
           <Textarea label="Nội dung (có thể nhập ký hiệu LaTeX dạng văn bản)" required rows={5} value={form.content} onChange={(event) => setForm({ ...form, content: event.target.value })} />
           <div className="rounded-xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
             <label className="block text-sm font-semibold mb-2">{t('Hình minh họa câu hỏi (tùy chọn)')}</label>
@@ -356,7 +389,43 @@ export default function QuestionBank() {
               <Select label="Đáp án đúng" value={form.correctAnswer || 'A'} onChange={(event) => setForm({ ...form, correctAnswer: event.target.value })} options={(form.options || []).map((_, index) => ({ value: String.fromCharCode(65 + index), label: `Phương án ${String.fromCharCode(65 + index)}` }))} />
             </div>
           )}
-          {form.type === 'TRUE_FALSE' && <Select label="Đáp án đúng" value={form.correctAnswer || 'Đúng'} onChange={(event) => setForm({ ...form, correctAnswer: event.target.value })} options={[{ value: 'Đúng', label: 'Đúng' }, { value: 'Sai', label: 'Sai' }]} />}
+          {form.type === 'TRUE_FALSE' && (
+            <fieldset className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+              <legend className="px-1 text-sm font-semibold text-slate-700 dark:text-slate-300">{t('Đúng/Sai gồm 4 mệnh đề')}</legend>
+              {Array.from({ length: 4 }, (_, index) => {
+                const markedAnswer = form.correctAnswer?.[index]?.toUpperCase();
+                return (
+                  <div key={index} className="space-y-2 rounded-lg bg-slate-50 p-3 dark:bg-slate-800">
+                    <Textarea
+                      label={t('Mệnh đề {{number}}', { number: index + 1 })}
+                      rows={2}
+                      required
+                      value={form.options?.[index] || ''}
+                      onChange={(event) => setOption(index, event.target.value)}
+                    />
+                    <div className="flex flex-wrap gap-4 text-sm">
+                      {(['T', 'F'] as const).map((mark) => (
+                        <label key={mark} className="inline-flex cursor-pointer items-center gap-2">
+                          <input
+                            type="radio"
+                            name={`true-false-answer-${index}`}
+                            value={mark}
+                            checked={markedAnswer === mark}
+                            onChange={() => setForm((current) => ({
+                              ...current,
+                              correctAnswer: updateTrueFalseKey(current.correctAnswer || 'FFFF', index, mark),
+                            }))}
+                            className="h-4 w-4 accent-blue-600"
+                          />
+                          {t(mark === 'T' ? 'Đúng' : 'Sai')}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </fieldset>
+          )}
           {(form.type === 'SHORT_ANSWER' || form.type === 'ESSAY') && <Textarea label="Đáp án / hướng dẫn chấm" value={form.answerText || ''} onChange={(event) => setForm({ ...form, answerText: event.target.value })} />}
           <Textarea label="Lời giải chi tiết" value={form.explanation || ''} onChange={(event) => setForm({ ...form, explanation: event.target.value })} />
           <div className="flex justify-end gap-2 pt-2">

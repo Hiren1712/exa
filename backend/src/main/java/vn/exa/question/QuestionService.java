@@ -41,6 +41,7 @@ public class QuestionService {
 
     @Transactional
     public Question create(Long ownerId, QuestionRequest req) {
+        validateTrueFalse(req);
         validateMedia(ownerId, req.getImageUrl());
         if (req.getOptionImages() != null) {
             req.getOptionImages().forEach(url -> validateMedia(ownerId, url));
@@ -70,6 +71,7 @@ public class QuestionService {
 
     @Transactional
     public Question update(Long id, Long ownerId, QuestionRequest req) {
+        validateTrueFalse(req);
         Question q = getById(id, ownerId);
         validateMedia(ownerId, req.getImageUrl());
         if (req.getOptionImages() != null) {
@@ -131,6 +133,22 @@ public class QuestionService {
             return objectMapper.writeValueAsString(options);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Không thể mã hóa danh sách đáp án", e);
+        }
+    }
+
+    private void validateTrueFalse(QuestionRequest request) {
+        if (request.getType() != Question.Type.TRUE_FALSE
+                || request.getOptions() == null || request.getOptions().isEmpty()) {
+            return;
+        }
+        if (request.getOptions().size() == 2) return;
+        if (request.getOptions().size() != 4
+                || request.getOptions().stream().anyMatch(option -> option == null || option.isBlank())) {
+            throw BusinessException.badRequest("Câu Đúng/Sai phải có đúng bốn mệnh đề");
+        }
+        if (request.getCorrectAnswer() == null
+                || !request.getCorrectAnswer().matches("(?i)^[TF]{4}$")) {
+            throw BusinessException.badRequest("Đáp án Đúng/Sai phải có bốn ký tự T/F theo thứ tự mệnh đề");
         }
     }
 

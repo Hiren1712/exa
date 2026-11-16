@@ -10,7 +10,13 @@ import { useProctor } from '../hooks/useProctor';
 import { examApi, Exam } from '../api/exam';
 import { submissionApi } from '../api/submission';
 import { extractError } from '../api/client';
-import { cn } from '../lib/utils';
+import { cn, QUESTION_TYPE_LABELS } from '../lib/utils';
+import {
+  hasQuestionAnswer,
+  isFourStatementTrueFalse,
+  trueFalseScoreRatio,
+  updateTrueFalseAnswer,
+} from '../lib/questionAnswers';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../i18n';
 
@@ -38,6 +44,7 @@ export default function ExamRoom() {
   const [starting, setStarting] = useState(false);
   const [submissionId, setSubmissionId] = useState<number | null>(null);
   const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [shortAnswerTextMode, setShortAnswerTextMode] = useState<Record<number, boolean>>({});
   const [optionOrder, setOptionOrder] = useState<Record<number, number[]>>({});
   const [examPassword, setExamPassword] = useState('');
   const answersRef = useRef(answers);
@@ -88,7 +95,7 @@ export default function ExamRoom() {
         const shuffledQuestions = displayQuestions.map((question, index) => {
           const questionId = question.id ?? index + 1;
           const originalOptions = Array.isArray(question.options) ? question.options : [];
-          const indexes = data.shuffleOptions
+          const indexes = data.shuffleOptions && question.type === 'MCQ'
             ? shuffledIndexes(originalOptions.length)
             : originalOptions.map((_, optionIndex) => optionIndex);
           orderByQuestion[questionId] = indexes;
@@ -198,7 +205,9 @@ export default function ExamRoom() {
           const answer = answers[question.id ?? 0]?.trim() ?? '';
           if (question.type === 'ESSAY') {
             needsManualGrading += 1;
-          } else if (question.type === 'MCQ' || question.type === 'TRUE_FALSE') {
+          } else if (question.type === 'TRUE_FALSE') {
+            score += (question.points ?? 0) * trueFalseScoreRatio(question.correctAnswer, answer);
+          } else if (question.type === 'MCQ') {
             if (answer && question.correctAnswer?.trim().toLowerCase() === answer.toLowerCase()) {
               score += question.points ?? 0;
             }
@@ -352,12 +361,33 @@ export default function ExamRoom() {
           <nav aria-label={t('Chuyển nhanh câu hỏi')} className="md:hidden max-w-3xl mx-auto mb-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3">
             <div className="flex justify-between items-center mb-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
               <span>{t('Danh sách câu hỏi')}</span>
-              <span>{t('{{answered}}/{{total}} đã trả lời', { answered: questions.filter((question, i) => !!answers[question.id ?? i + 1]).length, total: questions.length })}</span>
+              <span>{t('{{answered}}/{{total}} đã trả lời', { answered: questions.filter((question, i) => hasQuestionAnswer(question.type, question.options, answers[question.id ?? i + 1])).length, total: questions.length })}</span>
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label={t('Chọn câu')}>
               {questions.map((question, i) => {
                 const questionId = question.id ?? i + 1;
-                return <button key={questionId} type="button" aria-label={t('Đến câu {{number}}{{answered}}', { number: i + 1, answered: answers[questionId] ? `, ${t('đã trả lời')}` : '' })} aria-current={i === currentIdx ? 'step' : undefined} onClick={() => setCurrentIdx(i)} className={cn('shrink-0 min-w-11 h-11 px-2 rounded-xl border text-sm font-bold', i === currentIdx ? 'bg-blue-700 text-white border-blue-700' : flagged.has(questionId) ? 'bg-amber-50 text-amber-800 border-amber-300' : answers[questionId] ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700')}>{i + 1}</button>;
+                const answered = hasQuestionAnswer(question.type, question.options, answers[questionId]);
+                return (
+                  <button
+                    key={questionId}
+                    type="button"
+                    aria-label={t('Đến câu {{number}}{{answered}}', { number: i + 1, answered: answered ? `, ${t('đã trả lời')}` : '' })}
+                    aria-current={i === currentIdx ? 'step' : undefined}
+                    onClick={() => setCurrentIdx(i)}
+                    className={cn(
+                      'shrink-0 min-w-11 h-11 px-2 rounded-xl border text-sm font-bold',
+                      i === currentIdx
+                        ? 'bg-blue-700 text-white border-blue-700'
+                        : flagged.has(questionId)
+                          ? 'bg-amber-50 text-amber-800 border-amber-300'
+                          : answered
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700',
+                    )}
+                  >
+                    {i + 1}
+                  </button>
+                );
               })}
             </div>
           </nav>
@@ -368,7 +398,7 @@ export default function ExamRoom() {
                   {t('Câu {{number}} / {{total}}', { number: currentIdx + 1, total: questions.length })}
                 </span>
                 <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">
-                  {current.type}
+                  {t(QUESTION_TYPE_LABELS[current.type] || current.type)}
                 </span>
               </div>
 
@@ -377,7 +407,116 @@ export default function ExamRoom() {
                 <div className="mt-3"><QuestionImage src={current.imageUrl} alt={t('Hình minh họa câu hỏi')} /></div>
               </p>
 
-              {current.options && current.options.length > 0 ? (
+              {isFourStatementTrueFalse(current.type, current.options) ? (
+                <div className="space-y-3">
+                  {current.options?.map((statement, index) => {
+                    const mark = answers[currentQuestionId]?.[index];
+                    return (
+                      <fieldset key={index} className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+                        <legend className="px-1 text-sm font-semibold text-slate-900 dark:text-white">
+                          {t('Mệnh đề {{number}}', { number: index + 1 })}
+                        </legend>
+                        <MathText className="mb-3 block whitespace-pre-wrap text-sm leading-relaxed">{statement}</MathText>
+                        <div className="flex flex-wrap gap-5">
+                          {(['T', 'F'] as const).map((value) => (
+                            <label key={value} className="inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
+                              <input
+                                type="radio"
+                                name={`answer-${currentQuestionId}-${index}`}
+                                value={value}
+                                checked={mark === value}
+                                onChange={() => handleAnswer(
+                                  currentIdx,
+                                  updateTrueFalseAnswer(answers[currentQuestionId] || '', index, value),
+                                )}
+                                className="h-5 w-5 accent-blue-600"
+                              />
+                              {t(value === 'T' ? 'Đúng' : 'Sai')}
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                    );
+                  })}
+                </div>
+              ) : current.type === 'TRUE_FALSE' && (!current.options || current.options.length === 0) ? (
+                <fieldset className="flex flex-wrap gap-5 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+                  <legend className="px-1 text-sm font-semibold">{t('Chọn một đáp án')}</legend>
+                  {(['Đúng', 'Sai'] as const).map((value) => (
+                    <label key={value} className="inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
+                      <input
+                        type="radio"
+                        name={`answer-${currentQuestionId}`}
+                        value={value}
+                        checked={answers[currentQuestionId] === value}
+                        onChange={() => handleAnswer(currentIdx, value)}
+                        className="h-5 w-5 accent-blue-600"
+                      />
+                      {t(value)}
+                    </label>
+                  ))}
+                </fieldset>
+              ) : current.type === 'SHORT_ANSWER' ? (
+                (() => {
+                  const shortAnswer = answers[currentQuestionId] || '';
+                  const textMode = shortAnswerTextMode[currentQuestionId]
+                    ?? (shortAnswer.length > 4 || /[^0-9.,+\-\s]/.test(shortAnswer));
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                          {t(textMode ? 'Nhập đáp án ngắn' : 'Điền đáp án vào 4 ô')}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShortAnswerTextMode((currentModes) => ({
+                            ...currentModes,
+                            [currentQuestionId]: !textMode,
+                          }))}
+                          className="text-xs font-semibold text-blue-700 underline dark:text-blue-300"
+                        >
+                          {t(textMode ? 'Dùng 4 ô số' : 'Nhập bằng chữ')}
+                        </button>
+                      </div>
+                      {textMode ? (
+                        <textarea
+                          value={shortAnswer}
+                          onChange={(event) => handleAnswer(currentIdx, event.target.value)}
+                          placeholder={t('Nhập câu trả lời...')}
+                          rows={4}
+                          className="w-full rounded-xl border-2 border-slate-200 bg-white p-4 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                        />
+                      ) : (
+                        <div className="flex gap-2" role="group" aria-label={t('Ô trả lời ngắn')}>
+                          {Array.from({ length: 4 }, (_, index) => (
+                            <input
+                              key={index}
+                              type="text"
+                              inputMode="decimal"
+                              maxLength={1}
+                              value={shortAnswer[index] === ' ' ? '' : shortAnswer[index] || ''}
+                              aria-label={t('Ô số {{number}}', { number: index + 1 })}
+                              onChange={(event) => {
+                                const character = event.target.value.slice(-1).replace(/[^0-9.,+-]/, '');
+                                const characters = Array.from({ length: 4 }, (_, position) => shortAnswer[position] ?? ' ');
+                                characters[index] = character || ' ';
+                                handleAnswer(currentIdx, characters.join('').trimEnd());
+                              }}
+                              onPaste={(event) => {
+                                const pasted = event.clipboardData.getData('text').trim();
+                                if (!/^[0-9.,+-]{1,4}$/.test(pasted)) return;
+                                event.preventDefault();
+                                handleAnswer(currentIdx, pasted);
+                              }}
+                              className="h-14 w-12 rounded-lg border-2 border-slate-300 bg-white text-center text-xl font-bold text-slate-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
+              ) : current.options && current.options.length > 0 ? (
                 <div className="space-y-2.5">
                   {current.options.map((opt, i) => {
                     const letter = String.fromCharCode(65 + i);
@@ -472,7 +611,7 @@ export default function ExamRoom() {
           <div className="grid grid-cols-5 gap-2">
             {questions.map((_, i) => {
               const questionId = _.id ?? i + 1;
-              const answered = !!answers[questionId];
+              const answered = hasQuestionAnswer(_.type, _.options, answers[questionId]);
               const marked = flagged.has(questionId);
               const isCur = i === currentIdx;
               return (

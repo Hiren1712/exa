@@ -150,7 +150,9 @@ class GeminiParserTest {
                 .contains("không thể xác định duy nhất đáp án")
                 .contains("điền answerText nếu đủ dữ kiện")
                 .contains("imageRegion")
-                .contains("Hộp phải ôm đúng hình minh họa");
+                .contains("Hộp phải ôm đúng hình minh họa")
+                .contains("options gồm bốn mệnh đề")
+                .contains("correctAnswer là bốn ký tự T/F theo thứ tự từng mệnh đề");
         assertThat(generatePrompt)
                 .contains("đọc chữ tiếng Việt")
                 .contains("[Hình: ...]")
@@ -254,6 +256,29 @@ class GeminiParserTest {
         assertThat(result.questions()).hasSize(1);
         assertThat(result.questions().get(0).getImageRegion())
                 .isEqualTo(new ImageRegion(1, 120, 240, 360, 280));
+    }
+
+    @Test
+    void imageImportPreservesFourStatementTrueFalseAnswerKey() {
+        ExchangeFunction exchange = request -> Mono.just(ClientResponse.create(HttpStatus.OK)
+                .header("Content-Type", "application/json")
+                .body("""
+                        {"candidates":[{"content":{"parts":[{"text":"[{\\"number\\":1,\\"type\\":\\"TRUE_FALSE\\",\\"content\\":\\"Xét các mệnh đề sau.\\",\\"options\\":[\\"Mệnh đề thứ nhất\\",\\"Mệnh đề thứ hai\\",\\"Mệnh đề thứ ba\\",\\"Mệnh đề thứ tư\\"],\\"correctAnswer\\":\\"tfft\\"}]"}]}}]}
+                        """)
+                .build());
+        GeminiParser parser = new GeminiParser(
+                WebClient.builder().exchangeFunction(exchange), objectMapper);
+        ReflectionTestUtils.setField(parser, "apiKey", "gemini-test-key");
+        ReflectionTestUtils.setField(parser, "model", "gemini-test-model");
+        ReflectionTestUtils.setField(parser, "timeoutMs", 1000L);
+
+        GeminiParser.ParseResult result = parser.processImage(
+                new byte[]{1, 2, 3}, "image/png", "Toán", "", ImportMode.EXTRACT, 10, 12);
+
+        assertThat(result.questions()).hasSize(1);
+        assertThat(result.questions().get(0).getType()).isEqualTo("TRUE_FALSE");
+        assertThat(result.questions().get(0).getOptions()).hasSize(4);
+        assertThat(result.questions().get(0).getCorrectAnswer()).isEqualTo("TFFT");
     }
 
     @Test

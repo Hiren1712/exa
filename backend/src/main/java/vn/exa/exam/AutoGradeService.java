@@ -8,12 +8,19 @@ import vn.exa.question.Question;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AutoGradeService {
+    private static final List<BigDecimal> TRUE_FALSE_SCORE_RATIOS = List.of(
+            BigDecimal.ZERO,
+            new BigDecimal("0.1"),
+            new BigDecimal("0.25"),
+            new BigDecimal("0.5"),
+            BigDecimal.ONE);
 
     /**
      * Chấm điểm tự động cho câu trắc nghiệm.
@@ -39,7 +46,26 @@ public class AutoGradeService {
 
             boolean correct = false;
             switch (q.getType()) {
-                case MCQ, TRUE_FALSE -> {
+                case MCQ -> {
+                    correct = q.getCorrectAnswer() != null
+                            && q.getCorrectAnswer().equalsIgnoreCase(studentAnswer.trim());
+                }
+                case TRUE_FALSE -> {
+                    if (q.getCorrectAnswer() != null
+                            && q.getCorrectAnswer().matches("(?i)^[TF]{4}$")) {
+                        String expected = q.getCorrectAnswer().toUpperCase(Locale.ROOT);
+                        String selected = studentAnswer.trim().toUpperCase(Locale.ROOT);
+                        int correctStatements = 0;
+                        if (selected.matches("^[TF-]{4}$")) {
+                            for (int i = 0; i < expected.length(); i++) {
+                                if (expected.charAt(i) == selected.charAt(i)) correctStatements++;
+                            }
+                        }
+                        BigDecimal ratio = TRUE_FALSE_SCORE_RATIOS.get(correctStatements);
+                        totalEarned = totalEarned.add(
+                                pointsByQuestion.getOrDefault(q.getId(), BigDecimal.ZERO).multiply(ratio));
+                        continue;
+                    }
                     correct = q.getCorrectAnswer() != null
                             && q.getCorrectAnswer().equalsIgnoreCase(studentAnswer.trim());
                 }

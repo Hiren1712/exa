@@ -89,7 +89,7 @@ export const DIFFICULTY_LABELS: Record<string, string> = {
 
 export const QUESTION_TYPE_LABELS: Record<string, string> = {
   MCQ: 'Trắc nghiệm',
-  TRUE_FALSE: 'Đúng/Sai',
+  TRUE_FALSE: 'Đúng/Sai (4 ý)',
   SHORT_ANSWER: 'Trả lời ngắn',
   ESSAY: 'Tự luận',
 };

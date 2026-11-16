@@ -14,6 +14,7 @@ import { importApi } from '../api/import';
 import type { ImportAiProvider, ImportMode, ImportPreview, ParsedQuestion } from '../api/import';
 import { extractError } from '../api/client';
 import { DIFFICULTY_LABELS } from '../lib/utils';
+import { isFourStatementTrueFalse, updateTrueFalseKey } from '../lib/questionAnswers';
 import { useLanguage } from '../i18n';
 
 const IMPORT_POLL_INTERVAL_MS = 2_000;
@@ -26,7 +27,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 const QUESTION_TYPES: Record<string, string> = {
   MCQ: 'Trắc nghiệm',
-  TRUE_FALSE: 'Đúng / Sai',
+  TRUE_FALSE: 'Đúng / Sai (4 ý)',
   SHORT_ANSWER: 'Trả lời ngắn',
   ESSAY: 'Tự luận',
 };
@@ -267,10 +268,17 @@ export default function ImportPage() {
       toast(t('Chưa chọn câu nào'), '', 'warn');
       return;
     }
-    const invalidIndex = preview.questions.findIndex((q, index) => selected.has(index)
-      && (!q.content.trim() || (q.type === 'MCQ' && (q.options?.filter((opt) => opt.trim()).length ?? 0) < 2)));
+    const invalidIndex = preview.questions.findIndex((q, index) => {
+      if (!selected.has(index) || !q.content.trim()) return false;
+      if (q.type === 'MCQ' && (q.options?.filter((opt) => opt.trim()).length ?? 0) < 2) return true;
+      if (q.type !== 'TRUE_FALSE') return false;
+      if (q.options?.length === 4) {
+        return q.options.some((statement) => !statement.trim()) || !/^[TF]{4}$/i.test(q.correctAnswer || '');
+      }
+      return !!q.options?.length && q.options.length !== 2;
+    });
     if (invalidIndex !== -1) {
-      toast(t('Câu hỏi chưa hợp lệ'), t('Kiểm tra nội dung và phương án của câu {{number}}.', { number: invalidIndex + 1 }), 'warn');
+      toast(t('Câu hỏi chưa hợp lệ'), t('Kiểm tra nội dung, bốn mệnh đề và đáp án Đúng/Sai của câu {{number}}.', { number: invalidIndex + 1 }), 'warn');
       return;
     }
     setSaving(true);
@@ -674,7 +682,9 @@ export default function ImportPage() {
                       <div className="space-y-1.5">
                         {q.options.map((opt, i) => {
                           const letter = String.fromCharCode(65 + i);
-                          const isCorrect = q.correctAnswer === letter;
+                          const fourStatement = isFourStatementTrueFalse(q.type, q.options);
+                          const answerMark = q.correctAnswer?.[i]?.toUpperCase();
+                          const isCorrect = fourStatement ? answerMark === 'T' : q.correctAnswer === letter;
                           return (
                             <div
                               key={i}
@@ -685,16 +695,20 @@ export default function ImportPage() {
                               }`}
                             >
                               <div className="flex items-start gap-2">
-                                <span className="font-semibold">{letter}.</span>
+                                <span className="font-semibold">{fourStatement ? t('Mệnh đề {{number}}', { number: i + 1 }) : `${letter}.`}</span>
                                 <MathText className="min-w-0 flex-1 whitespace-pre-wrap">
                                   {opt}
                                 </MathText>
-                                {isCorrect && <span aria-label={t('Đáp án đúng')}>✓</span>}
+                                {fourStatement
+                                  ? <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-xs font-semibold dark:bg-slate-900">{answerMark === 'T' ? t('Đúng') : t('Sai')}</span>
+                                  : isCorrect && <span aria-label={t('Đáp án đúng')}>✓</span>}
                               </div>
                               <details className="mt-1 text-xs opacity-75" onClick={(event) => event.stopPropagation()}>
-                                <summary className="w-fit cursor-pointer select-none">{t('Sửa phương án {{letter}}', { letter })}</summary>
+                                <summary className="w-fit cursor-pointer select-none">{fourStatement ? t('Sửa mệnh đề {{number}}', { number: i + 1 }) : t('Sửa phương án {{letter}}', { letter })}</summary>
                                 <textarea
-                                  aria-label={t('Phương án {{letter}}, câu {{number}}', { letter, number: idx + 1 })}
+                                  aria-label={fourStatement
+                                    ? t('Mệnh đề {{number}}, câu {{questionNumber}}', { number: i + 1, questionNumber: idx + 1 })
+                                    : t('Phương án {{letter}}, câu {{number}}', { letter, number: idx + 1 })}
                                   value={opt}
                                   rows={2}
                                   onChange={(event) => updateQuestion(idx, {
@@ -705,6 +719,25 @@ export default function ImportPage() {
                                   className="mt-2 w-full resize-y rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm font-normal text-slate-900 dark:text-white"
                                 />
                               </details>
+                              {fourStatement && (
+                                <fieldset className="mt-2 flex gap-4 text-xs" onClick={(event) => event.stopPropagation()}>
+                                  <legend className="sr-only">{t('Đáp án mệnh đề {{number}}', { number: i + 1 })}</legend>
+                                  {(['T', 'F'] as const).map((mark) => (
+                                    <label key={mark} className="inline-flex cursor-pointer items-center gap-1.5">
+                                      <input
+                                        type="radio"
+                                        name={`import-tf-${idx}-${i}`}
+                                        checked={answerMark === mark}
+                                        onChange={() => updateQuestion(idx, {
+                                          correctAnswer: updateTrueFalseKey(q.correctAnswer || 'FFFF', i, mark),
+                                        })}
+                                        className="h-4 w-4 accent-blue-600"
+                                      />
+                                      {t(mark === 'T' ? 'Đúng' : 'Sai')}
+                                    </label>
+                                  ))}
+                                </fieldset>
+                              )}
                               {q.type === 'MCQ' && (
                                 <>
                                   <div className="mt-2 flex flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
@@ -743,7 +776,7 @@ export default function ImportPage() {
                         })}
                       </div>
                     )}
-                    {q.options.length > 0 && (
+                    {q.options.length > 0 && !isFourStatementTrueFalse(q.type, q.options) && (
                       <label className="mt-3 block max-w-xs text-xs font-semibold text-slate-600 dark:text-slate-300">
                         {t('Đáp án đúng')}
                         <select

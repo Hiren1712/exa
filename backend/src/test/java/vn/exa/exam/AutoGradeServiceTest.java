@@ -38,4 +38,39 @@ class AutoGradeServiceTest {
 
         assertThat(score).isEqualByComparingTo("6.00");
     }
+
+    @Test
+    void gradeAwardsOfficialPartialCreditForFourStatementTrueFalseQuestions() {
+        List<Question> questions = List.of(
+                trueFalseQuestion(1L),
+                trueFalseQuestion(2L),
+                trueFalseQuestion(3L),
+                trueFalseQuestion(4L),
+                trueFalseQuestion(5L));
+
+        BigDecimal score = service.grade(
+                questions,
+                Map.of(
+                        1L, "FTFT",
+                        2L, "FFFT",
+                        3L, "TFFT",
+                        4L, "TFTT",
+                        5L, "TFTF"),
+                Map.of(
+                        1L, BigDecimal.ONE,
+                        2L, BigDecimal.ONE,
+                        3L, BigDecimal.ONE,
+                        4L, BigDecimal.ONE,
+                        5L, BigDecimal.ONE));
+
+        assertThat(score).isEqualByComparingTo("1.85");
+    }
+
+    private Question trueFalseQuestion(Long id) {
+        return Question.builder()
+                .id(id)
+                .type(Question.Type.TRUE_FALSE)
+                .correctAnswer("TFTF")
+                .build();
+    }
 }
