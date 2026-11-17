@@ -14,7 +14,7 @@ Reviewed the application structure, React pages/shared UI controls, import clien
 - AI Import uploads return to the UI without waiting for an extended blocking polling loop. Background status refresh is automatic, with an explicit refresh option and an actionable failure state.
 - AI Import persists **only** the current job ID and non-sensitive screen choices in **sessionStorage** so that reloading does not lose the active job. It does not persist uploaded files or pasted source text.
 - AI Import now validates selected questions before saving, makes upload mode states and file removal clearer, and increases the upload request timeout to accommodate larger files.
-- AI Import and AI Studio try Gemini first, then use Groq when Gemini is unavailable and `GROQ_API_KEY` is configured. The default Groq model is `qwen/qwen3.8-27b`; set `GROQ_MODEL` to override it. This vision-capable model handles image imports and scanned-PDF OCR; Groq scanned-PDF fallback supports up to 3 pages. Generation accepts arbitrary notes, prose, tables, facts, short topics, and natural-language instructions; it does not require an exam template or existing questions.
+- AI Import and AI Studio try Gemini first, then use Groq when Gemini is unavailable and `GROQ_API_KEY` is configured. The default import model is the vision-capable `qwen/qwen3.8-27b`; set `GROQ_IMPORT_MODEL` to override it, independently of ExaBot's `GROQ_MODEL`. Groq scanned-PDF fallback supports up to 3 pages. Generation accepts arbitrary notes, prose, tables, facts, short topics, and natural-language instructions; it does not require an exam template or existing questions.
 
 ## Verification performed
 

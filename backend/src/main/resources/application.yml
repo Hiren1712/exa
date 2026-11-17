@@ -81,8 +81,8 @@ exa:
     api-key: ${GEMINI_API_KEY:}
     model: ${GEMINI_MODEL:gemini-3.6-flash}
     timeout-ms: 60000
-    image-model: ${GEMINI_IMAGE_MODEL:gemini-3.1-flash-image}
-    image-timeout-ms: 120000
+  import:
+    groq-model: ${GROQ_IMPORT_MODEL:qwen/qwen3.8-27b}
   chat:
     provider-order: ${EXABOT_PROVIDER_ORDER:gemini,openrouter,openai,groq,deepseek}
     timeout-ms: ${EXABOT_TIMEOUT_MS:25000}

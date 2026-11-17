@@ -306,7 +306,7 @@ class GeminiParserTest {
     void groqKeyAndModelEnableAiTasksWithoutGemini() {
         GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
         ReflectionTestUtils.setField(parser, "groqApiKey", "groq-test-key");
-        ReflectionTestUtils.setField(parser, "groqModel", "vision-model");
+        ReflectionTestUtils.setField(parser, "groqImportModel", "vision-model");
 
         assertThat(parser.isConfigured()).isTrue();
         org.assertj.core.api.Assertions.assertThatCode(parser::validateConfiguration)
@@ -337,7 +337,7 @@ class GeminiParserTest {
         ReflectionTestUtils.setField(parser, "model", "gemini-test-model");
         ReflectionTestUtils.setField(parser, "timeoutMs", 1000L);
         ReflectionTestUtils.setField(parser, "groqApiKey", "groq-test-key");
-        ReflectionTestUtils.setField(parser, "groqModel", "groq-test-model");
+        ReflectionTestUtils.setField(parser, "groqImportModel", "groq-test-model");
         ReflectionTestUtils.setField(parser, "groqBaseUrl",
                 "https://api.groq.com/openai/v1/chat/completions");
         ReflectionTestUtils.setField(parser, "groqTimeoutMs", 1000L);
@@ -369,7 +369,7 @@ class GeminiParserTest {
         ReflectionTestUtils.setField(parser, "apiKey", "gemini-test-key");
         ReflectionTestUtils.setField(parser, "model", "gemini-test-model");
         ReflectionTestUtils.setField(parser, "groqApiKey", "groq-test-key");
-        ReflectionTestUtils.setField(parser, "groqModel", "groq-test-model");
+        ReflectionTestUtils.setField(parser, "groqImportModel", "groq-test-model");
         ReflectionTestUtils.setField(parser, "groqBaseUrl",
                 "https://api.groq.com/openai/v1/chat/completions");
         ReflectionTestUtils.setField(parser, "groqTimeoutMs", 1000L);
@@ -406,7 +406,7 @@ class GeminiParserTest {
         ReflectionTestUtils.setField(parser, "apiKey", "gemini-test-key");
         ReflectionTestUtils.setField(parser, "model", "gemini-test-model");
         ReflectionTestUtils.setField(parser, "groqApiKey", "groq-test-key");
-        ReflectionTestUtils.setField(parser, "groqModel", "groq-test-model");
+        ReflectionTestUtils.setField(parser, "groqImportModel", "groq-test-model");
         ReflectionTestUtils.setField(parser, "groqBaseUrl",
                 "https://api.groq.com/openai/v1/chat/completions");
         ReflectionTestUtils.setField(parser, "timeoutMs", 1000L);
@@ -435,7 +435,10 @@ class GeminiParserTest {
         JsonNode groqRequest = objectMapper.valueToTree(parser.toGroqMessages(geminiRequest));
 
         assertThat(groqRequest.at("/0/role").asText()).isEqualTo("system");
-        assertThat(groqRequest.at("/0/content").asText()).contains("correctAnswer/answerText");
+        assertThat(groqRequest.at("/0/content").asText())
+                .contains("correctAnswer/answerText")
+                .contains("dùng khả năng vision")
+                .contains("không đoán");
         assertThat(groqRequest.at("/1/role").asText()).isEqualTo("user");
         assertThat(groqRequest.at("/1/content/0/text").asText()).isEqualTo("Read this image");
         assertThat(groqRequest.at("/1/content/1/image_url/url").asText())
@@ -460,6 +463,30 @@ class GeminiParserTest {
         assertThatThrownBy(() -> parser.toGroqMessages(geminiRequest))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("tối đa 3 trang");
+    }
+
+    @Test
+    void groqRendersScannedPdfPagesAtHigherResolutionWithoutJpegLoss() throws Exception {
+        GeminiParser parser = new GeminiParser(WebClient.builder(), objectMapper);
+        ByteArrayOutputStream pdfBytes = new ByteArrayOutputStream();
+        try (PDDocument document = new PDDocument()) {
+            document.addPage(new PDPage());
+            document.save(pdfBytes);
+        }
+        JsonNode geminiRequest = objectMapper.valueToTree(Map.of(
+                "contents", List.of(Map.of("parts", List.of(
+                        Map.of("text", "Read the scanned document"),
+                        Map.of("inline_data", Map.of(
+                                "mime_type", "application/pdf",
+                                "data", Base64.getEncoder().encodeToString(pdfBytes.toByteArray()))))))));
+
+        JsonNode groqRequest = objectMapper.valueToTree(parser.toGroqMessages(geminiRequest));
+        String imageUrl = groqRequest.at("/1/content/1/image_url/url").asText();
+        byte[] imageBytes = Base64.getDecoder().decode(imageUrl.substring(imageUrl.indexOf(',') + 1));
+        var image = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(imageBytes));
+
+        assertThat(imageUrl).startsWith("data:image/png;base64,");
+        assertThat(image.getHeight()).isEqualTo(2200);
     }
 
     @Test

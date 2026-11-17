@@ -166,8 +166,8 @@ Keep secrets in your local environment or hosting-provider secret manager. Never
 | `JWT_SECRET` | Private signing secret. Use a unique random value of at least 32 bytes. |
 | `CORS_ORIGINS` | Comma-separated frontend origins, with scheme but no path. |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | Gemini access and optional text model selection. |
-| `GEMINI_IMAGE_MODEL` | Gemini image-enhancement model for every imported illustration; defaults to `gemini-3.1-flash-image` and uses additional image-generation quota. |
-| `GROQ_API_KEY`, `GROQ_MODEL` | Groq access and optional model selection. The configured model must support vision for image/scanned-PDF tasks. |
+| `GROQ_API_KEY`, `GROQ_MODEL` | Groq access and optional ExaBot model selection. |
+| `GROQ_IMPORT_MODEL` | Optional Groq model for AI Import; defaults to the vision-capable `qwen/qwen3.8-27b`, independently of the ExaBot model. |
 | `EXABOT_PROVIDER_ORDER` | ExaBot provider priority; defaults to `gemini,openrouter,openai,groq,deepseek`. |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | Optional OpenRouter chat provider. |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | Optional OpenAI-compatible chat provider. |

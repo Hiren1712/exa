@@ -166,8 +166,8 @@ Giữ secret trong môi trường local hoặc kho bí mật của nhà cung c�
 | `JWT_SECRET` | Secret ký token. Dùng giá trị ngẫu nhiên riêng tối thiểu 32 byte. |
 | `CORS_ORIGINS` | Danh sách origin frontend, phân tách bằng dấu phẩy, có scheme và không có path. |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | Khóa truy cập Gemini và model xử lý văn bản tùy chọn. |
-| `GEMINI_IMAGE_MODEL` | Model Gemini làm nét tự động cho mỗi hình import; mặc định `gemini-3.1-flash-image` và dùng thêm quota tạo ảnh. |
-| `GROQ_API_KEY`, `GROQ_MODEL` | Khóa truy cập Groq và lựa chọn model tùy chọn. Model phải hỗ trợ vision cho tác vụ ảnh/PDF scan. |
+| `GROQ_API_KEY`, `GROQ_MODEL` | Khóa Groq và model tùy chọn dùng cho ExaBot. |
+| `GROQ_IMPORT_MODEL` | Model Groq tùy chọn cho AI Import; mặc định `qwen/qwen3.8-27b` có hỗ trợ vision, độc lập với model ExaBot. |
 | `EXABOT_PROVIDER_ORDER` | Thứ tự ưu tiên ExaBot; mặc định `gemini,openrouter,openai,groq,deepseek`. |
 | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | Nhà cung cấp chat OpenRouter tùy chọn. |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | Nhà cung cấp chat tương thích OpenAI tùy chọn. |
