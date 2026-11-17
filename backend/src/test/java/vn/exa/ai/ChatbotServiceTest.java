@@ -74,6 +74,21 @@ class ChatbotServiceTest {
     }
 
     @Test
+    void systemPromptIncludesVietnamProvinceChangesAndDoesNotClaimLiveMapsSearch() {
+        String prompt = ChatbotService.systemPrompt(true);
+
+        assertThat(prompt)
+                .contains("34 đơn vị hành chính")
+                .contains("Đồng Nai: Bình Phước + Đồng Nai")
+                .contains("TP. Hồ Chí Minh: TP. Hồ Chí Minh + Bình Dương + Bà Rịa - Vũng Tàu")
+                .contains("Phú Quốc thuộc An Giang")
+                .contains("không có công cụ Google Places/Maps")
+                .contains("không phải kết quả đã được ExaBot xác minh")
+                .contains("202/2025/QH15")
+                .contains("developers.google.com/maps/documentation/urls/get-started");
+    }
+
+    @Test
     void providerOrderRejectsUnknownProviders() {
         assertThatThrownBy(() -> ChatbotService.parseProviderOrder("gemini,unknown"))
                 .isInstanceOf(IllegalStateException.class)
