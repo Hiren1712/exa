@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
 import { QuestionImage } from '../components/QuestionImage';
-import { Select } from '../components/Input';
+import { Input, Select } from '../components/Input';
 import { SubjectInput } from '../components/SubjectInput';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../hooks/useAuth';
@@ -154,6 +154,11 @@ export default function ImportPage() {
   const handleUpload = async () => {
     if (!subject.trim()) {
       toast(t('Thiếu môn học'), t('Hãy nhập môn học cho câu hỏi cần import.'), 'warn');
+      return;
+    }
+    if (importMode === 'GENERATE'
+      && (!Number.isInteger(questionCount) || questionCount < 1 || questionCount > 50)) {
+      toast(t('Số lượng không hợp lệ'), t('Nhập số nguyên từ 1 đến 50.'), 'warn');
       return;
     }
     if (!file && !content.trim()) {
@@ -380,14 +385,16 @@ export default function ImportPage() {
           </div>
 
           {importMode === 'GENERATE' && (
-            <Select
+            <Input
+              type="number"
+              min={1}
+              max={50}
+              step={1}
+              required
               label={t('Số câu hỏi cần tạo')}
-              value={String(questionCount)}
-              onChange={(event) => setQuestionCount(Number(event.target.value))}
-              options={[5, 10, 15, 20].map((count) => ({
-                value: String(count),
-                label: t('{{count}} câu', { count }),
-              }))}
+              value={questionCount || ''}
+              onChange={(event) => setQuestionCount(event.target.value === '' ? 0 : Number(event.target.value))}
+              helper={t('Nhập số nguyên từ 1 đến 50.')}
             />
           )}
 

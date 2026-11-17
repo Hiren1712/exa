@@ -264,7 +264,8 @@ public class GeminiParser {
                 Hãy tạo đúng %d câu hỏi bằng tiếng Việt cho môn %s, lớp %d, độ khó %s từ nội dung hoặc yêu cầu người dùng gửi.
                 Đầu vào có thể là ghi chú, đoạn văn, danh sách, bảng, dữ kiện, chủ đề ngắn hoặc yêu cầu viết tự nhiên; không cần đúng định dạng đề thi và không cần chứa câu hỏi có sẵn.
                 Nếu có nội dung kiến thức cụ thể, ưu tiên nội dung đó và không mâu thuẫn với dữ kiện đã cho. Nếu đầu vào chỉ nêu chủ đề hoặc yêu cầu chung, hãy dùng kiến thức phù hợp với môn học và khối lớp để tạo câu hỏi; không trả về [] chỉ vì đầu vào ngắn hoặc không có câu hỏi sẵn.
-                Làm theo yêu cầu về dạng câu hỏi nếu người dùng nêu rõ; nếu không, mặc định tạo trắc nghiệm 4 lựa chọn với một đáp án đúng. Với câu Đúng/Sai, options phải gồm đúng bốn mệnh đề; correctAnswer là chuỗi bốn ký tự T/F theo thứ tự mệnh đề (ví dụ "TFFT"). Với câu Trả lời ngắn hoặc Tự luận, dùng options [] và điền đáp án vào answerText. Cung cấp giải thích ngắn.
+                Tạo câu hỏi đa dạng, không lặp cùng một ý dưới cách diễn đạt khác; phân bổ chúng theo các ý quan trọng trong nguồn. Không thêm kiến thức trái với nguồn hoặc vượt quá môn học/khối lớp đã chọn.
+                Làm theo yêu cầu về dạng câu hỏi nếu người dùng nêu rõ; nếu không, mặc định tạo trắc nghiệm 4 lựa chọn với một đáp án đúng. Mỗi phương án nhiễu phải hợp lý nhưng không gây tranh cãi. Với câu Đúng/Sai, options phải gồm đúng bốn mệnh đề độc lập có thể đánh giá riêng; correctAnswer là chuỗi bốn ký tự T/F theo thứ tự mệnh đề (ví dụ "TFFT"). Với câu Trả lời ngắn hoặc Tự luận, dùng options [] và điền đáp án vào answerText. Cung cấp giải thích ngắn, nhất quán với đáp án.
                 Định dạng công thức toán bằng $...$ (ví dụ $x^2$, $\\frac{a}{b}$, $\\sqrt{x}$).
                 Định dạng công thức/phản ứng hóa học bằng $\\ce{...}$ (ví dụ $\\ce{H2O}$, $\\ce{2H2 + O2 -> 2H2O}$).
                 Giữ ký hiệu sinh học, chỉ số dưới/trên, chữ Hy Lạp, đơn vị và dấu tiếng Việt chính xác.
@@ -272,11 +273,11 @@ public class GeminiParser {
                 [{"number":1,"type":"MCQ","content":"...","options":["...","...","...","..."],"correctAnswer":"A","answerText":null,"difficulty":"%s","explanation":"..."}].
                 Ví dụ câu Đúng/Sai: {"number":2,"type":"TRUE_FALSE","content":"Xét các mệnh đề sau.","options":["Mệnh đề 1","Mệnh đề 2","Mệnh đề 3","Mệnh đề 4"],"correctAnswer":"TFFT","answerText":null,"difficulty":"%s","explanation":"..."}.
                 type phải là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY; correctAnswer có thể là null khi phù hợp với dạng câu hỏi.
-                Chỉ trả về [] nếu đầu vào thực sự không có chủ đề/yêu cầu nào để tạo câu hỏi.
+                Trước khi trả lời, tự kiểm tra số lượng đúng %d, nội dung không trùng lặp, schema hợp lệ và đáp án khớp với câu hỏi/phương án. Chỉ trả về [] nếu đầu vào thực sự không có chủ đề/yêu cầu nào để tạo câu hỏi.
                 === NỘI DUNG HOẶC YÊU CẦU ===
                 %s
                 === HẾT ĐẦU VÀO ===
-                """.formatted(count, subjectName, grade, level, level, level, sourceText);
+                """.formatted(count, subjectName, grade, level, level, level, count, sourceText);
     }
 
     String sourcePrompt(String subjectHint, int grade, ImportMode mode, int questionCount) {
@@ -287,7 +288,8 @@ public class GeminiParser {
                     Hãy tạo đúng %d câu hỏi bằng tiếng Việt cho môn %s, lớp %d, độ khó COMPREHENSION dựa trên tài liệu đính kèm và nội dung bổ sung (nếu có).
                     Tài liệu có thể là ghi chú, đoạn văn, danh sách, bảng, dữ kiện hoặc nội dung bất kỳ; không cần đúng định dạng đề thi và không cần chứa câu hỏi có sẵn.
                     Ưu tiên thông tin cụ thể trong tài liệu. Nếu tài liệu chỉ nêu chủ đề hoặc yêu cầu chung, hãy dùng kiến thức phù hợp với môn học và khối lớp; không trả về [] chỉ vì tài liệu ngắn hoặc không có câu hỏi sẵn.
-                    Làm theo yêu cầu về dạng câu hỏi trong nội dung bổ sung nếu có; nếu không, mặc định tạo trắc nghiệm 4 lựa chọn với một đáp án đúng. Với câu Đúng/Sai, options phải gồm đúng bốn mệnh đề; correctAnswer là chuỗi bốn ký tự T/F theo thứ tự mệnh đề (ví dụ "TFFT"). Với câu Trả lời ngắn hoặc Tự luận, dùng options [] và điền đáp án vào answerText. Cung cấp giải thích ngắn.
+                    Tạo câu hỏi đa dạng, không lặp cùng một ý dưới cách diễn đạt khác; phân bổ chúng theo các ý quan trọng trong nguồn. Không thêm kiến thức trái với nguồn hoặc vượt quá môn học/khối lớp đã chọn.
+                    Làm theo yêu cầu về dạng câu hỏi trong nội dung bổ sung nếu có; nếu không, mặc định tạo trắc nghiệm 4 lựa chọn với một đáp án đúng. Mỗi phương án nhiễu phải hợp lý nhưng không gây tranh cãi. Với câu Đúng/Sai, options phải gồm đúng bốn mệnh đề độc lập có thể đánh giá riêng; correctAnswer là chuỗi bốn ký tự T/F theo thứ tự mệnh đề (ví dụ "TFFT"). Với câu Trả lời ngắn hoặc Tự luận, dùng options [] và điền đáp án vào answerText. Cung cấp giải thích ngắn, nhất quán với đáp án.
                     Dùng $...$ cho công thức toán và $\\ce{...}$ cho công thức/phản ứng hóa học; giữ chỉ số, số mũ, đơn vị, ký hiệu sinh học và tiếng Việt chính xác.
                     Nếu câu hỏi phụ thuộc vào hình minh họa, biểu đồ hoặc sơ đồ trong ảnh/PDF, hãy xác định đúng vùng hình cần gắn vào câu hỏi. Trả imageRegion với page (số trang bắt đầu từ 1), x, y, width, height; các tọa độ là số nguyên trong khoảng 0–1000, tính theo tỉ lệ chiều rộng/cao của trang hoặc ảnh. Hộp phải ôm sát hình minh họa, không lấy nội dung của câu khác; không trả imageRegion nếu câu hỏi không có hình cần đính kèm hoặc hình không xác định rõ. Với ảnh đơn, page luôn là 1.
                     Nếu tài liệu có ảnh, đọc chữ tiếng Việt và ký hiệu trong ảnh; phân tích bảng, biểu đồ, sơ đồ và hình vẽ có liên quan. Khi câu hỏi phụ thuộc vào hình ảnh, mô tả ngắn gọn các chi tiết nhìn thấy được ngay trong content theo dạng [Hình: ...], không tự bịa chi tiết bị mờ hoặc không đọc được. Chỉ đưa ra đáp án dựa trên bằng chứng đọc được.
@@ -296,12 +298,13 @@ public class GeminiParser {
                     Ví dụ câu Đúng/Sai: {"number":2,"type":"TRUE_FALSE","content":"Xét các mệnh đề sau.","options":["Mệnh đề 1","Mệnh đề 2","Mệnh đề 3","Mệnh đề 4"],"correctAnswer":"TFFT","answerText":null,"difficulty":"COMPREHENSION","explanation":"..."}.
                     imageRegion có thể là null nếu không có hình minh họa gắn với câu hỏi.
                     type phải là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY; correctAnswer có thể là null khi phù hợp với dạng câu hỏi.
-                    Chỉ trả về [] nếu tài liệu và nội dung bổ sung thực sự không có chủ đề/yêu cầu nào để tạo câu hỏi.
-                    """.formatted(questionCount, subject, grade);
+                    Trước khi trả lời, tự kiểm tra số lượng đúng %d, nội dung không trùng lặp, schema hợp lệ và đáp án khớp với câu hỏi/phương án. Chỉ trả về [] nếu tài liệu và nội dung bổ sung thực sự không có chủ đề/yêu cầu nào để tạo câu hỏi.
+                    """.formatted(questionCount, subject, grade, questionCount);
         }
         return """
-                Đọc toàn bộ tài liệu đính kèm, bao gồm chữ trong ảnh scan, bảng và công thức.
+                Đọc toàn bộ tài liệu đính kèm theo thứ tự trang, bao gồm chữ trong ảnh scan, bảng và công thức. Ghép các dòng bị xuống hàng khi chúng thuộc cùng một câu; giữ nguyên thứ tự câu hỏi và liên kết từng câu với đúng các phương án, hình minh họa và đáp án.
                 Chỉ trích xuất câu hỏi thực sự có trong tài liệu, không tự tạo thêm câu hỏi.
+                Không coi tiêu đề, ví dụ minh họa, lời giải hoặc phần hướng dẫn là câu hỏi. Giữ nguyên nội dung và phương án theo nguồn, chỉ sửa lỗi OCR hiển nhiên khi ngữ cảnh chắc chắn; không tự hoàn thiện phần bị mờ, mất nét hoặc bị cắt. Nếu không đọc đủ dữ kiện để xác định một câu hỏi, chỉ giữ phần đọc được và để đáp án null khi cần.
                 Nếu tài liệu có đáp án được đánh dấu, giữ nguyên đáp án đó. Nếu không có, hãy tự giải từ nội dung câu hỏi và phương án đọc được; điền đáp án và giải thích ngắn để người dùng rà soát trước khi lưu. Với câu SHORT_ANSWER/ESSAY, điền answerText nếu đủ dữ kiện.
                 Chỉ để đáp án null khi câu hỏi thiếu dữ kiện, ảnh mờ/bị cắt hoặc không thể xác định duy nhất đáp án; tuyệt đối không chọn ngẫu nhiên.
                 Với câu hỏi dựa trên hình, ghi lại các chi tiết nhìn thấy được trong content theo dạng [Hình: ...]; đọc chính xác tiếng Việt, công thức, bảng, biểu đồ và sơ đồ. Không suy diễn chi tiết hình ảnh không nhìn thấy rõ.
@@ -310,7 +313,7 @@ public class GeminiParser {
                 [{"number":1,"type":"MCQ","content":"...","options":["...","..."],
                 "correctAnswer":"A","answerText":null,"difficulty":"RECOGNITION","explanation":null,
                 "imageRegion":{"page":1,"x":100,"y":200,"width":300,"height":250}}].
-                Với TRUE_FALSE, options gồm bốn mệnh đề và correctAnswer là bốn ký tự T/F theo thứ tự từng mệnh đề.
+                Với TRUE_FALSE, options gồm bốn mệnh đề và correctAnswer là bốn ký tự T/F theo thứ tự từng mệnh đề. Không đảo thứ tự phương án MCQ; đáp án phải khớp vị trí phương án trong tài liệu.
                 imageRegion có thể là null.
                 type chỉ được là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY.
                 difficulty chỉ được là RECOGNITION, COMPREHENSION, APPLICATION hoặc HIGH_APPLICATION.

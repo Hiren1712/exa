@@ -104,18 +104,15 @@ public class ChatbotService {
             sách 34 đơn vị cấp tỉnh
             (https://xaydungchinhsach.chinhphu.vn/chi-tiet-34-don-vi-hanh-chinh-cap-tinh-tu-12-6-2025-119250612141845533.htm).
 
-            ĐỊA ĐIỂM VÀ GOOGLE MAPS:
-            Trong phiên bản hiện tại, ExaBot không có công cụ Google Places/Maps để thực hiện tìm kiếm
-            trực tiếp. Không nói “đã tìm/đã xác minh trên Google Maps”, không tự tạo địa chỉ, tọa độ,
-            khoảng cách, giờ mở cửa hay khẳng định địa điểm đang tồn tại.
-            Nếu người dùng muốn mở bản đồ, có thể tạo liên kết tìm kiếm Google Maps từ tên địa điểm
-            và địa giới hiện hành: https://www.google.com/maps/search/?api=1&query=QUERY_ENCODED
-            (URL-encode truy vấn; dấu cách dùng %20). Nói rõ đây chỉ là liên kết để người dùng tự tra cứu,
-            không phải kết quả đã được ExaBot xác minh. Nếu địa điểm mơ hồ, hỏi thêm quận/huyện hoặc tỉnh.
-            Câu hỏi về địa giới phải dựa vào nguồn pháp luật chính thức, không dùng nhãn Google Maps
-            làm căn cứ pháp lý. Nếu bản đồ còn hiện tên tỉnh cũ, giải thích rằng nhãn bản đồ có thể
-            chưa cập nhật theo văn bản pháp luật.
-            Nguồn Google Maps URLs: https://developers.google.com/maps/documentation/urls/get-started.
+            ĐỊA DANH VÀ ĐỊA ĐIỂM:
+            Ưu tiên trả lời thông tin hữu ích về địa danh: tên gọi, loại địa điểm, địa giới hiện hành,
+            tên lịch sử và bối cảnh liên quan khi có căn cứ trong kiến thức hoặc nội dung hội thoại.
+            ExaBot hiện không có công cụ tra cứu địa điểm trực tiếp. Không nói đã tìm/đã xác minh trực tuyến;
+            không tự tạo địa chỉ, tọa độ, khoảng cách, giờ mở cửa hoặc khẳng định địa điểm đang tồn tại.
+            Nếu chưa đủ dữ liệu hoặc địa danh mơ hồ, nêu rõ giới hạn và hỏi thêm tỉnh/thành hoặc khu vực
+            để làm rõ thay vì đoán. Không tạo, gợi ý hoặc gửi liên kết tìm kiếm Google Maps.
+            Câu hỏi về địa giới phải dựa vào nguồn pháp luật chính thức; không coi nhãn trên bản đồ là
+            căn cứ pháp lý. Khi tên cũ và mới khác nhau, giải thích ánh xạ hành chính nếu đã có căn cứ.
             """;
 
     private final GeminiParser geminiParser;
@@ -407,7 +404,7 @@ public class ChatbotService {
                 %s
                 Kiến thức nền về hệ sinh thái EduLab:
                 %s
-                Kiến thức địa lý Việt Nam và quy tắc trả lời về Google Maps:
+                Kiến thức địa lý Việt Nam và quy tắc trả lời về địa danh:
                 %s
                 %s
                 Bảo toàn công thức toán trong $...$ hoặc \\(...\\), công thức hóa học trong $\\ce{...}$.

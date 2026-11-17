@@ -634,6 +634,8 @@ const english: Record<string, string> = {
   'Tạo câu hỏi từ nội dung': 'Generate questions from content',
   'AI xử lý ghi chú, đoạn văn, bảng, dữ kiện, chủ đề ngắn hoặc yêu cầu tự nhiên; không cần theo mẫu đề thi hay có câu hỏi sẵn.': 'AI can process notes, passages, tables, facts, short topics, or natural-language instructions; no exam template or existing questions are required.',
   'Số câu hỏi cần tạo': 'Number of questions to generate',
+  'Số lượng không hợp lệ': 'Invalid question count',
+  'Nhập số nguyên từ 1 đến 50.': 'Enter a whole number from 1 to 50.',
   'AI xử lý import': 'AI provider for import',
   'Chọn AI cho import': 'Choose an AI provider for import',
   'Ưu tiên xử lý nhanh; ảnh/PDF scan cần model Groq hỗ trợ Vision.': 'Optimized for speed; scanned images and PDFs require a Groq model with vision support.',

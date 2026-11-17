@@ -119,6 +119,8 @@ class GeminiParserTest {
                 .contains("chủ đề ngắn")
                 .contains("không trả về [] chỉ vì đầu vào ngắn")
                 .contains("Làm theo yêu cầu về dạng câu hỏi")
+                .contains("không lặp cùng một ý")
+                .contains("tự kiểm tra số lượng đúng 5")
                 .contains("type phải là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY")
                 .contains("$...$")
                 .contains("$\\ce{...}$");
@@ -149,6 +151,9 @@ class GeminiParserTest {
                 .contains("tự giải từ nội dung câu hỏi và phương án đọc được")
                 .contains("không thể xác định duy nhất đáp án")
                 .contains("điền answerText nếu đủ dữ kiện")
+                .contains("Ghép các dòng bị xuống hàng")
+                .contains("Không coi tiêu đề, ví dụ minh họa")
+                .contains("đáp án phải khớp vị trí phương án")
                 .contains("imageRegion")
                 .contains("Hộp phải ôm đúng hình minh họa")
                 .contains("options gồm bốn mệnh đề")
@@ -157,7 +162,8 @@ class GeminiParserTest {
                 .contains("đọc chữ tiếng Việt")
                 .contains("[Hình: ...]")
                 .contains("tọa độ là số nguyên trong khoảng 0–1000")
-                .contains("không tự bịa chi tiết");
+                .contains("không tự bịa chi tiết")
+                .contains("tự kiểm tra số lượng đúng 10");
     }
 
     @Test

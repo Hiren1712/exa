@@ -74,7 +74,7 @@ class ChatbotServiceTest {
     }
 
     @Test
-    void systemPromptIncludesVietnamProvinceChangesAndDoesNotClaimLiveMapsSearch() {
+    void systemPromptPrioritizesGroundedPlaceInformationAndNeverSuggestsMapsSearchLinks() {
         String prompt = ChatbotService.systemPrompt(true);
 
         assertThat(prompt)
@@ -82,10 +82,12 @@ class ChatbotServiceTest {
                 .contains("Đồng Nai: Bình Phước + Đồng Nai")
                 .contains("TP. Hồ Chí Minh: TP. Hồ Chí Minh + Bình Dương + Bà Rịa - Vũng Tàu")
                 .contains("Phú Quốc thuộc An Giang")
-                .contains("không có công cụ Google Places/Maps")
-                .contains("không phải kết quả đã được ExaBot xác minh")
+                .contains("Ưu tiên trả lời thông tin hữu ích về địa danh")
+                .contains("không có công cụ tra cứu địa điểm trực tiếp")
+                .contains("Không tạo, gợi ý hoặc gửi liên kết tìm kiếm Google Maps")
+                .doesNotContain("www.google.com/maps/search")
                 .contains("202/2025/QH15")
-                .contains("developers.google.com/maps/documentation/urls/get-started");
+                .doesNotContain("developers.google.com/maps/documentation/urls/get-started");
     }
 
     @Test
