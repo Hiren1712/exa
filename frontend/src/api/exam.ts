@@ -1,5 +1,5 @@
 import { apiClient, ApiResponse } from './client';
-import { Question } from './question';
+import { normalizeOptionImages, Question } from './question';
 
 export interface Exam {
   id?: number;
@@ -65,7 +65,7 @@ export const examApi = {
         return {
           ...question,
           options: parse(question.options, 'Danh sách đáp án'),
-          optionImages: parse(question.optionImages, 'Danh sách hình ảnh'),
+          optionImages: normalizeOptionImages(question.optionImages),
         };
       }),
     };

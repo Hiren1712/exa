@@ -84,7 +84,7 @@ export default function Login() {
         'auth/popup-blocked': 'Trình duyệt đã chặn cửa sổ Google. Hãy cho phép popup rồi thử lại',
         'auth/network-request-failed': 'Không thể kết nối dịch vụ Google. Vui lòng thử lại',
       };
-      const message = messages[code] ?? (err instanceof Error ? err.message : extractError(err));
+      const message = messages[code] ?? (axios.isAxiosError(err) ? extractError(err) : err instanceof Error ? err.message : extractError(err));
       toast('Lỗi đăng nhập Google', message, 'error');
     } finally {
       setLoading(false);
@@ -92,35 +92,23 @@ export default function Login() {
   };
 
   return (
-    <div className="exa-login min-h-[100dvh] grid place-items-center p-5 sm:p-8 relative overflow-hidden">
-      <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
-        <LanguageSwitcher />
-      </div>
-      {/* Decorative blobs */}
-      <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-blue-500/20 blur-[120px] pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-indigo-500/20 blur-[120px] pointer-events-none" />
-
-      <div className="w-full max-w-[460px] relative z-10">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 mb-4">
-            <div className="exa-brand-mark w-14 h-14 rounded-2xl text-white flex items-center justify-center">
-              <Icon name="logo" size={28} />
-            </div>
-            <div className="text-left">
-              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">EXA</h1>
-              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">
-                {t('Exam Extra')}
-              </p>
-            </div>
+    <div className="exa-login">
+      <main className="auth-spread">
+        <section className="auth-cover" aria-labelledby="cover-title">
+          <div className="auth-wordmark"><Icon name="logo" size={30} /> EXA<span>Exam Extra</span></div>
+          <div className="auth-cover-copy">
+            <h2 id="cover-title">{t('Không gian học tập')}</h2>
+            <p>{t('Nền tảng tạo đề thi & quản lý học tập')}</p>
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            {t('Nền tảng tạo đề thi & quản lý học tập')}
-          </p>
-        </div>
-
-        {/* Card */}
-        <div className="exa-login-card backdrop-blur-xl rounded-[28px] p-6 sm:p-9">
+          <div className="auth-notebook" aria-hidden="true">
+            <div className="auth-book-spine" /><div className="auth-book-label"><Icon name="graduationCap" size={42} /></div>
+          </div>
+        </section>
+        <section className="auth-panel">
+          <header className="auth-form-header">
+            <h1>{t(mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản')}</h1>
+            <LanguageSwitcher />
+          </header>
           {/* Tabs */}
           <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
             <button
@@ -128,6 +116,7 @@ export default function Login() {
                 setMode('login');
                 setPendingGoogleToken(null);
               }}
+              aria-pressed={mode === 'login'}
               disabled={loading}
               className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
                 mode === 'login'
@@ -142,6 +131,7 @@ export default function Login() {
                 setMode('register');
                 setPendingGoogleToken(null);
               }}
+              aria-pressed={mode === 'register'}
               disabled={loading}
               className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
                 mode === 'register'
@@ -164,6 +154,8 @@ export default function Login() {
               <Input
                 label={t('Họ tên')}
                 placeholder="Nguyễn Văn A"
+                autoComplete="name"
+                maxLength={120}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
@@ -177,6 +169,7 @@ export default function Login() {
                   type="email"
                   placeholder="you@example.com"
                   autoComplete="email"
+                  maxLength={191}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -185,6 +178,8 @@ export default function Login() {
                 <Input
                   label={t('Mật khẩu')}
                   type={showPassword ? 'text' : 'password'}
+                  minLength={6}
+                  maxLength={mode === 'register' ? 100 : undefined}
                   placeholder="••••••"
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   value={password}
@@ -194,7 +189,7 @@ export default function Login() {
                     <button
                       type="button"
                       onClick={() => setShowPassword((visible) => !visible)}
-                      aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                      aria-label={t(showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu')}
                       aria-pressed={showPassword}
                       className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                     >
@@ -215,6 +210,7 @@ export default function Login() {
                     <button
                       key={r}
                       type="button"
+                      aria-pressed={role === r}
                       onClick={() => setRole(r)}
                       className={`min-h-11 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                         role === r
@@ -246,7 +242,7 @@ export default function Login() {
             )}
           </form>
 
-          {!pendingGoogleToken && (
+          {firebaseConfigured && !pendingGoogleToken && (
             <div className="relative my-5">
               <div className="absolute inset-0 flex items-center" aria-hidden="true">
                 <div className="w-full border-t border-slate-200 dark:border-slate-700" />
@@ -258,29 +254,19 @@ export default function Login() {
               </div>
             </div>
           )}
-          <Button
+          {firebaseConfigured && <Button
             type="button"
             block
-            disabled={!firebaseConfigured}
             loading={loading}
             icon={<Icon name="google" size={18} />}
             onClick={handleGoogleLogin}
             aria-label={t(pendingGoogleToken ? 'Hoàn tất đăng ký Google' : 'Đăng nhập bằng Google')}
           >
             {t(pendingGoogleToken ? 'Hoàn tất đăng ký Google' : 'Google')}
-          </Button>
-          {!firebaseConfigured && (
-            <p className="mt-3 text-center text-xs text-slate-400">
-              {t('Đăng nhập Google chưa được cấu hình.')}
-            </p>
-          )}
-
-        </div>
-
-        <p className="text-center text-xs text-slate-400 mt-6">
-          © 2026 EXA — Exam Extra. Made by Revenge Studio
-        </p>
-      </div>
+          </Button>}
+        </section>
+      </main>
+      <footer className="auth-footer">© 2026 EXA — Exam Extra · Revenge Studio</footer>
     </div>
   );
 }

@@ -35,6 +35,17 @@ type QuestionResponse = Omit<Question, 'options' | 'optionImages'> & {
   optionImages?: string[] | string | null;
 };
 
+// Older questions can have valid text answers but incomplete optional image metadata.
+export function normalizeOptionImages(value: unknown): string[] | undefined {
+  if (value == null) return undefined;
+  let images: unknown = value;
+  if (typeof value === 'string') {
+    try { images = JSON.parse(value); }
+    catch { return []; }
+  }
+  return Array.isArray(images) ? images.map((url) => typeof url === 'string' ? url : '') : [];
+}
+
 function normalizeQuestion(question: QuestionResponse): Question {
   let options = question.options;
   if (typeof options === 'string') {
@@ -47,17 +58,7 @@ function normalizeQuestion(question: QuestionResponse): Question {
   if (options != null && (!Array.isArray(options) || options.some((option) => typeof option !== 'string'))) {
     throw new Error(`Dữ liệu đáp án câu hỏi ${question.id ?? ''} không hợp lệ`);
   }
-  let optionImages = question.optionImages;
-  if (typeof optionImages === 'string') {
-    try {
-      optionImages = JSON.parse(optionImages) as string[];
-    } catch {
-      throw new Error(`Dữ liệu hình ảnh câu hỏi ${question.id ?? ''} không hợp lệ`);
-    }
-  }
-  if (optionImages != null && (!Array.isArray(optionImages) || optionImages.some((url) => typeof url !== 'string'))) {
-    throw new Error(`Dữ liệu hình ảnh câu hỏi ${question.id ?? ''} không hợp lệ`);
-  }
+  const optionImages = normalizeOptionImages(question.optionImages);
   return { ...question, options: options ?? undefined, optionImages: optionImages ?? undefined };
 }
 

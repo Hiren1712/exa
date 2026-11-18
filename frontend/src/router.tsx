@@ -48,6 +48,11 @@ function RequireTeacher({ children }: { children: JSX.Element }) {
   return children;
 }
 
+function ExamRoomRoute() {
+  const { pathname, search } = useLocation();
+  return <ExamRoom key={pathname + search} />;
+}
+
 export function AppRouter() {
   return (
     <Routes>
@@ -65,7 +70,7 @@ export function AppRouter() {
         <Route path="exams" element={<Exams />} />
         <Route path="exams/new" element={<RequireTeacher><ExamBuilder /></RequireTeacher>} />
         <Route path="exams/:id/edit" element={<RequireTeacher><ExamBuilder /></RequireTeacher>} />
-        <Route path="exam/:id" element={<ExamRoom />} />
+        <Route path="exam/:id" element={<ExamRoomRoute />} />
         <Route path="exam/:id/result" element={<ExamResult />} />
         <Route path="join/:code" element={<ExamJoin />} />
         <Route path="questions" element={<RequireTeacher><QuestionBank /></RequireTeacher>} />

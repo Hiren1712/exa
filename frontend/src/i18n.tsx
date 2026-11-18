@@ -695,6 +695,7 @@ const english: Record<string, string> = {
   'Xem trước': 'Preview',
   'Không tìm thấy mã bài nộp.': 'Submission ID not found.',
   'Không thể tải kết quả bài thi. Vui lòng kiểm tra quyền truy cập hoặc thử lại.': 'Could not load exam results. Check your access or try again.',
+  'Đang nộp bài…': 'Submitting your answers…',
   'Hiện mật khẩu': 'Show password',
   'Ẩn mật khẩu': 'Hide password',
   'Công khai': 'Publish',

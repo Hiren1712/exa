@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Icon } from '../components/Icon';
-import { Button } from '../components/Button';
 import { examApi, ExamSummary } from '../api/exam';
 import { classroomApi, Classroom } from '../api/classroom';
 import { submissionApi, Submission } from '../api/submission';
@@ -22,8 +21,13 @@ export default function Dashboard() {
   const [teacherSubmissionCount, setTeacherSubmissionCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [loadError, setLoadError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setLoadError(false);
     (async () => {
       try {
         if (user?.role === 'STUDENT') {
@@ -32,6 +36,7 @@ export default function Dashboard() {
             submissionApi.mine(),
             classroomApi.listMine(),
           ]);
+          if (!active) return;
           setExams(availableExams);
           setSubmissions(studentSubmissions);
           setClassrooms(studentClasses);
@@ -41,18 +46,22 @@ export default function Dashboard() {
             classroomApi.list(),
             reportApi.getTeacherSummary(),
           ]);
+          if (!active) return;
           setExams(teacherExams);
           setClassrooms(teacherClasses);
           setTeacherAverage(summary.averageScore == null ? '—' : summary.averageScore.toFixed(1));
           setTeacherSubmissionCount(summary.submissionCount);
         }
       } catch (err) {
+        if (!active) return;
+        setLoadError(true);
         toast(t('Không tải được dữ liệu tổng quan'), extractError(err), 'error');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     })();
-  }, [user?.role, toast, t]);
+    return () => { active = false; };
+  }, [user?.id, user?.role, toast, t, attempt]);
 
   const isTeacher = user?.role === 'TEACHER' || user?.role === 'ADMIN';
 
@@ -99,49 +108,31 @@ export default function Dashboard() {
 
   return (
     <div className="exa-dashboard space-y-6 sm:space-y-8 animate-fade-in">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[.16em] text-blue-700 dark:text-blue-300 mb-1">{t('Tổng quan học tập')}</p>
-          <h2 className="exa-page-title text-slate-900 dark:text-white">{t('Bảng điều khiển')}</h2>
-          <p className="exa-page-subtitle">{t(isTeacher ? 'Quản lý lớp học, đề thi và kết quả ở một nơi.' : 'Theo dõi tiến độ và tiếp tục hành trình học tập.')}</p>
-        </div>
-        <span className="exa-dashboard-edition text-[11px] font-bold uppercase tracking-[.16em]">EXA / YOUR LEARNING SPACE</span>
-      </div>
-      {/* Welcome Hero */}
-      <div className="exa-hero relative rounded-[28px] overflow-hidden text-white p-6 sm:p-9">
-        <div className="exa-hero-orbit exa-hero-orbit-one" aria-hidden="true" />
-        <div className="exa-hero-orbit exa-hero-orbit-two" aria-hidden="true" />
+      <section className="exa-hero relative rounded-[24px] overflow-hidden text-white p-6 sm:p-8">
         <div className="exa-hero-grid" aria-hidden="true" />
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-5">
-          <div className="exa-hero-emblem w-16 h-16 rounded-[20px] flex items-center justify-center text-3xl">
-            <Icon name={isTeacher ? 'graduationCap' : 'book'} size={30} />
-          </div>
-          <div className="flex-1">
-            <div className="exa-hero-kicker">✦ {t(isTeacher ? 'TEACHER WORKSPACE' : 'STUDENT WORKSPACE')}</div>
-            <h1 className="text-2xl sm:text-[34px] font-extrabold tracking-[-.045em] leading-tight mb-2">
+        <div className="exa-hero-orbit exa-hero-orbit-one" aria-hidden="true" />
+        <div className="relative z-10 flex w-full min-w-0 flex-wrap items-center justify-between gap-5">
+          <div className="min-w-0 flex-1 basis-64">
+            <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-100">
+              <Icon name={isTeacher ? 'graduationCap' : 'book'} size={20} />
+              {t(isTeacher ? 'Giáo viên' : 'Học sinh')}
+            </p>
+            <h1 className="break-words text-2xl sm:text-4xl font-bold tracking-tight">
               {t('Xin chào, {{name}}!', { name: user?.fullName || '' })}
             </h1>
-            <p className="text-blue-50 text-sm sm:text-base leading-relaxed">
-              {t(isTeacher
-                ? 'Chào mừng trở lại. Hãy tạo đề thi và giao bài cho học sinh.'
-                : 'Bạn có bài tập đang chờ. Hãy hoàn thành nhé!')}
-            </p>
+            <p className="mt-2 text-blue-50">{t(isTeacher ? 'Quản lý lớp học, đề thi và kết quả ở một nơi.' : 'Theo dõi tiến độ và tiếp tục hành trình học tập.')}</p>
           </div>
-          {isTeacher && (
-            <Link to="/exams/new">
-              <Button
-                variant="primary"
-                size="lg"
-                icon={<Icon name="plus" size={16} />}
-                className="!bg-white !text-blue-700 !shadow-lg !shadow-indigo-950/30 hover:!bg-blue-50 hover:!text-blue-900 focus-visible:!outline-white"
-              >
-                {t('Tạo đề thi')}
-              </Button>
-            </Link>
-          )}
+          <Link to={isTeacher ? '/exams/new' : '/exams'} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-5 font-semibold text-blue-900 hover:bg-blue-50">
+            <Icon name={isTeacher ? 'plus' : 'book'} size={17} />{t(isTeacher ? 'Tạo đề thi' : 'Bài tập')}
+          </Link>
         </div>
-      </div>
-
+      </section>
+      {loadError ? (
+        <section className="exa-card p-6 flex flex-wrap justify-between items-center gap-4">
+          <h2>{t('Không tải được dữ liệu tổng quan')}</h2>
+          <button type="button" className="exa-quick-link rounded-xl px-4 min-h-11" onClick={() => setAttempt((value) => value + 1)}>{t('Làm mới')}</button>
+        </section>
+      ) : (<>
       {/* Stats */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-5">
         {stats.map((stat) => (
@@ -184,10 +175,8 @@ export default function Dashboard() {
               <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-1">{t('Chưa có đề thi nào')}</h4>
               <p className="text-sm text-slate-500 mb-4">{t(isTeacher ? 'Bắt đầu tạo đề thi đầu tiên của bạn' : 'Khi có bài được giao, bạn sẽ thấy tại đây.')}</p>
               {isTeacher && (
-                <Link to="/exams/new">
-                  <Button variant="primary" icon={<Icon name="plus" size={16} />}>
-                    {t('Tạo đề thi')}
-                  </Button>
+                <Link to="/exams/new" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-700 px-4 font-semibold text-white hover:bg-blue-800">
+                  <Icon name="plus" size={16} />{t('Tạo đề thi')}
                 </Link>
               )}
             </div>
@@ -223,6 +212,8 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      </>)}
 
       {/* Quick actions */}
       {isTeacher ? (
@@ -260,7 +251,7 @@ export default function Dashboard() {
                 <strong className="text-blue-600">{submission.totalScore}</strong>
               </div>
             ))}
-            {!studentAverage.length && <p className="text-xs text-slate-500">{t('Chưa có điểm được ghi nhận.')}</p>}
+            {!loading && !loadError && !studentAverage.length && <p className="text-xs text-slate-500">{t('Chưa có điểm được ghi nhận.')}</p>}
           </div>
         </div>
       )}

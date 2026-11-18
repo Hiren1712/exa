@@ -60,6 +60,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           return (
             <div
               key={t.id}
+              role={t.type === 'error' ? 'alert' : 'status'}
               className={cn(
                 'w-full min-w-0 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border-l-4 p-4 pr-10 flex gap-3 animate-slide-up relative',
                 cfg.color,
@@ -75,6 +76,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 )}
               </div>
               <button
+                aria-label={translate('Đóng')}
                 onClick={() => removeToast(t.id)}
                 className="absolute top-3 right-3 w-6 h-6 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >

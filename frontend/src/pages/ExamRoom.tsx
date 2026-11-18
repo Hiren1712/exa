@@ -51,6 +51,7 @@ export default function ExamRoom() {
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
   const [currentIdx, setCurrentIdx] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const submissionPending = useRef(false);
   const [autoSaveErrorShown, setAutoSaveErrorShown] = useState(false);
   const [previewResult, setPreviewResult] = useState<{ score: number; needsManualGrading: number } | null>(null);
   answersRef.current = answers;
@@ -59,7 +60,7 @@ export default function ExamRoom() {
     durationMin: exam?.durationMin || 45,
     autoStart: false,
     onExpire: () => {
-      toast(t('Hết giờ'), t(isPreview ? 'Đã kết thúc lượt thử đề' : 'Bài đã được nộp tự động'), 'warn');
+      toast(t('Hết giờ'), t(isPreview ? 'Đã kết thúc lượt thử đề' : 'Đang nộp bài…'), 'warn');
       handleSubmit(true);
     },
   });
@@ -82,10 +83,12 @@ export default function ExamRoom() {
 
   useEffect(() => {
     if (!id) return;
+    let active = true;
     setLoading(true);
     const inviteCode = searchParams.get('invite') ?? undefined;
     examApi.get(Number(id), inviteCode)
       .then((data) => {
+        if (!active) return;
         const sourceQuestions = data.questions || [];
         const questionOrder = data.shuffleQuestions
           ? shuffledIndexes(sourceQuestions.length)
@@ -110,11 +113,13 @@ export default function ExamRoom() {
         resetTimer(data.durationMin * 60);
       })
       .catch((err) => {
-        toast(t('Lỗi'), extractError(err), 'error');
+        if (!active) return;
+        toast('Lỗi', extractError(err), 'error');
         navigate('/');
       })
-      .finally(() => setLoading(false));
-  }, [id, navigate, resetTimer, searchParams, t, toast]);
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [id, navigate, resetTimer, searchParams, toast]);
 
   const handleStart = async () => {
     if (!exam || !id) return;
@@ -192,9 +197,10 @@ export default function ExamRoom() {
   };
 
   const handleSubmit = async (auto = false) => {
-    if (!submissionId || !exam) return;
+    if (!submissionId || !exam || submissionPending.current) return;
     if (!auto && !isPreview && !confirm('Bạn chắc chắn muốn nộp bài?')) return;
 
+    submissionPending.current = true;
     setSubmitting(true);
     try {
       if (isPreview) {
@@ -233,6 +239,7 @@ export default function ExamRoom() {
     } catch (err) {
       toast(t('Lỗi'), extractError(err), 'error');
     } finally {
+      submissionPending.current = false;
       setSubmitting(false);
     }
   };

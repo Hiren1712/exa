@@ -117,7 +117,7 @@ export function Layout() {
               {t('NỀN TẢNG GIÁO DỤC')}
             </span>
           </div>
-          <button ref={closeButtonRef} type="button" onClick={closeSidebar} aria-label={t('Đóng điều hướng')} className="lg:hidden ml-auto exa-icon-button"><Icon name="x" size={19} /></button>
+          <button ref={closeButtonRef} type="button" onClick={closeSidebar} aria-label={t('Đóng điều hướng')} className="ml-auto exa-icon-button lg:!hidden"><Icon name="x" size={19} /></button>
         </div>
 
         <p className="exa-nav-eyebrow px-6 pt-7 pb-3 text-[10px] font-extrabold uppercase tracking-[.2em] text-slate-500 dark:text-slate-400">{t('KHÔNG GIAN LÀM VIỆC')}</p>
@@ -189,7 +189,7 @@ export function Layout() {
           </button>
 
           <div className="flex-1 min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-[.18em] text-slate-500 dark:text-slate-400 hidden sm:block">{t('KHÔNG GIAN LÀM VIỆC')} <span className="px-1.5">/</span> {t(user?.role === 'STUDENT' ? 'Học sinh' : 'Giáo viên')}</div>
+            <div className="text-[10px] font-bold uppercase tracking-[.18em] text-slate-500 dark:text-slate-400 hidden sm:block">{t('KHÔNG GIAN LÀM VIỆC')} <span className="px-1.5">/</span> {t(user?.role === 'STUDENT' ? 'Học sinh' : user?.role === 'ADMIN' ? 'Quản trị viên' : 'Giáo viên')}</div>
             <div className="text-[15px] font-bold tracking-[-.02em] text-slate-900 dark:text-white truncate">{t(currentPage?.label || 'Không gian học tập')}</div>
           </div>
 

@@ -291,11 +291,63 @@ body { font-feature-settings: 'cv11', 'ss01'; }
   .exa-premium-card,.exa-action-ai,.exa-action-card,.exa-quick-link { transition:none !important; }
   .exa-action-ai:hover,.exa-action-card:hover,.exa-quick-link:hover { transform:none; }
 }
-/* Authentication shares the same product identity without compromising form UX. */
+
 .exa-login {
-  background: radial-gradient(ellipse 40% 48% at 5% 5%,rgba(91,125,237,.15),transparent 80%),
-              radial-gradient(ellipse 42% 50% at 100% 100%,rgba(95,135,245,.15),transparent 80%),
-              var(--bg);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: clamp(16px, 4vw, 64px);
+  background: var(--bg);
 }
-.exa-login-card { background:rgba(255,255,255,.94); border:1px solid rgba(225,232,246,.95); box-shadow:0 35px 95px -44px rgba(31,62,127,.34),0 8px 22px -18px rgba(22,54,130,.15); }
-.dark .exa-login-card { background:rgba(19,29,48,.96); border-color:#2b3b55; box-shadow:0 28px 80px -28px rgba(0,0,0,.62); }
+.auth-spread {
+  display: grid;
+  width: min(100%, 1050px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: 0 22px 68px -40px #152e5e55;
+}
+.auth-cover {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 550px;
+  padding: clamp(24px, 3.5vw, 52px);
+  color: white;
+  background-color: #12356a;
+  background-image: linear-gradient(120deg, #0a2350, transparent 78%), linear-gradient(#accfff13 1px, transparent 1px), linear-gradient(90deg, #accfff13 1px, transparent 1px);
+  background-size: auto, 26px 26px, 26px 26px;
+}
+.auth-wordmark { display: flex; align-items: center; gap: 9px; font-size: 24px; font-weight: 850; letter-spacing: -.04em; }
+.auth-wordmark span { margin-left: 4px; padding-left: 12px; border-left: 1px solid #ffffff55; font-size: 13px; font-weight: 500; letter-spacing: .025em; }
+.auth-cover-copy { position: relative; z-index: 1; margin-top: 46px; }
+.auth-cover-copy h2 { max-width: 8.5em; font-size: clamp(42px, 5vw, 65px); line-height: 1.06; font-weight: 730; letter-spacing: -.045em; text-wrap: balance; }
+.auth-cover-copy p { margin-top: 15px; color: #dbeaff; font-size: 15px; }
+.auth-notebook {
+  position: absolute; bottom: -82px; right: 12%; width: 53%; height: 265px;
+  transform: rotate(-16deg); border-radius: 8px 18px 14px 8px;
+  background: repeating-linear-gradient(0deg, transparent 0 23px, #6485a139 23px 24px), #f1f1d7;
+  box-shadow: 5px 6px #c8d4dd, 12px 14px #5186c5, 15px 19px #284c84, 1px 24px 35px #071d3a88;
+}
+.auth-book-spine { position: absolute; inset: 0 auto 0 0; width: 13%; background: #dba653; border-right: 2px solid #b78545; }
+.auth-book-label { position: absolute; top: 16%; left: 28%; padding: 10px 22px; border: 1px solid #899d99; border-radius: 5px; color: #26456d; background: #f8f8e6; }
+.auth-panel { min-width: 0; padding: clamp(24px, 4vw, 64px); align-self: center; }
+.auth-form-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
+.auth-form-header h1 { color: var(--text); font-size: clamp(22px, 2.4vw, 32px); font-weight: 750; line-height: 1.2; letter-spacing: -.035em; }
+.auth-footer { margin-top: 20px; color: var(--muted); font-size: 12px; text-align: center; }
+@media (max-width: 740px) {
+  .auth-spread { max-width: 480px; grid-template-columns: 1fr; border-radius: 20px; }
+  .auth-cover { padding: 20px 24px; min-height: auto; }
+  .auth-cover-copy { margin-top: 12px; max-width: 76%; }
+  .auth-cover-copy h2 { font-size: 26px; }
+  .auth-cover-copy p { display: none; }
+  .auth-notebook { width: 72px; height: 115px; right: 4%; bottom: -40px; }
+  .auth-book-label { padding: 3px; }
+  .auth-book-label svg { width: 20px; height: 20px; }
+  .auth-panel { padding: 24px 20px; }
+  .auth-form-header { margin-bottom: 18px; }
+}

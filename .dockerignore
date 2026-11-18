@@ -10,3 +10,4 @@
 **/logs
 **/*.log
 certbot
+_deloy/

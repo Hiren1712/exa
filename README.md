@@ -255,6 +255,8 @@ The production frontend is [exa-edulab.pages.dev](https://exa-edulab.pages.dev).
 
 The Railway health check is `/api/actuator/health`. See [docs/deployment.md](./docs/deployment.md) for detailed provider setup, import limits, and production guidance.
 
+To build a standalone frontend container, run `docker build -f frontend/Dockerfile --build-arg VITE_API_URL=https://api.example.com/api -t exa-frontend .` from the project root. Set the API URL to your backend.
+
 ### Docker Compose
 
 The root `docker-compose.yml` describes a MySQL, backend, and Nginx deployment stack. It expects a configured root `.env`, a built frontend at `frontend/dist`, and valid deployment settings. For local frontend development, start only `mysql` as shown above rather than starting the full production-oriented stack.

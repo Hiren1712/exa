@@ -255,6 +255,8 @@ Frontend production: [exa-edulab.pages.dev](https://exa-edulab.pages.dev).
 
 Health check Railway là `/api/actuator/health`. Xem [docs/deployment.md](./docs/deployment.md) để cấu hình provider, giới hạn import và hướng dẫn production chi tiết.
 
+Để đóng gói riêng frontend, chạy `docker build -f frontend/Dockerfile --build-arg VITE_API_URL=https://api.example.com/api -t exa-frontend .` tại thư mục gốc. Thay URL mẫu bằng địa chỉ backend của bạn.
+
 ### Docker Compose
 
 File `docker-compose.yml` ở thư mục gốc mô tả stack MySQL, backend và Nginx. Stack này cần `.env` gốc đã cấu hình, frontend build sẵn ở `frontend/dist` và thông số triển khai hợp lệ. Khi phát triển frontend local, chỉ chạy dịch vụ `mysql` như hướng dẫn ở trên, không khởi động toàn bộ stack hướng production.
