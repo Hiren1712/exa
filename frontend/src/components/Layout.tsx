@@ -112,9 +112,9 @@ export function Layout() {
             <Icon name="logo" size={22} />
           </div>
           <div>
-            <h3 className="text-[19px] font-black tracking-[-.055em] text-slate-900 dark:text-white leading-tight">EXA<span className="text-blue-600 dark:text-blue-400">.</span></h3>
+            <h3 className="workspace-brand-title text-[19px] font-black tracking-[-.055em] text-slate-900 dark:text-white leading-tight">EXA</h3>
             <span className="text-xs tracking-wider text-slate-500 dark:text-slate-400 font-semibold uppercase">
-              {t('NỀN TẢNG GIÁO DỤC')}
+              Exam Extra
             </span>
           </div>
           <button ref={closeButtonRef} type="button" onClick={closeSidebar} aria-label={t('Đóng điều hướng')} className="ml-auto exa-icon-button lg:!hidden"><Icon name="x" size={19} /></button>
@@ -138,29 +138,21 @@ export function Layout() {
                 )
               }
             >
-              <Icon name={item.icon} size={18} />
+              <span className="workspace-nav-icon"><Icon name={item.icon} size={19} /></span>
               <span className="flex-1">{t(item.label)}</span>
               <span className="exa-nav-dot" aria-hidden="true" />
             </NavLink>
           ))}
         </nav>
 
-        {/* Pro card */}
-        {user?.role !== 'STUDENT' && (
-          <div className="p-3">
-            <div className="exa-pro-card relative rounded-[20px] text-white p-5 overflow-hidden">
-              <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-white/10" />
-              <h5 className="flex items-center gap-1.5 text-sm font-bold relative z-10">
-                <Icon name="crown" size={14} />
-                EXA Pro
-              </h5>
-              <p className="text-xs opacity-95 mt-1 relative z-10 leading-snug">
-                {t('AI soạn đề, giám sát phòng thi & báo cáo nâng cao.')}
-              </p>
-            </div>
-          </div>
-        )}
-        <div className="exa-sidebar-footer px-5 py-4 text-[11px] font-medium text-slate-400 dark:text-slate-500">EXA 3.0 <span aria-hidden="true">·</span> {t('Thiết kế cho việc học')}</div>
+        <Link to="/settings" onClick={closeSidebar} className="workspace-account">
+          <span className="workspace-avatar">
+            {user?.fullName?.charAt(0)?.toUpperCase()}
+            {user?.avatarUrl && <img src={profileImageUrl(user.avatarUrl)} alt="" onError={(e) => { e.currentTarget.hidden = true; }} />}
+          </span>
+          <span className="min-w-0 flex-1"><strong>{user?.fullName}</strong><small>{t('Cài đặt')}</small></span>
+          <Icon name="chevronR" size={16} />
+        </Link>
       </aside>
 
       {/* Overlay mobile */}
@@ -220,21 +212,10 @@ export function Layout() {
             <Icon name="logout" size={18} />
           </button>
 
-          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-md">
-            {user?.avatarUrl && (
-              <img
-                src={profileImageUrl(user.avatarUrl)}
-                alt={t('Ảnh đại diện của {{name}}', { name: user.fullName })}
-                className="absolute inset-0 w-full h-full object-cover"
-                onError={(event) => { event.currentTarget.style.display = 'none'; }}
-              />
-            )}
-            <span>{user?.fullName?.charAt(0)?.toUpperCase() || '?'}</span>
-          </div>
         </header>
 
         {/* Content */}
-        <main id="exa-main" tabIndex={-1} className="exa-main flex-1 p-4 sm:p-7 lg:px-10 lg:py-9 max-w-[1550px] w-full mx-auto">
+        <main data-section={location.pathname.split('/')[1] || 'dashboard'} id="exa-main" tabIndex={-1} className="exa-main flex-1 p-4 sm:p-7 lg:px-10 lg:py-9 max-w-[1550px] w-full mx-auto">
           <Outlet />
         </main>
       </div>

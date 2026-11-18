@@ -1,3 +1,4 @@
+import { PageHeading } from '../components/PageHeading';
 import { useEffect, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Button } from '../components/Button';
@@ -79,14 +80,15 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{t('Báo cáo & Thống kê')}</h1>
-        <p className="text-sm text-slate-500 mt-0.5">{t('Phổ điểm, tỉ lệ đúng/sai và năng lực học sinh')}</p>
-      </div>
+      <PageHeading
+        icon="exaReports"
+        title={t('Báo cáo & Thống kê')}
+        description={t('Phổ điểm, tỉ lệ đúng/sai và năng lực học sinh')}
+      />
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
-        <div className="flex-1 min-w-64">
-          <label className="block text-xs font-semibold text-slate-500 mb-2">{t('Chọn đề thi')}</label>
-          <select value={examId ?? ''} onChange={(event) => setExamId(event.target.value ? Number(event.target.value) : null)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-sm">
+        <div className="flex-1 min-w-[min(100%,16rem)]">
+          <label htmlFor="report-exam" className="block text-xs font-semibold text-slate-500 mb-2">{t('Chọn đề thi')}</label>
+          <select id="report-exam" value={examId ?? ''} onChange={(event) => setExamId(event.target.value ? Number(event.target.value) : null)} className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-sm">
             <option value="">{t('Chọn đề thi')}</option>
             {exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.title}</option>)}
           </select>
@@ -110,7 +112,7 @@ export default function Reports() {
               { label: t('Điểm cao nhất'), value: Number(report.maxScore).toFixed(1), icon: 'trophy' },
               { label: t('Tỉ lệ đạt'), value: `${report.passRate}%`, icon: 'target' },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+              <div key={stat.label} className="report-metric rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
                 <Icon name={stat.icon} className="text-blue-500" />
                 <div className="mt-3 text-2xl font-extrabold text-slate-900 dark:text-white">{stat.value}</div>
                 <div className="text-xs text-slate-500 mt-1">{stat.label}</div>
@@ -123,11 +125,11 @@ export default function Reports() {
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={distribution}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="score" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="count" name={t('Số học sinh')} fill="#3b6bff" radius={[6, 6, 0, 0]} />
+                  <CartesianGrid stroke="var(--border)" strokeDasharray="3 5" vertical={false} />
+                  <XAxis dataKey="score" axisLine={false} tickLine={false} tick={{ fill: 'var(--muted)', fontSize: 12 }} />
+                  <YAxis allowDecimals={false} axisLine={false} tickLine={false} width={32} tick={{ fill: 'var(--muted)', fontSize: 12 }} />
+                  <Tooltip contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', borderRadius: 12 }} />
+                  <Bar dataKey="count" name={t('Số học sinh')} fill="var(--section-ink)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

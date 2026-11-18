@@ -1,3 +1,4 @@
+import { PageHeading } from '../components/PageHeading';
 import { FormEvent, MouseEvent, useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '../components/Button';
@@ -133,15 +134,11 @@ export default function Classes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">
-            {t(isTeacher ? 'Lớp học của tôi' : 'Lớp học')}
-          </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            {t(isTeacher ? 'Quản lý lớp và học sinh' : 'Các lớp bạn đã tham gia')}
-          </p>
-        </div>
+      <PageHeading
+        icon="exaClassroom"
+        title={t(isTeacher ? 'Lớp học của tôi' : 'Lớp học')}
+        description={t(isTeacher ? 'Quản lý lớp và học sinh' : 'Các lớp bạn đã tham gia')}
+      >
         {isTeacher ? (
           <Button variant="primary" icon={<Icon name="plus" size={16} />} onClick={openCreate}>
             {t('Tạo lớp mới')}
@@ -153,12 +150,12 @@ export default function Classes() {
               placeholder={t('Nhập mã lớp EXA-...')}
               value={joinCode}
               onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
-              className="min-w-48"
+              className="min-w-0"
             />
             <Button variant="primary" loading={joining} type="submit">{t('Tham gia')}</Button>
           </form>
         )}
-      </div>
+      </PageHeading>
 
       {loading ? (
         <div className="p-10 text-center">
@@ -182,22 +179,15 @@ export default function Classes() {
           )}
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="workspace-card-grid">
           {classes.map((classroom) => (
-            <Link
-              key={classroom.id}
-              to={`/classes/${classroom.id}`}
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 hover:shadow-xl hover:-translate-y-1 transition-all"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white flex items-center justify-center shadow-lg">
-                  <Icon name="building" size={22} />
-                </div>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 font-semibold">
-                  {classroom.subject || t('Chưa phân môn')}
-                </span>
-              </div>
-              <h3 className="font-bold text-slate-900 dark:text-white mb-1">{classroom.name}</h3>
+            <article key={classroom.id} className="class-card" data-color={classroom.id % 4}>
+              <Link to={`/classes/${classroom.id}`} className="class-cover">
+                <Icon name="exaClassroom" size={26} />
+                <span>{classroom.subject || t('Chưa phân môn')}</span>
+                <h2>{classroom.name}</h2>
+              </Link>
+              <div className="p-4 sm:p-5">
               <div className="flex items-center gap-2 text-xs text-slate-500 mb-4">
                 {classroom.grade && <span>{t('Khối {{grade}}', { grade: classroom.grade })}</span>}
                 {classroom.grade && <span>·</span>}
@@ -239,7 +229,8 @@ export default function Classes() {
                   </Button>
                 </div>
               )}
-            </Link>
+              </div>
+            </article>
           ))}
         </div>
       )}

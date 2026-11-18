@@ -114,7 +114,7 @@ export default function ClassDetail() {
         <Icon name="chevronL" size={16} /> {t('Tất cả lớp học')}
       </Link>
 
-      <section className="rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 text-white p-6 md:p-8 shadow-xl">
+      <section className="class-detail-cover text-white p-6 md:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <span className="text-xs font-semibold bg-white/15 px-3 py-1 rounded-full">{classroom.subject || t('Chưa phân môn')}</span>

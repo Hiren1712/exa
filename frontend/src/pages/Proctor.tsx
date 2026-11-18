@@ -1,3 +1,4 @@
+import { PageHeading } from '../components/PageHeading';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ExamSummary, examApi } from '../api/exam';
 import { extractError } from '../api/client';
@@ -78,16 +79,13 @@ export default function Proctor() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{t('Giám sát phòng thi')}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t('Trạng thái được làm mới tự động mỗi 10 giây.')}</p>
-          <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-            {t('Nhật ký từ trình duyệt có thể báo nhầm; cần đối chiếu trước khi kết luận vi phạm.')}
-          </p>
-        </div>
+      <PageHeading
+        icon="exaProctor"
+        title={t('Giám sát phòng thi')}
+        description={<>{t('Trạng thái được làm mới tự động mỗi 10 giây.')}<p className="mt-1 text-xs">{t('Nhật ký từ trình duyệt có thể báo nhầm; cần đối chiếu trước khi kết luận vi phạm.')}</p></>}
+      >
         <Button variant="ghost" onClick={() => void refresh()} icon={<Icon name="refresh" size={16} />}>{t('Làm mới')}</Button>
-      </header>
+      </PageHeading>
 
       <section className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
         <label className="min-w-64 flex-1 text-xs font-semibold text-slate-500">

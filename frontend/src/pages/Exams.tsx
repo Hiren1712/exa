@@ -1,3 +1,4 @@
+import { PageHeading } from '../components/PageHeading';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '../components/Icon';
@@ -119,15 +120,11 @@ export default function Exams() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">
-            {t(isStudent ? 'Bài tập được giao' : 'Đề thi & Bài tập')}
-          </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            {t(isStudent ? 'Các đề thi đang mở cho lớp học của bạn' : 'Quản lý và giao đề cho lớp học')}
-          </p>
-        </div>
+      <PageHeading
+        icon="exaExam"
+        title={t(isStudent ? 'Bài tập được giao' : 'Đề thi & Bài tập')}
+        description={t(isStudent ? 'Các đề thi đang mở cho lớp học của bạn' : 'Quản lý và giao đề cho lớp học')}
+      >
         {!isStudent && (
           <Link to="/exams/new">
             <Button variant="primary" icon={<Icon name="plus" size={16} />}>
@@ -135,7 +132,7 @@ export default function Exams() {
             </Button>
           </Link>
         )}
-      </div>
+      </PageHeading>
 
       {isStudent && (
         <form onSubmit={(event) => void handleJoinRoom(event)} className="flex flex-wrap items-end gap-3 rounded-2xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/20">
@@ -180,11 +177,12 @@ export default function Exams() {
           )}
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="workspace-card-grid">
           {exams.map((exam) => (
             <div
               key={exam.id}
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all"
+              data-status={exam.status}
+              className="exam-catalog-card bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all"
             >
               <div className="p-5 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-start justify-between mb-3">
@@ -260,7 +258,7 @@ export default function Exams() {
                   <>
                     <button
                       onClick={() => navigate(`/exam/${exam.id}?preview=1`)}
-                      className="flex-1 py-2 text-xs font-semibold rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                      className="inline-flex items-center justify-center gap-1.5 flex-1 py-2 text-xs font-semibold rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                     >
                       {t('Thử đề')}
                     </button>
@@ -268,14 +266,14 @@ export default function Exams() {
                       onClick={() => navigate(`/exams/${exam.id}/edit`)}
                       className="flex-1 py-2 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 hover:bg-slate-200 transition-colors"
                     >
-                      ✏️ {t('Sửa')}
+                      <Icon name="edit" size={14} /> {t('Sửa')}
                     </button>
                     {exam.status === 'DRAFT' && (
                       <button
                         onClick={() => handlePublish(exam.id)}
                         className="flex-1 py-2 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
                       >
-                        🚀 {t('Mở')}
+                        <Icon name="play" size={14} /> {t('Mở')}
                       </button>
                     )}
                     <button

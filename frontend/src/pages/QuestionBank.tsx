@@ -1,3 +1,4 @@
+import { PageHeading } from '../components/PageHeading';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
@@ -227,19 +228,20 @@ export default function QuestionBank() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{t('Ngân hàng câu hỏi')}</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{t('{{count}} câu hỏi trong kho', { count: total })}</p>
-        </div>
-        <div className="flex gap-2">
-          <Link to="/import"><Button variant="ghost" icon={<Icon name="upload" size={16} />}>Import Word/PDF</Button></Link>
+      <PageHeading
+        icon="exaQuestions"
+        title={t('Ngân hàng câu hỏi')}
+        description={t('{{count}} câu hỏi trong kho', { count: total })}
+      >
+        <div className="flex flex-wrap gap-2">
+          <Link to="/import" className="workspace-link-button"><Icon name="upload" size={16} />Import Word/PDF</Link>
           <Button variant="primary" icon={<Icon name="plus" size={16} />} onClick={beginCreate}>{t('Tạo câu hỏi')}</Button>
         </div>
-      </div>
+      </PageHeading>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+      <div className="question-filter-grid grid sm:grid-cols-2 xl:grid-cols-5 items-end gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
         <Input
+          aria-label={t('Tìm nội dung câu hỏi...')}
           placeholder={t('Tìm nội dung câu hỏi...')}
           value={filter.keyword || ''}
           onChange={(event) => updateFilter({ keyword: event.target.value || undefined })}
@@ -302,7 +304,7 @@ export default function QuestionBank() {
       ) : (
         <div className="space-y-3">
           {questions.map((question) => (
-            <article key={question.id} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+            <article key={question.id} data-selected={selected.has(question.id!)} className="question-bank-item rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
               <div className="flex items-start gap-3">
                 {question.id && <input aria-label={`Chọn câu ${question.id}`} type="checkbox" checked={selected.has(question.id)} onChange={() => toggleSelected(question.id!)} className="mt-1 accent-blue-600" />}
                 <div className="min-w-0 flex-1">

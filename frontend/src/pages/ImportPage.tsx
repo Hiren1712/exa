@@ -1,3 +1,4 @@
+import { PageHeading } from '../components/PageHeading';
 import { useEffect, useRef, useState } from 'react';
 import type { DragEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -301,17 +302,12 @@ export default function ImportPage() {
 
   return (
     <div className="space-y-6">
-      <header className="exa-card relative overflow-hidden p-5 sm:p-7">
-        <div aria-hidden="true" className="absolute -right-16 -top-20 size-60 rounded-full bg-blue-400/10 blur-3xl" />
-        <div className="relative flex flex-wrap items-center gap-4">
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-blue-700 text-white dark:bg-blue-500 dark:text-slate-950 shadow-lg shadow-blue-500/20"><Icon name="wand" size={26} /></div>
-          <div className="flex-1 min-w-0">
-            <div className="mb-1 text-xs font-bold uppercase tracking-[.16em] text-blue-700 dark:text-blue-300">EXA • AI WORKSPACE</div>
-            <h1 className="exa-page-title text-slate-900 dark:text-white">{t('Import đề thi bằng AI')}</h1>
-            <p className="exa-page-subtitle mt-1">{t('Tải tài liệu, trích xuất hoặc sinh câu hỏi, kiểm tra đáp án và lưu vào ngân hàng.')}</p>
-          </div>
-        </div>
-        <ol aria-label={t('Các bước import')} className="relative mt-6 grid grid-cols-3 gap-2 text-xs sm:text-sm">
+      <PageHeading
+        icon="exaImport"
+        title={t('Import đề thi bằng AI')}
+        description={t('Tải tài liệu, trích xuất hoặc sinh câu hỏi, kiểm tra đáp án và lưu vào ngân hàng.')}
+      />
+      <ol aria-label={t('Các bước import')} className="import-steps grid grid-cols-3 gap-2 text-xs sm:text-sm">
           {['01 · Cung cấp nội dung', '02 · AI xử lý', '03 · Rà soát & lưu'].map((label, index) => (
             <li key={label} className={`rounded-xl border px-3 py-2.5 text-center font-semibold ${
               (!preview && index === 0) || (preview && preview.status !== 'REVIEW' && index === 1) || preview?.status === 'REVIEW' && index === 2
@@ -320,7 +316,6 @@ export default function ImportPage() {
             }`}>{t(label)}</li>
           ))}
         </ol>
-      </header>
       {pollError && <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">{pollError}</div>}
 
       {/* Step 1: Upload */}

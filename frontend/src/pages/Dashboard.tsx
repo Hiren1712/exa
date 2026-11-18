@@ -94,25 +94,25 @@ export default function Dashboard() {
   }
   const stats = isTeacher
     ? [
-        { icon: 'file', label: 'Đề thi', value: exams.length, color: 'from-blue-500 to-indigo-500' },
-      { icon: 'building', label: 'Lớp học', value: classrooms.length, color: 'from-purple-500 to-pink-500' },
-        { icon: 'check', label: 'Bài nộp', value: teacherSubmissionCount, color: 'from-emerald-500 to-teal-500' },
-        { icon: 'trophy', label: 'Điểm TB', value: teacherAverage, color: 'from-amber-500 to-orange-500' },
+        { icon: 'file', label: 'Đề thi', value: exams.length },
+      { icon: 'building', label: 'Lớp học', value: classrooms.length },
+        { icon: 'check', label: 'Bài nộp', value: teacherSubmissionCount },
+        { icon: 'trophy', label: 'Điểm TB', value: teacherAverage },
       ]
     : [
-        { icon: 'trophy', label: 'Điểm trung bình', value: averageScore, color: 'from-amber-500 to-orange-500' },
-        { icon: 'check', label: 'Bài đã làm', value: submittedExamIds.size, color: 'from-emerald-500 to-teal-500' },
-        { icon: 'clock', label: 'Bài đang chờ', value: exams.filter((exam) => !submittedExamIds.has(exam.id)).length, color: 'from-blue-500 to-indigo-500' },
-        { icon: 'activity', label: 'Chuỗi học tập', value: t('{{count}} ngày', { count: studyStreak }), color: 'from-purple-500 to-pink-500' },
+        { icon: 'trophy', label: 'Điểm trung bình', value: averageScore },
+        { icon: 'check', label: 'Bài đã làm', value: submittedExamIds.size },
+        { icon: 'clock', label: 'Bài đang chờ', value: exams.filter((exam) => !submittedExamIds.has(exam.id)).length },
+        { icon: 'activity', label: 'Chuỗi học tập', value: t('{{count}} ngày', { count: studyStreak }) },
       ];
 
   return (
     <div className="exa-dashboard space-y-6 sm:space-y-8 animate-fade-in">
       <section className="exa-hero relative rounded-[24px] overflow-hidden text-white p-6 sm:p-8">
         <div className="exa-hero-grid" aria-hidden="true" />
-        <div className="exa-hero-orbit exa-hero-orbit-one" aria-hidden="true" />
-        <div className="relative z-10 flex w-full min-w-0 flex-wrap items-center justify-between gap-5">
-          <div className="min-w-0 flex-1 basis-64">
+        <div className="dashboard-books" aria-hidden="true"><i /><i /><i /></div>
+        <div className="relative z-10 dashboard-intro flex w-full min-w-0 flex-col items-start gap-4">
+          <div className="min-w-0">
             <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-100">
               <Icon name={isTeacher ? 'graduationCap' : 'book'} size={20} />
               {t(isTeacher ? 'Giáo viên' : 'Học sinh')}
@@ -122,7 +122,7 @@ export default function Dashboard() {
             </h1>
             <p className="mt-2 text-blue-50">{t(isTeacher ? 'Quản lý lớp học, đề thi và kết quả ở một nơi.' : 'Theo dõi tiến độ và tiếp tục hành trình học tập.')}</p>
           </div>
-          <Link to={isTeacher ? '/exams/new' : '/exams'} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-5 font-semibold text-blue-900 hover:bg-blue-50">
+          <Link to={isTeacher ? '/exams/new' : '/exams'} className="dashboard-primary inline-flex min-h-11 items-center gap-2 rounded-xl px-5 font-semibold">
             <Icon name={isTeacher ? 'plus' : 'book'} size={17} />{t(isTeacher ? 'Tạo đề thi' : 'Bài tập')}
           </Link>
         </div>
@@ -134,14 +134,14 @@ export default function Dashboard() {
         </section>
       ) : (<>
       {/* Stats */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-5">
+      <div className="metric-strip grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         {stats.map((stat) => (
           <div
             key={stat.label}
             className="exa-stat-card exa-premium-card rounded-[20px] p-4 sm:p-6"
           >
             <div
-              className={`exa-stat-icon w-11 h-11 rounded-[13px] bg-gradient-to-br ${stat.color} text-white flex items-center justify-center mb-4`}
+              className="exa-stat-icon w-10 h-10 flex items-center justify-center mb-4"
             >
               <Icon name={stat.icon} size={20} />
             </div>

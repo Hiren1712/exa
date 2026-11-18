@@ -1,3 +1,4 @@
+import { PageHeading } from '../components/PageHeading';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Icon } from '../components/Icon';
@@ -114,14 +115,15 @@ export default function Settings() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{t('Cài đặt')}</h1>
-        <p className="text-sm text-slate-500 mt-0.5">{t('Quản lý hồ sơ, bảo mật và tùy chọn giao diện')}</p>
-      </div>
+      <PageHeading
+        icon="exaSettings"
+        title={t('Cài đặt')}
+        description={t('Quản lý hồ sơ, bảo mật và tùy chọn giao diện')}
+      />
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
         <div
-          className="relative h-36 sm:h-48 bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 bg-cover bg-center"
+          className="profile-cover relative h-32 sm:h-40 bg-cover bg-center"
           style={user?.coverImageUrl ? { backgroundImage: `url("${profileImageUrl(user.coverImageUrl)}")` } : undefined}
         >
           {user?.coverImageUrl && <div className="absolute inset-0 bg-slate-950/10" />}

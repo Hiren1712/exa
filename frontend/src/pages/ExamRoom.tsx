@@ -255,7 +255,7 @@ export default function ExamRoom() {
   if (!submissionId) {
     return (
       <div className="min-h-[70vh] grid place-items-center">
-        <section className="w-full max-w-xl rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-7 shadow-xl">
+        <section className="exam-entry w-full max-w-xl rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-7 shadow-xl">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40"><Icon name="file" size={25} /></div>
           <h1 className="mt-4 text-center text-xl font-extrabold text-slate-900 dark:text-white">{exam.title}</h1>
           <p className="mt-2 text-center text-sm text-slate-500">{exam.subject} · {t('{{count}} phút', { count: exam.durationMin })} · {t('{{count}} câu', { count: exam.questions?.length || 0 })}</p>
@@ -289,7 +289,7 @@ export default function ExamRoom() {
 
   if (isPreview && previewResult) {
     return (
-      <div className="mx-auto mt-10 max-w-xl rounded-3xl border border-blue-200 bg-white p-8 text-center shadow-lg dark:border-slate-700 dark:bg-slate-900">
+      <div className="exam-entry mx-auto mt-10 max-w-xl rounded-3xl border border-blue-200 bg-white p-8 text-center shadow-lg dark:border-slate-700 dark:bg-slate-900">
         <Icon name="check" size={32} className="mx-auto text-emerald-500" />
         <h1 className="mt-4 text-2xl font-extrabold text-slate-900 dark:text-white">{t('Kết quả thử đề')}</h1>
         <p className="mt-2 text-slate-600 dark:text-slate-300">{exam.title}</p>
@@ -316,9 +316,9 @@ export default function ExamRoom() {
   }
 
   return (
-    <div className="fixed inset-0 z-40 bg-slate-50 dark:bg-slate-950 flex flex-col h-[100dvh]">
+    <div className="exam-session fixed inset-0 z-40 bg-slate-50 dark:bg-slate-950 flex flex-col h-[100dvh]">
       {/* Top bar */}
-      <div className="min-h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-2">
+      <div className="exam-session-toolbar min-h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-2">
         {isPreview && (
           <span className="hidden sm:inline-flex rounded-lg bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
             {t('ĐANG THỬ — KHÔNG LƯU KẾT QUẢ')}

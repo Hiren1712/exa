@@ -253,20 +253,20 @@ export default function ExamBuilder() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <button aria-label="Quay lại" onClick={() => navigate('/exams')} className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800"><Icon name="chevronL" /></button>
+      <header className="workspace-heading">
+        <div className="workspace-heading-intro">
+          <button aria-label={t('Quay lại')} onClick={() => navigate('/exams')} className="workspace-heading-icon"><Icon name="chevronL" /></button>
           <div>
             <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{t(id ? 'Sửa đề thi' : 'Tạo đề thi mới')}</h1>
             <p className="text-xs text-slate-500">{savedAt ? t('Tự lưu lúc {{time}}', { time: savedAt.toLocaleTimeString(language === 'en' ? 'en-US' : 'vi-VN') }) : t('Bản nháp tự lưu mỗi 30 giây')}</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="workspace-heading-actions">
           <Button variant="ghost" onClick={() => setPreviewOpen(true)} icon={<Icon name="eye" size={16} />}>Xem trước</Button>
           <Button variant="ghost" loading={saving} onClick={() => void handleSave(false)} icon={<Icon name="save" size={16} />}>Lưu nháp</Button>
           <Button variant="primary" loading={saving} onClick={() => void handleSave(true)}>Công khai</Button>
         </div>
-      </div>
+      </header>
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)] gap-6 items-start">
         <div className="space-y-5">

@@ -53,7 +53,7 @@ export default function ExamResult() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 text-white p-10 text-center shadow-2xl">
+      <div className="result-cover relative overflow-hidden text-white p-6 sm:p-9 text-center">
         <div className="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-white/10" />
         <div className="relative z-10">
           <div className="w-36 h-36 rounded-full mx-auto mb-5 grid place-items-center" style={{ background: `conic-gradient(#fff ${pct}%, rgba(255,255,255,.22) 0)` }}>

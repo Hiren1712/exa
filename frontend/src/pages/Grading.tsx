@@ -1,3 +1,4 @@
+import { PageHeading } from '../components/PageHeading';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
@@ -51,10 +52,11 @@ export default function Grading() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">{t('Chấm bài tự luận')}</h1>
-        <p className="mt-1 text-sm text-slate-500">{t('Bài nộp chứa câu tự luận được liệt kê tại đây để giáo viên chấm điểm và nhận xét.')}</p>
-      </header>
+      <PageHeading
+        icon="exaGrading"
+        title={t('Chấm bài tự luận')}
+        description={t('Bài nộp chứa câu tự luận được liệt kê tại đây để giáo viên chấm điểm và nhận xét.')}
+      />
 
       {loading ? (
         <div className="p-10 text-center text-slate-500">{t('Đang tải bài cần chấm...')}</div>

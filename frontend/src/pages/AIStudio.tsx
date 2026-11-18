@@ -1,3 +1,4 @@
+import { PageHeading } from '../components/PageHeading';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { aiApi, EssayGradeSuggestion } from '../api/ai';
@@ -73,7 +74,7 @@ export default function AIStudio() {
 
   if (!isPro) {
     return (
-      <div className="max-w-2xl mx-auto rounded-3xl border border-indigo-200 dark:border-indigo-900 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-950/30 p-8 text-center">
+      <div className="studio-gate max-w-2xl mx-auto rounded-3xl border border-indigo-200 dark:border-indigo-900 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-950/30 p-8 text-center">
         <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-indigo-600 text-white"><Icon name="sparkle" size={25} /></div>
         <h1 className="mt-4 text-xl font-extrabold text-slate-900 dark:text-white">{t('AI Studio yêu cầu gói Pro')}</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{t('Tài khoản hiện tại đang dùng gói {{plan}}. Việc đổi gói cần được xác nhận qua quản trị viên; trang này không tự mở khóa gói trả phí.', { plan: user?.plan || 'FREE' })}</p>
@@ -84,11 +85,11 @@ export default function AIStudio() {
 
   return (
     <div className="space-y-6">
-      <header className="exa-card p-5 sm:p-6">
-        <div className="text-xs font-bold tracking-widest uppercase text-blue-700 dark:text-blue-300">{t('Trợ lý giảng dạy')}</div>
-        <h1 className="exa-page-title mt-1 text-slate-900 dark:text-white">AI Studio</h1>
-        <p className="exa-page-subtitle mt-1">{t('Tạo câu hỏi từ chủ đề và nhận gợi ý chấm tự luận có kiểm soát. Hãy kiểm tra kết quả AI trước khi sử dụng.')}</p>
-      </header>
+      <PageHeading
+        icon="exaAi"
+        title="AI Studio"
+        description={t('Tạo câu hỏi từ chủ đề và nhận gợi ý chấm tự luận có kiểm soát. Hãy kiểm tra kết quả AI trước khi sử dụng.')}
+      />
       <div role="tablist" aria-label={t('Công cụ AI')} className="flex flex-wrap gap-2 rounded-2xl bg-slate-100 dark:bg-slate-800 p-1.5">
         <button type="button" role="tab" aria-selected={tool === 'generate'} onClick={() => setTool('generate')} className={`flex-1 min-w-36 rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${tool === 'generate' ? 'bg-white dark:bg-slate-700 shadow text-blue-800 dark:text-blue-100' : 'text-slate-700 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-700/50'}`}>{t('Sinh câu hỏi')}</button>
         <button type="button" role="tab" aria-selected={tool === 'grade'} onClick={() => setTool('grade')} className={`flex-1 min-w-36 rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${tool === 'grade' ? 'bg-white dark:bg-slate-700 shadow text-blue-800 dark:text-blue-100' : 'text-slate-700 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-700/50'}`}>{t('Gợi ý chấm tự luận')}</button>
