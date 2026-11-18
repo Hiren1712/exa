@@ -407,7 +407,7 @@ public class ChatbotService {
                 Kiến thức địa lý Việt Nam và quy tắc trả lời về địa danh:
                 %s
                 %s
-                Bảo toàn công thức toán trong $...$ hoặc \\(...\\), công thức hóa học trong $\\ce{...}$.
+                Bảo toàn công thức toán trong $...$ hoặc \\(...\\), mọi công thức/phản ứng hóa học trong $\\ce{...}$ (ví dụ $\\ce{H2SO4}$, $\\ce{SO4^2-}$). Giữ đúng chỉ số dưới/trên, điện tích ion, chữ Hy Lạp, ký hiệu sinh học, đơn vị và tiếng Việt trong cả lời giải.
                 Không bịa dữ liệu tài khoản, điểm số, đề thi hoặc thông tin riêng tư mà bạn không được cung cấp.
                 Không chửi tục, công kích hoặc tạo nội dung khiêu dâm/tình dục mô tả thô tục; nếu được yêu cầu,
                 hãy từ chối ngắn gọn, lịch sự và chuyển hướng sang nội dung học tập phù hợp.

@@ -122,6 +122,8 @@ class GeminiParserTest {
                 .contains("không lặp cùng một ý")
                 .contains("tự kiểm tra số lượng đúng 5")
                 .contains("type phải là MCQ, TRUE_FALSE, SHORT_ANSWER hoặc ESSAY")
+                .contains("Viết mọi công thức/phản ứng hóa học trong $\\ce{...}$")
+                .contains("điện tích ion")
                 .contains("$...$")
                 .contains("$\\ce{...}$");
     }
@@ -158,11 +160,17 @@ class GeminiParserTest {
                 .contains("Hộp phải ôm đúng hình minh họa")
                 .contains("options gồm bốn mệnh đề")
                 .contains("correctAnswer là bốn ký tự T/F theo thứ tự từng mệnh đề");
+        assertThat(extractPrompt)
+                .contains("$...$ cho toán và $\\ce{...}$ cho công thức hóa/phản ứng, cả trong lời giải và đáp án")
+                .contains("điện tích ion");
         assertThat(generatePrompt)
                 .contains("đọc chữ tiếng Việt")
                 .contains("[Hình: ...]")
                 .contains("tọa độ là số nguyên trong khoảng 0–1000")
                 .contains("không tự bịa chi tiết")
+                .contains("mọi công thức/phản ứng hóa học")
+                .contains("$\\ce{SO4^2-}$")
+                .contains("Áp dụng cả trong lời giải/đáp án")
                 .contains("tự kiểm tra số lượng đúng 10");
     }
 
