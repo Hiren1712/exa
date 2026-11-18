@@ -182,10 +182,16 @@ export default function ClassDetail() {
 
       {tab === 'assignments' && (
         <div className="space-y-3">
+          {isTeacher && (
+            <div className="flex justify-end">
+              <Link to={`/exams/new?classroomId=${classroom.id}`} className="workspace-link-button">
+                <Icon name="plus" size={16} /> {t('Tạo đề cho lớp')}
+              </Link>
+            </div>
+          )}
           {exams.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center text-sm text-slate-500">
               {t('Chưa có đề thi nào được giao cho lớp này.')}
-              {isTeacher && <div className="mt-4"><Link to={`/exams/new?classroomId=${classroom.id}`}><Button variant="primary">{t('Tạo đề cho lớp')}</Button></Link></div>}
             </div>
           ) : exams.map((exam) => (
             <div key={exam.id} className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
