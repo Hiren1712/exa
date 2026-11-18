@@ -180,13 +180,17 @@ public class ChatbotService {
             List<ProviderConfig> configs = configsFor(provider);
             if (configs.isEmpty()) continue;
             hasConfiguredProvider = true;
+            // Leave time for the remaining providers before the browser times out.
+            long providerDeadline = System.nanoTime() + Duration.ofMillis(Math.clamp(timeoutMs, 1L, 25_000L)).toNanos();
             for (ProviderConfig config : configs) {
+                long remainingMs = Duration.ofNanos(providerDeadline - System.nanoTime()).toMillis();
+                if (remainingMs <= 0) break;
                 try {
                     String reply = "gemini".equals(provider)
                             ? geminiParser.chatWithSystemPrompt(
-                                    history, config.apiKey(), systemPrompt(student, responseGuidance))
+                                    history, config.apiKey(), systemPrompt(student, responseGuidance), providerDeadline)
                             : callCompatibleProvider(
-                                    config, history, systemPrompt(student, responseGuidance));
+                                    config, history, systemPrompt(student, responseGuidance), 2048, 0.6, remainingMs);
                     log.info("ExaBot answered using provider {} slot {}", provider, config.slot());
                     return reply;
                 } catch (RuntimeException error) {
@@ -331,13 +335,6 @@ public class ChatbotService {
             default -> throw new IllegalStateException("Unsupported ExaBot provider: " + provider);
         };
         return "(?i)^" + prefix + "(\\d+)$";
-    }
-
-    private String callCompatibleProvider(
-            ProviderConfig config,
-            List<GeminiParser.ChatTurn> history,
-            String systemPrompt) {
-        return callCompatibleProvider(config, history, systemPrompt, 2048, 0.6, timeoutMs);
     }
 
     private String callCompatibleProvider(
