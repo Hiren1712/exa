@@ -409,10 +409,10 @@ export default function ExamRoom() {
                 </span>
               </div>
 
-              <p className="text-base font-semibold text-slate-900 dark:text-white leading-relaxed mb-5 whitespace-pre-wrap">
+              <div className="text-base font-semibold text-slate-900 dark:text-white leading-relaxed mb-5 whitespace-pre-wrap">
                 <MathText>{current.content}</MathText>
                 <div className="mt-3"><QuestionImage src={current.imageUrl} alt={t('Hình minh họa câu hỏi')} /></div>
-              </p>
+              </div>
 
               {isFourStatementTrueFalse(current.type, current.options) ? (
                 <div className="space-y-3">
@@ -531,30 +531,39 @@ export default function ExamRoom() {
                     const savedLetter = String.fromCharCode(65 + originalIndex);
                     const isSelected = answers[currentQuestionId] === savedLetter;
                     return (
-                      <button
+                      <div
                         key={i}
-                        onClick={() => handleAnswer(currentIdx, savedLetter)}
                         className={cn(
-                          'w-full text-left flex items-start gap-3 px-4 py-3 rounded-xl border-2 transition-all',
+                          'w-full rounded-xl border-2 transition-colors focus-within:border-blue-500',
                           isSelected
                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 shadow-md'
-                            : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-slate-50',
+                            : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-slate-50 dark:hover:bg-slate-800',
                         )}
                       >
-                        <div
-                          className={cn(
-                            'w-8 h-8 rounded-full border-2 flex items-center justify-center flex-none text-sm font-bold',
-                            isSelected
-                              ? 'bg-blue-700 border-blue-700 text-white dark:bg-blue-500 dark:border-blue-500 dark:text-slate-950'
-                              : 'border-slate-300 text-slate-500',
-                          )}
+                        <button
+                          type="button"
+                          aria-pressed={isSelected}
+                          onClick={() => handleAnswer(currentIdx, savedLetter)}
+                          className="flex w-full items-start gap-3 rounded-lg px-4 py-3 text-left"
                         >
-                          {letter}
-                        </div>
-                        <div className="min-w-0 flex-1"><MathText className="text-sm pt-1.5">{opt}</MathText>
-                          <div className="mt-2"><QuestionImage src={current.optionImages?.[i]} alt={t('Hình phương án {{letter}}', { letter })} /></div>
-                        </div>
-                      </button>
+                          <span
+                            className={cn(
+                              'w-8 h-8 rounded-full border-2 flex items-center justify-center flex-none text-sm font-bold',
+                              isSelected
+                                ? 'bg-blue-700 border-blue-700 text-white dark:bg-blue-500 dark:border-blue-500 dark:text-slate-950'
+                                : 'border-slate-300 text-slate-500',
+                            )}
+                          >
+                            {letter}
+                          </span>
+                          <MathText className="min-w-0 flex-1 pt-1.5 text-sm">{opt}</MathText>
+                        </button>
+                        {current.optionImages?.[i] && (
+                          <div className="px-4 pb-3 sm:pl-16">
+                            <QuestionImage src={current.optionImages[i]} alt={t('Hình phương án {{letter}}', { letter })} />
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
