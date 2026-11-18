@@ -62,9 +62,10 @@ export default function ExamBuilder() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [bankQuestions, setBankQuestions] = useState<Question[]>([]);
+  const [bankQuestionTotal, setBankQuestionTotal] = useState(0);
   const [pickerFilter, setPickerFilter] = useState<QuestionFilter>({ page: 0, size: 10 });
   const [pickerLoading, setPickerLoading] = useState(false);
-  const [pickedIds, setPickedIds] = useState<Set<number>>(new Set());
+  const [pickedQuestions, setPickedQuestions] = useState<Map<number, Question>>(new Map());
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const examIdRef = useRef<number | null>(id ? Number(id) : null);
   const formRef = useRef(form);
@@ -155,6 +156,7 @@ export default function ExamBuilder() {
     try {
       const result = await questionApi.list({ ...pickerFilter, subject: pickerFilter.subject || form.subject });
       setBankQuestions(result.content);
+      setBankQuestionTotal(result.totalElements);
     } catch (err) {
       toast(t('Không tải được ngân hàng câu hỏi'), extractError(err), 'error');
     } finally {
@@ -168,19 +170,19 @@ export default function ExamBuilder() {
 
   const toggleQuestion = (question: Question) => {
     if (!question.id) return;
-    setPickedIds((current) => {
-      const next = new Set(current);
-      if (next.has(question.id!)) next.delete(question.id!);
-      else next.add(question.id!);
-      return next;
+    setPickedQuestions((current) => {
+      const selected = new Map(current);
+      if (selected.has(question.id!)) selected.delete(question.id!);
+      else selected.set(question.id!, question);
+      return selected;
     });
   };
 
   const addPickedQuestions = () => {
-    const additions = bankQuestions.filter((question) => question.id && pickedIds.has(question.id)
+    const additions = [...pickedQuestions.values()].filter((question) => question.id
       && !questions.some((existing) => existing.id === question.id));
     setQuestions((current) => [...current, ...additions]);
-    setPickedIds(new Set());
+    setPickedQuestions(new Map());
     setPickerOpen(false);
   };
 
@@ -379,7 +381,7 @@ export default function ExamBuilder() {
             <div className="max-h-[50vh] overflow-y-auto space-y-2">
               {bankQuestions.map((question) => (
                 <label key={question.id} className="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-3 cursor-pointer">
-                  <input type="checkbox" checked={question.id ? pickedIds.has(question.id) : false} onChange={() => toggleQuestion(question)} className="mt-1 accent-blue-600" />
+                  <input type="checkbox" checked={question.id ? pickedQuestions.has(question.id) : false} onChange={() => toggleQuestion(question)} className="mt-1 accent-blue-600" />
                   <span className="flex-1">
                     <MathText className="block text-sm font-semibold text-slate-800 dark:text-slate-200">{question.content}</MathText>
                     <span className="block mt-1 text-xs text-slate-500">{question.subject} · {t(QUESTION_TYPE_LABELS[question.type])}</span>
@@ -390,8 +392,38 @@ export default function ExamBuilder() {
           )}
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setPickerOpen(false)}>{t('Hủy')}</Button>
-            <Button variant="primary" onClick={addPickedQuestions}>{t('Thêm {{count}} câu', { count: pickedIds.size })}</Button>
+            <Button variant="primary" onClick={addPickedQuestions}>{t('Thêm {{count}} câu', { count: pickedQuestions.size })}</Button>
           </div>
+          {bankQuestionTotal > (pickerFilter.size || 10) && (
+            <div className="flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-700">
+              <span className="text-xs text-slate-500">
+                {t('Trang {{page}} / {{pages}}', {
+                  page: (pickerFilter.page || 0) + 1,
+                  pages: Math.ceil(bankQuestionTotal / (pickerFilter.size || 10)),
+                })}
+                {' · '}
+                {t('{{count}} câu đã chọn', { count: pickedQuestions.size })}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={pickerLoading || !pickerFilter.page}
+                  onClick={() => setPickerFilter((current) => ({ ...current, page: Math.max(0, (current.page || 0) - 1) }))}
+                >
+                  Trước
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={pickerLoading || ((pickerFilter.page || 0) + 1) * (pickerFilter.size || 10) >= bankQuestionTotal}
+                  onClick={() => setPickerFilter((current) => ({ ...current, page: (current.page || 0) + 1 }))}
+                >
+                  Tiếp
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
 
