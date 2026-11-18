@@ -327,13 +327,14 @@ export default function ImportPage() {
               label={t('Khối lớp')}
               value={String(grade)}
               onChange={(e) => setGrade(Number(e.target.value))}
-              options={[10, 11, 12].map((g) => ({ value: String(g), label: t('Lớp {{grade}}', { grade: g }) }))}
+              options={[6, 7, 8, 9, 10, 11, 12].map((g) => ({ value: String(g), label: t('Lớp {{grade}}', { grade: g }) }))}
             />
             <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
+              <label htmlFor="import-unit" className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
                 {t('Chuyên đề (tùy chọn)')}
               </label>
               <input
+                id="import-unit"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 placeholder={t('VD: Hàm số bậc ba')}

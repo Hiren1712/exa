@@ -1,5 +1,5 @@
 import { PageHeading } from '../components/PageHeading';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
@@ -48,22 +48,31 @@ export default function QuestionBank() {
   const [editing, setEditing] = useState<Question | null>(null);
   const [form, setForm] = useState<Question>(emptyQuestion);
 
+  const latestListRequest = useRef(0);
   const load = useCallback(async () => {
+    const request = ++latestListRequest.current;
     setLoading(true);
     try {
       const result = await questionApi.list(filter);
+      if (request !== latestListRequest.current) return;
+      const lastPage = Math.max(0, Math.ceil(result.totalElements / (filter.size || 20)) - 1);
+      if ((filter.page || 0) > lastPage) {
+        setFilter((current) => ({ ...current, page: lastPage }));
+        return;
+      }
       setQuestions(result.content || []);
       setTotal(result.totalElements || 0);
       setSelected(new Set());
     } catch (err) {
-      toast(t('Không tải được câu hỏi'), extractError(err), 'error');
+      if (request === latestListRequest.current) toast(t('Không tải được câu hỏi'), extractError(err), 'error');
     } finally {
-      setLoading(false);
+      if (request === latestListRequest.current) setLoading(false);
     }
   }, [filter, t, toast]);
 
   useEffect(() => {
     void load();
+    return () => { latestListRequest.current += 1; };
   }, [load]);
 
   const beginCreate = () => {
@@ -117,6 +126,11 @@ export default function QuestionBank() {
       toast(t('Thiếu phương án'), t('Câu trắc nghiệm cần ít nhất hai phương án'), 'warn');
       return;
     }
+    const correctIndex = validIndexes.findIndex((item) => String.fromCharCode(65 + item.index) === form.correctAnswer);
+    if (form.type === 'MCQ' && correctIndex < 0) {
+      toast(t('Thiếu đáp án'), t('Hãy chọn một phương án có nội dung hoặc hình ảnh làm đáp án đúng.'), 'warn');
+      return;
+    }
     if (uploading) return;
     setSaving(true);
     try {
@@ -126,7 +140,7 @@ export default function QuestionBank() {
         options,
         optionImages,
         correctAnswer: form.type === 'MCQ'
-          ? String.fromCharCode(65 + Math.max(0, validIndexes.findIndex((item) => String.fromCharCode(65 + item.index) === form.correctAnswer)))
+          ? String.fromCharCode(65 + correctIndex)
           : form.type === 'TRUE_FALSE' ? form.correctAnswer?.toUpperCase() : undefined,
       };
       if (editing?.id) {

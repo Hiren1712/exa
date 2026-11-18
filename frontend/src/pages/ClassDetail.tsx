@@ -57,8 +57,9 @@ export default function ClassDetail() {
   }, [load]);
 
   useEffect(() => {
+    setReport(null);
     if (tab !== 'reports' || !selectedExam) {
-      setReport(null);
+      setReportLoading(false);
       return;
     }
     let active = true;
@@ -205,8 +206,9 @@ export default function ClassDetail() {
       {tab === 'reports' && isTeacher && (
         <section className="space-y-4">
           <div className="max-w-md">
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">{t('Chọn đề thi')}</label>
+            <label htmlFor="class-report-exam" className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">{t('Chọn đề thi')}</label>
             <select
+              id="class-report-exam"
               value={selectedExam ?? ''}
               onChange={(event) => setSelectedExam(event.target.value ? Number(event.target.value) : null)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"

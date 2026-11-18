@@ -332,6 +332,7 @@ const english: Record<string, string> = {
   'Đúng/Sai gồm 4 mệnh đề': 'True/False has 4 statements',
   'Thiếu mệnh đề': 'Missing statement',
   'Câu Đúng/Sai cần đủ bốn mệnh đề': 'A True/False question needs all four statements',
+  'Hãy chọn một phương án có nội dung hoặc hình ảnh làm đáp án đúng.': 'Choose an option with text or an image as the correct answer.',
   'Thiếu đáp án': 'Missing answer',
   'Hãy chọn Đúng hoặc Sai cho đủ bốn mệnh đề': 'Choose True or False for all four statements',
   'Kiểm tra nội dung, bốn mệnh đề và đáp án Đúng/Sai của câu {{number}}.': 'Check the content, four statements, and True/False answers for question {{number}}.',

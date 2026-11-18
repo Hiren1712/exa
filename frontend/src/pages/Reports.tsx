@@ -16,26 +16,33 @@ export default function Reports() {
   const [exams, setExams] = useState<ExamSummary[]>([]);
   const [examId, setExamId] = useState<number | null>(null);
   const [report, setReport] = useState<ExamReport | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [listLoading, setListLoading] = useState(true);
+  const [reportLoading, setReportLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
+    let active = true;
     examApi.list()
       .then((items) => {
+        if (!active) return;
         setExams(items);
-        if (items.length) setExamId(items[0].id);
+        setExamId((current) => items.some((exam) => exam.id === current) ? current : items[0]?.id ?? null);
       })
-      .catch((err: unknown) => toast(t('Không tải được danh sách đề thi'), extractError(err), 'error'))
-      .finally(() => setLoading(false));
+      .catch((err: unknown) => {
+        if (active) toast(t('Không tải được danh sách đề thi'), extractError(err), 'error');
+      })
+      .finally(() => { if (active) setListLoading(false); });
+    return () => { active = false; };
   }, [t, toast]);
 
   useEffect(() => {
+    setReport(null);
     if (!examId) {
-      setReport(null);
+      setReportLoading(false);
       return;
     }
     let active = true;
-    setLoading(true);
+    setReportLoading(true);
     reportApi.getExamReport(examId)
       .then((data) => {
         if (active) setReport(data);
@@ -44,7 +51,7 @@ export default function Reports() {
         if (active) toast(t('Không tải được báo cáo'), extractError(err), 'error');
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) setReportLoading(false);
       });
     return () => {
       active = false;
@@ -94,10 +101,10 @@ export default function Reports() {
           </select>
         </div>
         <Button variant="primary" loading={exporting} disabled={!examId} icon={<Icon name="download" size={16} />} onClick={() => void exportExcel()}>{t('Xuất Excel')}</Button>
-        <Button variant="ghost" disabled={!examId || !report} icon={<Icon name="file" size={16} />} onClick={() => window.print()}>{t('In / Lưu PDF')}</Button>
+        <Button variant="ghost" disabled={!examId || report?.examId !== examId || reportLoading} icon={<Icon name="file" size={16} />} onClick={() => window.print()}>{t('In / Lưu PDF')}</Button>
       </div>
 
-      {loading ? (
+      {listLoading || reportLoading ? (
         <div className="p-16 text-center"><div className="inline-block w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
       ) : !report ? (
         <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-12 text-center text-sm text-slate-500">
