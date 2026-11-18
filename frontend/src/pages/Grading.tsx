@@ -33,8 +33,9 @@ export default function Grading() {
   useEffect(() => { void loadQueue(); }, [loadQueue]);
 
   const saveGrade = async (item: GradingItem) => {
-    const score = Number(scores[item.submissionId]);
-    if (!Number.isFinite(score) || score < 0 || score > item.totalPoints) {
+    const enteredScore = scores[item.submissionId]?.trim();
+    const score = Number(enteredScore);
+    if (!enteredScore || !Number.isFinite(score) || score < 0 || score > item.totalPoints) {
       toast(t('Điểm không hợp lệ'), t('Điểm cuối cùng phải nằm trong khoảng 0 đến {{points}}.', { points: item.totalPoints }), 'warn');
       return;
     }

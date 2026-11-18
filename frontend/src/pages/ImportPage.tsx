@@ -846,9 +846,16 @@ export default function ImportPage() {
           </div>
           <h3 className="font-bold text-red-700 dark:text-red-400 mb-1">{t('Xử lý thất bại')}</h3>
           <p className="text-sm text-red-600 mb-4">{preview.errorMessage}</p>
-          <Button variant="ghost" onClick={resetImport}>
-            {t('Thử lại')}
-          </Button>
+          <div className="flex flex-wrap justify-center gap-2">
+            {(file || content.trim()) && (
+              <Button variant="primary" loading={uploading} onClick={() => void handleUpload()}>
+                {t('Thử lại')}
+              </Button>
+            )}
+            <Button variant="ghost" disabled={uploading} onClick={resetImport}>
+              {t('Chọn tệp khác')}
+            </Button>
+          </div>
         </div>
       )}
       {preview && preview.status !== 'REVIEW' && preview.status !== 'FAILED' && (
