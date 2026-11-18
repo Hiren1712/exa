@@ -54,7 +54,7 @@ export default function Exams() {
   }, [loadExams]);
 
   const handleDelete = async (id: number, title: string) => {
-    if (!confirm(`Xóa đề thi "${title}"?`)) return;
+    if (!confirm(t('Xóa đề “{{title}}”?', { title }))) return;
     try {
       await examApi.delete(id);
       toast(t('Đã xóa'), title, 'success');
@@ -256,41 +256,55 @@ export default function Exams() {
                   );
                 })() : (
                   <>
-                    <button
-                      onClick={() => navigate(`/exam/${exam.id}?preview=1`)}
-                      className="inline-flex items-center justify-center gap-1.5 flex-1 py-2 text-xs font-semibold rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                    >
-                      {t('Thử đề')}
-                    </button>
-                    <button
-                      onClick={() => navigate(`/exams/${exam.id}/edit`)}
-                      className="flex-1 py-2 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 hover:bg-slate-200 transition-colors"
-                    >
-                      <Icon name="edit" size={14} /> {t('Sửa')}
-                    </button>
-                    {exam.status === 'DRAFT' && (
+                    <div className="exam-card-actions">
                       <button
-                        onClick={() => handlePublish(exam.id)}
-                        className="flex-1 py-2 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
+                        onClick={() => navigate(`/exam/${exam.id}?preview=1`)}
+                        className="bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-200 dark:hover:bg-blue-900"
                       >
-                        <Icon name="play" size={14} /> {t('Mở')}
+                        {t('Thử đề')}
                       </button>
-                    )}
-                    <button
-                      onClick={() => void handleShowInvite(exam.id)}
-                      disabled={loadingInviteId === exam.id}
-                      className="w-full rounded-lg bg-indigo-50 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 dark:bg-indigo-950/40 dark:text-indigo-200 dark:hover:bg-indigo-950"
-                    >
-                      {loadingInviteId === exam.id
-                        ? t('Đang tạo mã...')
-                        : inviteByExam[exam.id] ? t('Ẩn mã phòng & link mời') : t('Mã phòng & link mời')}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(exam.id, exam.title)}
-                      className="py-2 px-3 text-xs font-semibold rounded-lg bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200 hover:bg-rose-700 hover:text-white dark:hover:bg-rose-600 transition-colors"
-                    >
-                      🗑️
-                    </button>
+                      <button
+                        onClick={() => navigate(`/exams/${exam.id}/edit`)}
+                        className="bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                      >
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="m4 20 1.2-5.2L16.6 3.4a2.1 2.1 0 0 1 3 0l1 1a2.1 2.1 0 0 1 0 3L9.2 18.8 4 20Z" />
+                          <path d="m14.8 5.2 4 4M5.2 14.8l4 4" />
+                        </svg>
+                        <span>{t('Sửa')}</span>
+                      </button>
+                      {exam.status === 'DRAFT' && (
+                        <button
+                          onClick={() => handlePublish(exam.id)}
+                          className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-200 dark:hover:bg-emerald-900"
+                        >
+                          <Icon name="play" size={15} /> {t('Mở')}
+                        </button>
+                      )}
+                    </div>
+                    <div className="exam-card-actions">
+                      <button
+                        onClick={() => void handleShowInvite(exam.id)}
+                        disabled={loadingInviteId === exam.id}
+                        aria-expanded={!!inviteByExam[exam.id]}
+                        className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 dark:bg-indigo-950/40 dark:text-indigo-200 dark:hover:bg-indigo-950"
+                      >
+                        {loadingInviteId === exam.id
+                          ? t('Đang tạo mã...')
+                          : inviteByExam[exam.id] ? t('Ẩn mã phòng & link mời') : t('Mã phòng & link mời')}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(exam.id, exam.title)}
+                        aria-label={t('Xóa đề “{{title}}”', { title: exam.title })}
+                        title={t('Xóa đề “{{title}}”', { title: exam.title })}
+                        className="exam-delete bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950"
+                      >
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M3.8 7.2h16.4M8.8 7.2V5.7a1.8 1.8 0 0 1 1.8-1.8h2.8a1.8 1.8 0 0 1 1.8 1.8v1.5" />
+                          <path d="m6 7.2.9 11.1a2 2 0 0 0 2 1.9h6.2a2 2 0 0 0 2-1.9L18 7.2M10 10.8l.3 5.8m3.7-5.8-.3 5.8" />
+                        </svg>
+                      </button>
+                    </div>
                   </>
                 )}
               </div>

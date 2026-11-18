@@ -46,6 +46,8 @@ const english: Record<string, string> = {
   'Hủy': 'Cancel',
   'Đóng': 'Close',
   'Xóa': 'Delete',
+  'Xóa đề “{{title}}”': 'Delete exam “{{title}}”',
+  'Xóa đề “{{title}}”?': 'Delete exam “{{title}}”?',
   'Sửa': 'Edit',
   'Tạo': 'Create',
   'Tìm kiếm': 'Search',

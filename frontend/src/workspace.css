@@ -57,6 +57,14 @@
 .exam-catalog-card[data-status="SCHEDULED"] { border-top-color: #5a80bf; }
 .exam-catalog-card h3 { font-size: 1.1rem; }
 .exam-catalog-card button { min-height: 38px; }
+.exam-card-actions { display: flex; width: 100%; gap: 8px; }
+.exam-card-actions > button {
+  display: inline-flex; flex: 1 1 0%; align-items: center; justify-content: center;
+  gap: 6px; min-width: 0; min-height: 44px; padding: 6px 8px; border-radius: 8px;
+  font-size: .75rem; font-weight: 600; line-height: 1.35; transition: background-color .15s;
+}
+.exam-card-actions svg { flex-shrink: 0; }
+.exam-card-actions > .exam-delete { flex: 0 0 44px; }
 .question-bank-item { border-inline-start: 3px solid var(--section-tint); }
 .question-bank-item[data-selected="true"] { border-color: var(--section-ink); }
 .question-filter-grid > * { min-width: 0; }
