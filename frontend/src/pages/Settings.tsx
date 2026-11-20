@@ -10,6 +10,7 @@ import { authApi } from '../api/auth';
 import type { AuthSessionInfo } from '../api/auth';
 import { extractError } from '../api/client';
 import { useLanguage } from '../i18n';
+import { COLOR_THEMES, ColorTheme } from '../lib/themes';
 
 const passwordStrengthScore = (password: string) => [
   password.length >= 8,
@@ -22,7 +23,7 @@ const passwordStrengthScore = (password: string) => [
 const formatSessionDate = (date: string) => new Date(date).toLocaleString();
 
 export default function Settings() {
-  const { user, themePreference, setThemePreference, logout, updateUser } = useAuth();
+  const { user, themePreference, setThemePreference, colorTheme, setColorTheme, logout, updateUser } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
   const avatarInput = useRef<HTMLInputElement>(null);
@@ -173,6 +174,8 @@ export default function Settings() {
       setThemePreference(value);
     }
   };
+
+  const changeColorTheme = (value: ColorTheme) => setColorTheme(value);
 
   const togglePasswordVisibility = (field: keyof typeof visiblePasswords) => {
     setVisiblePasswords((current) => ({ ...current, [field]: !current[field] }));
@@ -363,6 +366,36 @@ export default function Settings() {
             <h2 className="mb-4 flex items-center gap-2 font-bold text-slate-900 dark:text-white">
               <Icon name="settings" size={18} className="text-blue-500" /> {t('Giao diện')}
             </h2>
+            <div className="mb-6">
+              <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('Bảng màu')}</div>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                {t('Chọn màu sắc phù hợp; màu nhấn sẽ được áp dụng khắp EXA')}
+              </p>
+              <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2 2xl:grid-cols-3">
+                {COLOR_THEMES.map((theme) => (
+                  <button
+                    key={theme.id}
+                    type="button"
+                    aria-pressed={colorTheme === theme.id}
+                    onClick={() => changeColorTheme(theme.id)}
+                    className="exa-theme-option flex min-h-20 items-center gap-3 rounded-2xl border p-3 text-left transition hover:-translate-y-0.5"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="h-11 w-11 shrink-0 rounded-xl shadow-sm"
+                      style={{ background: `linear-gradient(135deg, ${theme.swatches[0]}, ${theme.swatches[1]} 58%, ${theme.swatches[2]})` }}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-bold text-slate-800 dark:text-slate-100">{t(theme.label)}</span>
+                      <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{t(theme.description)}</span>
+                    </span>
+                    {colorTheme === theme.id && (
+                      <Icon name="check" size={18} className="shrink-0 text-blue-600" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('Chế độ màu')}</div>

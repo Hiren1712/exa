@@ -292,6 +292,166 @@ body { font-feature-settings: 'cv11', 'ss01'; }
   .exa-action-ai:hover,.exa-action-card:hover,.exa-quick-link:hover { transform:none; }
 }
 
+html[data-color-theme="classic"] {
+  --theme-50: #eff6ff; --theme-100: #dbeafe; --theme-200: #bfdbfe;
+  --theme-300: #93c5fd; --theme-400: #60a5fa; --theme-500: #3b82f6;
+  --theme-600: #2563eb; --theme-700: #1d4ed8; --theme-800: #1e40af;
+  --theme-900: #1e3a8a; --theme-glow: rgb(59 130 246 / 9%);
+}
+html[data-color-theme="ocean"] {
+  --theme-50: #ecfeff; --theme-100: #cffafe; --theme-200: #a5f3fc;
+  --theme-300: #67e8f9; --theme-400: #22d3ee; --theme-500: #06b6d4;
+  --theme-600: #0891b2; --theme-700: #0e7490; --theme-800: #155e75;
+  --theme-900: #164e63; --theme-glow: rgb(6 182 212 / 9%);
+}
+html[data-color-theme="forest"] {
+  --theme-50: #f0fdf4; --theme-100: #dcfce7; --theme-200: #bbf7d0;
+  --theme-300: #86efac; --theme-400: #4ade80; --theme-500: #22c55e;
+  --theme-600: #16a34a; --theme-700: #15803d; --theme-800: #166534;
+  --theme-900: #14532d; --theme-glow: rgb(34 197 94 / 8%);
+}
+html[data-color-theme="violet"] {
+  --theme-50: #f5f3ff; --theme-100: #ede9fe; --theme-200: #ddd6fe;
+  --theme-300: #c4b5fd; --theme-400: #a78bfa; --theme-500: #8b5cf6;
+  --theme-600: #7c3aed; --theme-700: #6d28d9; --theme-800: #5b21b6;
+  --theme-900: #4c1d95; --theme-glow: rgb(139 92 246 / 9%);
+}
+html[data-color-theme="rose"] {
+  --theme-50: #fff1f2; --theme-100: #ffe4e6; --theme-200: #fecdd3;
+  --theme-300: #fda4af; --theme-400: #fb7185; --theme-500: #f43f5e;
+  --theme-600: #e11d48; --theme-700: #be123c; --theme-800: #9f1239;
+  --theme-900: #881337; --theme-glow: rgb(244 63 94 / 8%);
+}
+html[data-color-theme="sunset"] {
+  --theme-50: #fff7ed; --theme-100: #ffedd5; --theme-200: #fed7aa;
+  --theme-300: #fdba74; --theme-400: #fb923c; --theme-500: #f97316;
+  --theme-600: #ea580c; --theme-700: #c2410c; --theme-800: #9a3412;
+  --theme-900: #7c2d12; --theme-glow: rgb(249 115 22 / 8%);
+}
+html[data-color-theme="graphite"] {
+  --theme-50: #f1f5f9; --theme-100: #e2e8f0; --theme-200: #cbd5e1;
+  --theme-300: #94a3b8; --theme-400: #64748b; --theme-500: #475569;
+  --theme-600: #334155; --theme-700: #1e293b; --theme-800: #0f172a;
+  --theme-900: #020617; --theme-glow: rgb(71 85 105 / 8%);
+}
+
+html.dark[data-color-theme="classic"] {
+  --theme-50: #172554; --theme-100: #1e3a8a; --theme-200: #bfdbfe;
+  --theme-300: #93c5fd; --theme-400: #60a5fa; --theme-500: #60a5fa;
+  --theme-600: #3b82f6; --theme-700: #2563eb; --theme-800: #1d4ed8;
+  --theme-900: #1e40af; --theme-glow: rgb(59 130 246 / 12%);
+}
+html.dark[data-color-theme="ocean"] {
+  --theme-50: #083344; --theme-100: #164e63; --theme-200: #a5f3fc;
+  --theme-300: #67e8f9; --theme-400: #22d3ee; --theme-500: #22d3ee;
+  --theme-600: #06b6d4; --theme-700: #0e7490; --theme-800: #155e75;
+  --theme-900: #164e63; --theme-glow: rgb(34 211 238 / 12%);
+}
+html.dark[data-color-theme="forest"] {
+  --theme-50: #052e16; --theme-100: #14532d; --theme-200: #bbf7d0;
+  --theme-300: #86efac; --theme-400: #4ade80; --theme-500: #4ade80;
+  --theme-600: #22c55e; --theme-700: #15803d; --theme-800: #166534;
+  --theme-900: #14532d; --theme-glow: rgb(74 222 128 / 11%);
+}
+html.dark[data-color-theme="violet"] {
+  --theme-50: #2e1065; --theme-100: #4c1d95; --theme-200: #ddd6fe;
+  --theme-300: #c4b5fd; --theme-400: #a78bfa; --theme-500: #a78bfa;
+  --theme-600: #8b5cf6; --theme-700: #6d28d9; --theme-800: #5b21b6;
+  --theme-900: #4c1d95; --theme-glow: rgb(167 139 250 / 12%);
+}
+html.dark[data-color-theme="rose"] {
+  --theme-50: #4c0519; --theme-100: #881337; --theme-200: #fecdd3;
+  --theme-300: #fda4af; --theme-400: #fb7185; --theme-500: #fb7185;
+  --theme-600: #f43f5e; --theme-700: #be123c; --theme-800: #9f1239;
+  --theme-900: #881337; --theme-glow: rgb(251 113 133 / 11%);
+}
+html.dark[data-color-theme="sunset"] {
+  --theme-50: #431407; --theme-100: #7c2d12; --theme-200: #fed7aa;
+  --theme-300: #fdba74; --theme-400: #fb923c; --theme-500: #fb923c;
+  --theme-600: #f97316; --theme-700: #c2410c; --theme-800: #9a3412;
+  --theme-900: #7c2d12; --theme-glow: rgb(251 146 60 / 11%);
+}
+html.dark[data-color-theme="graphite"] {
+  --theme-50: #1e293b; --theme-100: #334155; --theme-200: #cbd5e1;
+  --theme-300: #94a3b8; --theme-400: #64748b; --theme-500: #94a3b8;
+  --theme-600: #64748b; --theme-700: #475569; --theme-800: #334155;
+  --theme-900: #1e293b; --theme-glow: rgb(148 163 184 / 11%);
+}
+
+html[data-color-theme] {
+  --primary: var(--theme-700);
+  --primary-ink: var(--theme-800);
+  --exa-focus: var(--theme-500);
+}
+html[data-color-theme] .bg-blue-50,
+html[data-color-theme] [class~="hover:bg-blue-50"]:hover { background-color: var(--theme-50); }
+html[data-color-theme] .bg-blue-100 { background-color: var(--theme-100); }
+html[data-color-theme] .bg-blue-500,
+html[data-color-theme] [class~="dark:bg-blue-500"] { background-color: var(--theme-500); }
+html[data-color-theme] .bg-blue-600 { background-color: var(--theme-600); }
+html[data-color-theme] .bg-blue-700,
+html[data-color-theme] [class~="hover:bg-blue-700"]:hover { background-color: var(--theme-700); }
+html[data-color-theme] .bg-blue-800,
+html[data-color-theme] [class~="hover:bg-blue-800"]:hover { background-color: var(--theme-800); }
+html[data-color-theme] .text-blue-200,
+html[data-color-theme] [class~="dark:text-blue-200"] { color: var(--theme-200); }
+html[data-color-theme] .text-blue-300 { color: var(--theme-300); }
+html[data-color-theme] .text-blue-400 { color: var(--theme-400); }
+html[data-color-theme] .text-blue-500 { color: var(--theme-500); }
+html[data-color-theme] .text-blue-600 { color: var(--theme-600); }
+html[data-color-theme] .text-blue-700,
+html[data-color-theme] [class~="hover:text-blue-700"]:hover { color: var(--theme-700); }
+html[data-color-theme] .text-blue-800,
+html[data-color-theme] [class~="hover:text-blue-800"]:hover { color: var(--theme-800); }
+html[data-color-theme] .border-blue-200 { border-color: var(--theme-200); }
+html[data-color-theme] .border-blue-300 { border-color: var(--theme-300); }
+html[data-color-theme] .border-blue-400,
+html[data-color-theme] [class~="hover:border-blue-400"]:hover { border-color: var(--theme-400); }
+html[data-color-theme] .border-blue-500,
+html[data-color-theme] .border-blue-600 { border-color: var(--theme-600); }
+html[data-color-theme] .exa-primary-button {
+  background-color: var(--theme-700);
+  border-color: var(--theme-700);
+  color: #fff;
+}
+html[data-color-theme] .exa-primary-button:hover { background-color: var(--theme-800); }
+html[data-color-theme] .exa-nav-active::before { background: var(--theme-600); }
+html[data-color-theme] .exa-nav-item.exa-nav-active {
+  background: linear-gradient(95deg, var(--theme-100), var(--theme-50));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-500) 12%, transparent);
+  color: var(--theme-800);
+}
+html.dark[data-color-theme] .exa-nav-item.exa-nav-active { color: var(--theme-200); }
+html[data-color-theme] .exa-brand-mark {
+  background: linear-gradient(145deg, var(--theme-800), var(--theme-600) 62%, var(--theme-400) 110%);
+  box-shadow: 0 8px 18px -5px color-mix(in srgb, var(--theme-600) 48%, transparent), inset 0 1px 0 rgba(255,255,255,.25);
+}
+html[data-color-theme] .exa-pro-card { background: linear-gradient(135deg, var(--theme-900), var(--theme-700) 62%, var(--theme-500)); }
+html[data-color-theme] .exa-hero,
+html[data-color-theme] .exa-action-ai { background: linear-gradient(108deg, var(--theme-900), var(--theme-700) 58%, var(--theme-600)); }
+html[data-color-theme] .exa-quick-link {
+  background: var(--theme-50);
+  color: var(--theme-700);
+  border-color: var(--theme-200);
+}
+html.dark[data-color-theme] .exa-quick-link { color: var(--theme-200); }
+html[data-color-theme] .exa-surface-gradient {
+  background-image: radial-gradient(ellipse 60% 42% at 100% -8%, var(--theme-glow), transparent 74%), radial-gradient(ellipse 45% 50% at -10% 100%, color-mix(in srgb, var(--theme-glow) 60%, transparent), transparent 75%);
+}
+html[data-color-theme] .exa-field:focus-visible { border-color: var(--theme-500); }
+html[data-color-theme] :where(button, a, input, textarea, select, summary, [role="checkbox"]):focus-visible {
+  outline-color: var(--theme-500);
+}
+.exa-theme-option {
+  border-color: var(--border);
+  background: var(--surface);
+}
+.exa-theme-option[aria-pressed="true"] {
+  border-color: var(--theme-500);
+  background: var(--theme-50);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-500) 18%, transparent);
+}
+
 .exa-login {
   min-height: 100dvh;
   display: flex;

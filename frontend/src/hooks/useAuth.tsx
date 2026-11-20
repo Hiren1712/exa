@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
 import { authApi, AuthResponse, GoogleLoginRequest, LoginRequest, RegisterRequest, UserInfo } from '../api/auth';
 import { useAuthStore } from '../store/auth';
+import { ColorTheme, isColorTheme } from '../lib/themes';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 type Theme = 'light' | 'dark';
@@ -10,12 +11,14 @@ interface AuthContextValue {
   loading: boolean;
   theme: Theme;
   themePreference: ThemePreference;
+  colorTheme: ColorTheme;
   login: (data: LoginRequest) => Promise<UserInfo>;
   register: (data: RegisterRequest) => Promise<UserInfo>;
   googleLogin: (data: GoogleLoginRequest) => Promise<UserInfo>;
   logout: () => void;
   toggleTheme: () => void;
   setThemePreference: (preference: ThemePreference) => void;
+  setColorTheme: (colorTheme: ColorTheme) => void;
   updateUser: (user: UserInfo) => void;
 }
 
@@ -34,6 +37,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [themePreference, setThemePreference] = useState<ThemePreference>(() => {
     const stored = localStorage.getItem('theme');
     return stored === 'dark' || stored === 'system' ? stored : 'light';
+  });
+  const [colorTheme, setColorTheme] = useState<ColorTheme>(() => {
+    const stored = localStorage.getItem('exa-color-theme');
+    return isColorTheme(stored) ? stored : 'classic';
   });
   const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
   const theme: Theme = themePreference === 'system'
@@ -97,6 +104,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('theme', themePreference);
   }, [theme, themePreference]);
 
+  useEffect(() => {
+    document.documentElement.dataset.colorTheme = colorTheme;
+    localStorage.setItem('exa-color-theme', colorTheme);
+  }, [colorTheme]);
+
   const login = useCallback(async (data: LoginRequest) => {
     const res: AuthResponse = await authApi.login(data);
     localStorage.setItem('accessToken', res.accessToken);
@@ -152,12 +164,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       theme,
       themePreference,
+      colorTheme,
       login,
       register,
       googleLogin,
       logout,
       toggleTheme,
       setThemePreference,
+      setColorTheme,
       updateUser,
     }}>
       {children}
