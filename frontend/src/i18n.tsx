@@ -15,6 +15,7 @@ const LANGUAGE_STORAGE_KEY = 'exa-language';
 const english: Record<string, string> = {
   'Bỏ qua điều hướng, đến nội dung': 'Skip navigation and go to content',
   'Điều hướng chính': 'Main navigation',
+  'Điều hướng cài đặt': 'Settings navigation',
   'Đóng điều hướng': 'Close navigation',
   'KHÔNG GIAN LÀM VIỆC': 'WORKSPACE',
   'NỀN TẢNG GIÁO DỤC': 'EDUCATION PLATFORM',

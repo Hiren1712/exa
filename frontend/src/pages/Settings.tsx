@@ -1,5 +1,5 @@
 import { PageHeading } from '../components/PageHeading';
-import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, FormEvent, MouseEvent, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
@@ -30,6 +30,19 @@ export default function Settings() {
     setPhone(user?.phone || '');
     setDateOfBirth(user?.dateOfBirth || '');
   }, [user]);
+
+  const navigateToSection = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    const sectionId = event.currentTarget.hash.slice(1);
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+
+    window.history.replaceState(null, '', `#${sectionId}`);
+    section.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'start',
+    });
+  };
 
   const saveProfile = async (event: FormEvent) => {
     event.preventDefault();
@@ -114,14 +127,14 @@ export default function Settings() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <PageHeading
         icon="exaSettings"
         title={t('Cài đặt')}
         description={t('Quản lý hồ sơ, bảo mật và tùy chọn giao diện')}
       />
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div
           className="profile-cover relative h-32 sm:h-40 bg-cover bg-center"
           style={user?.coverImageUrl ? { backgroundImage: `url("${profileImageUrl(user.coverImageUrl)}")` } : undefined}
@@ -204,24 +217,53 @@ export default function Settings() {
         />
       </section>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
-          <h2 className="font-bold text-slate-900 dark:text-white">{t('Tài khoản EXA')}</h2>
-          <p className="mt-1 text-xs text-slate-500">{t('Thông tin được lưu và đồng bộ trên tài khoản của bạn')}</p>
-          <div className="flex flex-wrap gap-2 mt-4">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 font-semibold">
-              {t(user?.role === 'TEACHER' ? 'Giáo viên' : user?.role === 'STUDENT' ? 'Học sinh' : 'Quản trị viên')}
-            </span>
-            <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
-              user?.plan === 'PRO' ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white' : 'bg-slate-100 text-slate-500'
-            }`}>
-              {user?.plan === 'PRO' ? t('Pro') : user?.plan || t('Free')}
-            </span>
-          </div>
-        </section>
+      <div className="grid items-start gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
+        <aside className="space-y-4 lg:sticky lg:top-24">
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400" />
+            <div className="p-5">
+              <h2 className="font-bold text-slate-900 dark:text-white">{t('Tài khoản EXA')}</h2>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">{t('Thông tin được lưu và đồng bộ trên tài khoản của bạn')}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                  {t(user?.role === 'TEACHER' ? 'Giáo viên' : user?.role === 'STUDENT' ? 'Học sinh' : 'Quản trị viên')}
+                </span>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                  user?.plan === 'PRO'
+                    ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white'
+                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                }`}>
+                  {user?.plan === 'PRO' ? t('Pro') : user?.plan || t('Free')}
+                </span>
+              </div>
+            </div>
+          </section>
 
-        <div className="lg:col-span-2 space-y-6">
-          <form onSubmit={saveProfile} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+          <nav
+            aria-label={t('Điều hướng cài đặt')}
+            className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+          >
+            <a href="#personal-info" onClick={navigateToSection} className="group flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-300">
+              <Icon name="user" size={17} className="text-slate-400 group-hover:text-current" />
+              {t('Thông tin cá nhân')}
+            </a>
+            <a href="#appearance" onClick={navigateToSection} className="group flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-300">
+              <Icon name="settings" size={17} className="text-slate-400 group-hover:text-current" />
+              {t('Giao diện')}
+            </a>
+            <a href="#security" onClick={navigateToSection} className="group flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-300">
+              <Icon name="lock" size={17} className="text-slate-400 group-hover:text-current" />
+              {t('Đổi mật khẩu')}
+            </a>
+            <a href="#session" onClick={navigateToSection} className="group flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-300">
+              <Icon name="history" size={17} className="text-slate-400 group-hover:text-current" />
+              {t('Phiên đăng nhập')}
+            </a>
+          </nav>
+        </aside>
+
+        <div className="min-w-0 space-y-6">
+          <form id="personal-info" onSubmit={saveProfile} className="scroll-mt-24 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <h2 className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
               <Icon name="user" size={18} className="text-blue-500" /> {t('Thông tin cá nhân')}
             </h2>
@@ -234,7 +276,7 @@ export default function Settings() {
             <Button type="submit" variant="primary" loading={savingProfile} icon={<Icon name="save" size={16} />}>Lưu thay đổi</Button>
           </form>
 
-          <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
+          <section id="appearance" className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <h2 className="flex items-center gap-2 font-bold text-slate-900 dark:text-white mb-4">
               <Icon name="settings" size={18} className="text-blue-500" /> {t('Giao diện')}
             </h2>
@@ -256,7 +298,7 @@ export default function Settings() {
             </div>
           </section>
 
-          <form onSubmit={changePassword} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+          <form id="security" onSubmit={changePassword} className="scroll-mt-24 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <h2 className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
               <Icon name="lock" size={18} className="text-blue-500" /> {t('Đổi mật khẩu')}
             </h2>
@@ -268,7 +310,7 @@ export default function Settings() {
             <Button type="submit" variant="ghost" loading={savingPassword}>Cập nhật mật khẩu</Button>
           </form>
 
-          <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 flex items-center justify-between gap-4">
+          <section id="session" className="scroll-mt-24 flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div>
               <h2 className="font-bold text-slate-900 dark:text-white">{t('Phiên đăng nhập')}</h2>
               <p className="text-xs text-slate-500 mt-1">{t('Đăng xuất khỏi tài khoản EXA trên thiết bị này')}</p>
