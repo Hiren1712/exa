@@ -18,6 +18,12 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -304,6 +310,92 @@ class GeminiParserTest {
 
         assertThat(allocation).containsExactly(1, 2, 4);
         assertThat(allocation).allMatch(count -> count >= 0);
+    }
+
+    @Test
+    void parsesTextChunksConcurrentlyAndPreservesProviderAndTokenTracking() {
+        AtomicInteger activeRequests = new AtomicInteger();
+        AtomicInteger maxActiveRequests = new AtomicInteger();
+        AtomicInteger completedRequests = new AtomicInteger();
+        CountDownLatch twoRequestsStarted = new CountDownLatch(2);
+        List<String> requestedHosts = new CopyOnWriteArrayList<>();
+        ExchangeFunction exchange = request -> {
+            requestedHosts.add(request.url().getHost());
+            int active = activeRequests.incrementAndGet();
+            maxActiveRequests.accumulateAndGet(active, Math::max);
+            twoRequestsStarted.countDown();
+            try {
+                if (!twoRequestsStarted.await(2, TimeUnit.SECONDS)) {
+                    return Mono.error(new IllegalStateException("Chunk requests were not concurrent"));
+                }
+                Thread.sleep(250);
+                completedRequests.incrementAndGet();
+                String questions = objectMapper.writeValueAsString(List.of(Map.of(
+                        "number", 1,
+                        "type", "MCQ",
+                        "content", "Câu hỏi",
+                        "options", List.of("Một", "Hai"),
+                        "correctAnswer", "A")));
+                String response = objectMapper.writeValueAsString(Map.of(
+                        "choices", List.of(Map.of("message", Map.of("content", questions))),
+                        "usage", Map.of("total_tokens", 4)));
+                return Mono.just(ClientResponse.create(HttpStatus.OK)
+                        .header("Content-Type", "application/json")
+                        .body(response)
+                        .build());
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                return Mono.error(error);
+            } catch (Exception error) {
+                return Mono.error(error);
+            } finally {
+                activeRequests.decrementAndGet();
+            }
+        };
+        GeminiParser parser = new GeminiParser(
+                WebClient.builder().exchangeFunction(exchange), objectMapper);
+        ReflectionTestUtils.setField(parser, "groqApiKey", "groq-test-key");
+        ReflectionTestUtils.setField(parser, "groqImportModel", "groq-test-model");
+        ReflectionTestUtils.setField(
+                parser, "groqBaseUrl", "https://api.groq.com/openai/v1/chat/completions");
+        ReflectionTestUtils.setField(parser, "groqTimeoutMs", 1000L);
+        ExecutorService chunkExecutor = Executors.newFixedThreadPool(2);
+        parser.setImportAiChunkExecutor(chunkExecutor);
+        parser.setPreferredTaskProvider(ImportAiProvider.GROQ);
+
+        try {
+            String source = String.join("\n", List.of("a".repeat(5900), "b".repeat(5900), "c".repeat(5900)));
+            long parallelStarted = System.nanoTime();
+            GeminiParser.ParseResult result = parser.parse(source, "Toán");
+            long parallelMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - parallelStarted);
+
+            assertThat(maxActiveRequests.get()).isEqualTo(2);
+            assertThat(completedRequests.get()).isEqualTo(3);
+            assertThat(requestedHosts).containsExactly(
+                    "api.groq.com", "api.groq.com", "api.groq.com");
+            assertThat(result.questions()).hasSize(1);
+            assertThat(result.tokensUsed()).isEqualTo(12);
+            assertThat(parser.getAndClearLastTaskModel()).isEqualTo("Groq: groq-test-model");
+
+            GeminiParser serialParser = new GeminiParser(
+                    WebClient.builder().exchangeFunction(exchange), objectMapper);
+            ReflectionTestUtils.setField(serialParser, "groqApiKey", "groq-test-key");
+            ReflectionTestUtils.setField(serialParser, "groqImportModel", "groq-test-model");
+            ReflectionTestUtils.setField(
+                    serialParser, "groqBaseUrl", "https://api.groq.com/openai/v1/chat/completions");
+            ReflectionTestUtils.setField(serialParser, "groqTimeoutMs", 1000L);
+            serialParser.setPreferredTaskProvider(ImportAiProvider.GROQ);
+            long serialStarted = System.nanoTime();
+            GeminiParser.ParseResult serialResult = serialParser.parse(source, "Toán");
+            long serialMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - serialStarted);
+
+            assertThat(serialResult.questions()).hasSize(result.questions().size());
+            assertThat(serialResult.tokensUsed()).isEqualTo(result.tokensUsed());
+            assertThat(parallelMillis).isLessThan(serialMillis);
+            System.out.printf("Mock AI chunk latency: parallel=%dms serial=%dms%n", parallelMillis, serialMillis);
+        } finally {
+            chunkExecutor.shutdownNow();
+        }
     }
 
     @Test

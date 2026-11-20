@@ -9,6 +9,7 @@ import org.apache.pdfbox.rendering.PDFRenderer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.EnumerablePropertySource;
@@ -26,7 +27,11 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
@@ -65,6 +70,8 @@ public class GeminiParser {
 
     private volatile List<String> availableFallbackModels;
     private final ThreadLocal<Set<String>> taskModels = ThreadLocal.withInitial(LinkedHashSet::new);
+    private static final int MAX_CONCURRENT_IMPORT_CHUNKS = 4;
+    private Executor importAiChunkExecutor = Runnable::run;
 
     private static final String GEMINI_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent";
@@ -101,6 +108,11 @@ public class GeminiParser {
         taskModels.remove();
     }
 
+    @Autowired
+    void setImportAiChunkExecutor(@Qualifier("importAiChunkExecutor") Executor executor) {
+        this.importAiChunkExecutor = executor;
+    }
+
     public void validateConfiguration() {
         requireTaskProviderConfigured();
     }
@@ -120,12 +132,19 @@ public class GeminiParser {
         }
 
         List<String> chunks = chunkText(rawText, 6000);
+        List<Supplier<ParseResult>> chunkTasks = new ArrayList<>(chunks.size());
+        for (int i = 0; i < chunks.size(); i++) {
+            int chunkNumber = i + 1;
+            String chunk = chunks.get(i);
+            chunkTasks.add(() -> {
+                log.info("Parsing chunk {}/{}", chunkNumber, chunks.size());
+                return parseChunk(chunk, subjectHint);
+            });
+        }
+
         List<ParsedQuestion> all = new ArrayList<>();
         int totalTokens = 0;
-
-        for (int i = 0; i < chunks.size(); i++) {
-            log.info("Parsing chunk {}/{}", i + 1, chunks.size());
-            ParseResult r = parseChunk(chunks.get(i), subjectHint);
+        for (ParseResult r : runChunkTasks(chunkTasks)) {
             all.addAll(r.questions());
             totalTokens += r.tokensUsed();
         }
@@ -218,13 +237,17 @@ public class GeminiParser {
         }
         List<String> chunks = chunkText(sourceText, 6000);
         List<Integer> counts = distributeQuestionCount(chunks, questionCount);
-        List<ParsedQuestion> questions = new ArrayList<>();
-        int tokens = 0;
+        List<Supplier<ParseResult>> chunkTasks = new ArrayList<>();
         for (int i = 0; i < chunks.size(); i++) {
             int chunkCount = counts.get(i);
             if (chunkCount == 0) continue;
             String prompt = generationPrompt(chunks.get(i), subject, grade, chunkCount, difficulty);
-            ParseResult result = parseResponse(callTaskAi(prompt));
+            chunkTasks.add(() -> parseResponse(callTaskAi(prompt)));
+        }
+
+        List<ParsedQuestion> questions = new ArrayList<>();
+        int tokens = 0;
+        for (ParseResult result : runChunkTasks(chunkTasks)) {
             questions.addAll(result.questions());
             tokens += result.tokensUsed();
         }
@@ -233,6 +256,46 @@ public class GeminiParser {
             deduped = new ArrayList<>(deduped.subList(0, questionCount));
         }
         return new ParseResult(deduped, tokens);
+    }
+
+    private List<ParseResult> runChunkTasks(List<Supplier<ParseResult>> chunkTasks) {
+        ImportAiProvider provider = preferredTaskProvider.get();
+        List<ParseResult> results = new ArrayList<>(chunkTasks.size());
+
+        for (int start = 0; start < chunkTasks.size(); start += MAX_CONCURRENT_IMPORT_CHUNKS) {
+            int end = Math.min(start + MAX_CONCURRENT_IMPORT_CHUNKS, chunkTasks.size());
+            List<CompletableFuture<ChunkResult>> futures = new ArrayList<>(end - start);
+            for (int index = start; index < end; index++) {
+                Supplier<ParseResult> chunkTask = chunkTasks.get(index);
+                futures.add(CompletableFuture.supplyAsync(() -> {
+                    setPreferredTaskProvider(provider);
+                    resetTaskModels();
+                    try {
+                        ParseResult result = chunkTask.get();
+                        return new ChunkResult(result, new LinkedHashSet<>(taskModels.get()));
+                    } finally {
+                        clearTaskContext();
+                    }
+                }, importAiChunkExecutor));
+            }
+
+            try {
+                CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+            } catch (CompletionException error) {
+                Throwable cause = error.getCause();
+                if (cause instanceof RuntimeException runtimeError) throw runtimeError;
+                if (cause instanceof Error fatalError) throw fatalError;
+                throw new IllegalStateException("AI import chunk failed", cause);
+            }
+
+            for (CompletableFuture<ChunkResult> future : futures) {
+                ChunkResult chunkResult = future.join();
+                results.add(chunkResult.result());
+                taskModels.get().addAll(chunkResult.models());
+            }
+        }
+
+        return results;
     }
 
     List<Integer> distributeQuestionCount(List<String> chunks, int questionCount) {
@@ -1288,6 +1351,8 @@ public class GeminiParser {
                 .replaceAll("[^a-z0-9àáảãạăâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]", "")
                 .trim();
     }
+
+    private record ChunkResult(ParseResult result, Set<String> models) {}
 
     public record ParseResult(List<ParsedQuestion> questions, int tokensUsed) {}
     public record EssayGrade(java.math.BigDecimal score, String feedback) {}
