@@ -34,10 +34,17 @@ public class JwtTokenProvider {
      * Sinh access token
      */
     public String generateAccessToken(Long userId, String email, String role) {
+        return generateAccessToken(userId, email, role, null);
+    }
+
+    public String generateAccessToken(Long userId, String email, String role, String sessionId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("uid", userId);
         claims.put("role", role);
         claims.put("type", "access");
+        if (sessionId != null) {
+            claims.put("sid", sessionId);
+        }
 
         Date now = new Date();
         Date expiry = new Date(now.getTime() + accessExpirationMs);
@@ -55,9 +62,16 @@ public class JwtTokenProvider {
      * Sinh refresh token
      */
     public String generateRefreshToken(Long userId, String email) {
+        return generateRefreshToken(userId, email, null);
+    }
+
+    public String generateRefreshToken(Long userId, String email, String sessionId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("uid", userId);
         claims.put("type", "refresh");
+        if (sessionId != null) {
+            claims.put("sid", sessionId);
+        }
 
         Date now = new Date();
         Date expiry = new Date(now.getTime() + refreshExpirationMs);
@@ -107,7 +121,21 @@ public class JwtTokenProvider {
         return claims == null ? null : claims.get("role", String.class);
     }
 
+    public String getSessionId(String token) {
+        Claims claims = parseClaims(token);
+        return claims == null ? null : claims.get("sid", String.class);
+    }
+
+    public String getTokenType(String token) {
+        Claims claims = parseClaims(token);
+        return claims == null ? null : claims.get("type", String.class);
+    }
+
     public long getAccessExpirationMs() {
         return accessExpirationMs;
+    }
+
+    public long getRefreshExpirationMs() {
+        return refreshExpirationMs;
     }
 }

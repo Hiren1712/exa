@@ -22,6 +22,7 @@ import vn.exa.common.JwtTokenProvider;
 
 import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -33,9 +34,15 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
     private final ObjectProvider<FirebaseAuth> firebaseAuthProvider;
+    private final AuthSessionService authSessionService;
 
     @Transactional
     public AuthResponse register(RegisterRequest req) {
+        return register(req, null);
+    }
+
+    @Transactional
+    public AuthResponse register(RegisterRequest req, String userAgent) {
         if (userRepository.existsByEmailAndDeletedAtIsNull(req.getEmail())) {
             throw BusinessException.conflict("Email đã được sử dụng");
         }
@@ -58,11 +65,16 @@ public class AuthService {
         user = userRepository.save(user);
         log.info("New user registered: {} ({})", user.getEmail(), user.getRole());
 
-        return buildAuthResponse(user);
+        return buildAuthResponse(user, userAgent);
     }
 
     @Transactional
     public AuthResponse login(LoginRequest req) {
+        return login(req, null);
+    }
+
+    @Transactional
+    public AuthResponse login(LoginRequest req, String userAgent) {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword())
@@ -83,11 +95,16 @@ public class AuthService {
         userRepository.save(user);
 
         log.info("User logged in: {} ({})", user.getEmail(), user.getRole());
-        return buildAuthResponse(user);
+        return buildAuthResponse(user, userAgent);
     }
 
     @Transactional
     public AuthResponse googleLogin(GoogleLoginRequest req) {
+        return googleLogin(req, null);
+    }
+
+    @Transactional
+    public AuthResponse googleLogin(GoogleLoginRequest req, String userAgent) {
         if (req.getRole() == User.Role.ADMIN) {
             throw BusinessException.forbidden("Không thể đăng ký tài khoản ADMIN");
         }
@@ -160,7 +177,7 @@ public class AuthService {
         user.setLastLoginAt(LocalDateTime.now());
         user = userRepository.save(user);
         log.info("User authenticated with Google: {} ({})", user.getId(), user.getRole());
-        return buildAuthResponse(user);
+        return buildAuthResponse(user, userAgent);
     }
 
     public User getById(Long id) {
@@ -188,12 +205,17 @@ public class AuthService {
         userRepository.save(user);
     }
 
-    public AuthResponse refresh(String refreshToken) {
-        if (!jwtTokenProvider.validate(refreshToken)) {
+    @Transactional
+    public AuthResponse refresh(String refreshToken, String userAgent) {
+        if (!jwtTokenProvider.validate(refreshToken)
+                || !"refresh".equals(jwtTokenProvider.getTokenType(refreshToken))) {
             throw BusinessException.unauthorized("Refresh token không hợp lệ hoặc đã hết hạn");
         }
 
         Long userId = jwtTokenProvider.getUserId(refreshToken);
+        if (userId == null) {
+            throw BusinessException.unauthorized("Refresh token không hợp lệ hoặc đã hết hạn");
+        }
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> BusinessException.unauthorized("Người dùng không tồn tại"));
 
@@ -201,15 +223,33 @@ public class AuthService {
             throw BusinessException.forbidden("Tài khoản đã bị khóa");
         }
 
-        return buildAuthResponse(user);
+        String sessionId = jwtTokenProvider.getSessionId(refreshToken);
+        if (sessionId == null) {
+            throw BusinessException.unauthorized("Vui lòng đăng nhập lại để tiếp tục");
+        }
+        AuthSession session = authSessionService.requireRefreshSession(sessionId, userId, refreshToken);
+        String rotatedRefreshToken = jwtTokenProvider.generateRefreshToken(userId, user.getEmail(), sessionId);
+        authSessionService.rotateRefreshToken(session, rotatedRefreshToken);
+        return buildAuthResponse(user, sessionId, rotatedRefreshToken);
     }
 
-    private AuthResponse buildAuthResponse(User user) {
-        String accessToken = jwtTokenProvider.generateAccessToken(
-                user.getId(), user.getEmail(), user.getRole().name()
-        );
+    @Transactional
+    public AuthResponse refresh(String refreshToken) {
+        return refresh(refreshToken, null);
+    }
+
+    private AuthResponse buildAuthResponse(User user, String userAgent) {
+        String sessionId = UUID.randomUUID().toString();
         String refreshToken = jwtTokenProvider.generateRefreshToken(
-                user.getId(), user.getEmail()
+                user.getId(), user.getEmail(), sessionId
+        );
+        authSessionService.createSession(user, sessionId, refreshToken, userAgent);
+        return buildAuthResponse(user, sessionId, refreshToken);
+    }
+
+    private AuthResponse buildAuthResponse(User user, String sessionId, String refreshToken) {
+        String accessToken = jwtTokenProvider.generateAccessToken(
+                user.getId(), user.getEmail(), user.getRole().name(), sessionId
         );
 
         return AuthResponse.builder()

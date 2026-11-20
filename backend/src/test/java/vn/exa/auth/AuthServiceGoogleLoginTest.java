@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -31,7 +32,8 @@ class AuthServiceGoogleLoginTest {
                 null,
                 null,
                 null,
-                new StaticListableBeanFactory().getBeanProvider(FirebaseAuth.class));
+                new StaticListableBeanFactory().getBeanProvider(FirebaseAuth.class),
+                mock(AuthSessionService.class));
 
         assertThatThrownBy(() -> service.googleLogin(new GoogleLoginRequest()))
                 .isInstanceOf(BusinessException.class)
@@ -56,7 +58,8 @@ class AuthServiceGoogleLoginTest {
                 null,
                 null,
                 null,
-                beanFactory.getBeanProvider(FirebaseAuth.class));
+                beanFactory.getBeanProvider(FirebaseAuth.class),
+                mock(AuthSessionService.class));
         GoogleLoginRequest request = new GoogleLoginRequest();
         request.setIdToken("firebase-id-token");
         request.setRole(User.Role.STUDENT);
@@ -74,6 +77,7 @@ class AuthServiceGoogleLoginTest {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
         JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
+        AuthSessionService authSessionService = mock(AuthSessionService.class);
         when(firebaseAuth.verifyIdToken("firebase-id-token")).thenReturn(token);
         when(token.getEmail()).thenReturn(" Student@Example.com ");
         when(token.getName()).thenReturn("Student Example");
@@ -90,9 +94,10 @@ class AuthServiceGoogleLoginTest {
             user.setId(24L);
             return user;
         });
-        when(jwtTokenProvider.generateAccessToken(24L, "student@example.com", "STUDENT"))
+        when(jwtTokenProvider.generateAccessToken(
+                eq(24L), eq("student@example.com"), eq("STUDENT"), anyString()))
                 .thenReturn("exa-access-token");
-        when(jwtTokenProvider.generateRefreshToken(24L, "student@example.com"))
+        when(jwtTokenProvider.generateRefreshToken(eq(24L), eq("student@example.com"), anyString()))
                 .thenReturn("exa-refresh-token");
         when(jwtTokenProvider.getAccessExpirationMs()).thenReturn(86_400_000L);
 
@@ -103,7 +108,8 @@ class AuthServiceGoogleLoginTest {
                 passwordEncoder,
                 jwtTokenProvider,
                 null,
-                beanFactory.getBeanProvider(FirebaseAuth.class));
+                beanFactory.getBeanProvider(FirebaseAuth.class),
+                authSessionService);
         GoogleLoginRequest request = new GoogleLoginRequest();
         request.setIdToken("firebase-id-token");
         request.setRole(User.Role.STUDENT);
@@ -139,7 +145,8 @@ class AuthServiceGoogleLoginTest {
                 null,
                 null,
                 null,
-                beanFactory.getBeanProvider(FirebaseAuth.class));
+                beanFactory.getBeanProvider(FirebaseAuth.class),
+                mock(AuthSessionService.class));
         GoogleLoginRequest request = new GoogleLoginRequest();
         request.setIdToken("firebase-id-token");
 
@@ -157,7 +164,8 @@ class AuthServiceGoogleLoginTest {
                 null,
                 null,
                 null,
-                new StaticListableBeanFactory().getBeanProvider(FirebaseAuth.class));
+                new StaticListableBeanFactory().getBeanProvider(FirebaseAuth.class),
+                mock(AuthSessionService.class));
         GoogleLoginRequest request = new GoogleLoginRequest();
         request.setRole(User.Role.ADMIN);
 

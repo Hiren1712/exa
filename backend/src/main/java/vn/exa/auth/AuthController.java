@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 import vn.exa.auth.dto.AuthResponse;
 import vn.exa.auth.dto.GoogleLoginRequest;
@@ -23,28 +24,32 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthSessionService authSessionService;
 
     @PostMapping("/register")
     @Operation(summary = "Đăng ký tài khoản mới")
     public ResponseEntity<ApiResponse<AuthResponse>> register(
-            @Valid @RequestBody RegisterRequest req) {
-        AuthResponse response = authService.register(req);
+            @Valid @RequestBody RegisterRequest req,
+            HttpServletRequest request) {
+        AuthResponse response = authService.register(req, request.getHeader("User-Agent"));
         return ResponseEntity.ok(ApiResponse.ok(response, "Đăng ký thành công"));
     }
 
     @PostMapping("/login")
     @Operation(summary = "Đăng nhập")
     public ResponseEntity<ApiResponse<AuthResponse>> login(
-            @Valid @RequestBody LoginRequest req) {
-        AuthResponse response = authService.login(req);
+            @Valid @RequestBody LoginRequest req,
+            HttpServletRequest request) {
+        AuthResponse response = authService.login(req, request.getHeader("User-Agent"));
         return ResponseEntity.ok(ApiResponse.ok(response, "Đăng nhập thành công"));
     }
 
     @PostMapping("/google")
     @Operation(summary = "Đăng nhập bằng Google")
     public ResponseEntity<ApiResponse<AuthResponse>> googleLogin(
-            @Valid @RequestBody GoogleLoginRequest req) {
-        AuthResponse response = authService.googleLogin(req);
+            @Valid @RequestBody GoogleLoginRequest req,
+            HttpServletRequest request) {
+        AuthResponse response = authService.googleLogin(req, request.getHeader("User-Agent"));
         return ResponseEntity.ok(ApiResponse.ok(response, "Đăng nhập Google thành công"));
     }
 
@@ -60,7 +65,8 @@ public class AuthController {
     @PostMapping("/refresh")
     @Operation(summary = "Làm mới access token")
     public ResponseEntity<ApiResponse<AuthResponse>> refresh(
-            @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, String> body,
+            HttpServletRequest request) {
 
         String refreshToken = body.get("refreshToken");
         if (refreshToken == null || refreshToken.isBlank()) {
@@ -68,7 +74,42 @@ public class AuthController {
                     .body(ApiResponse.error("MISSING_TOKEN", "Thiếu refresh token"));
         }
 
-        AuthResponse response = authService.refresh(refreshToken);
+        AuthResponse response = authService.refresh(refreshToken, request.getHeader("User-Agent"));
         return ResponseEntity.ok(ApiResponse.ok(response, "Token đã được làm mới"));
+    }
+
+    @GetMapping("/sessions")
+    @Operation(summary = "Lấy danh sách phiên đăng nhập")
+    public ResponseEntity<ApiResponse<AuthSessionService.SessionList>> sessions(
+            @AuthenticationPrincipal CurrentUser currentUser) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                authSessionService.listSessions(currentUser.getId(), currentUser.getSessionId())));
+    }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    @Operation(summary = "Thu hồi một phiên đăng nhập")
+    public ResponseEntity<ApiResponse<Void>> revokeSession(
+            @PathVariable String sessionId,
+            @AuthenticationPrincipal CurrentUser currentUser) {
+        authSessionService.revokeSession(currentUser.getId(), sessionId);
+        return ResponseEntity.ok(ApiResponse.ok(null, "Đã đăng xuất thiết bị"));
+    }
+
+    @PostMapping("/sessions/revoke-others")
+    @Operation(summary = "Đăng xuất khỏi các thiết bị khác")
+    public ResponseEntity<ApiResponse<Map<String, Integer>>> revokeOtherSessions(
+            @AuthenticationPrincipal CurrentUser currentUser) {
+        int revokedCount = authSessionService.revokeOtherSessions(
+                currentUser.getId(), currentUser.getSessionId());
+        return ResponseEntity.ok(ApiResponse.ok(
+                Map.of("revokedCount", revokedCount), "Đã đăng xuất khỏi các thiết bị khác"));
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Đăng xuất thiết bị hiện tại")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @AuthenticationPrincipal CurrentUser currentUser) {
+        authSessionService.revokeCurrentSession(currentUser.getId(), currentUser.getSessionId());
+        return ResponseEntity.ok(ApiResponse.ok(null, "Đã đăng xuất"));
     }
 }

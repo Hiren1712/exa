@@ -6,7 +6,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -15,16 +14,18 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import vn.exa.auth.AuthSessionRepository;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final AuthSessionRepository sessionRepository;
 
     @Override
     protected void doFilterInternal(
@@ -32,18 +33,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        try {
-            String token = extractToken(request);
+        String token = extractToken(request);
 
-            if (StringUtils.hasText(token) && jwtTokenProvider.validate(token)) {
-                Claims claims = jwtTokenProvider.parseClaims(token);
+        if (StringUtils.hasText(token) && jwtTokenProvider.validate(token)) {
+            Claims claims = jwtTokenProvider.parseClaims(token);
 
-                if (claims != null && "access".equals(claims.get("type", String.class))) {
-                    Long userId = claims.get("uid", Long.class);
-                    String email = claims.getSubject();
-                    String role = claims.get("role", String.class);
+            if (claims != null && "access".equals(claims.get("type", String.class))) {
+                Long userId = claims.get("uid", Long.class);
+                String email = claims.getSubject();
+                String role = claims.get("role", String.class);
+                String sessionId = claims.get("sid", String.class);
+                boolean activeSession = userId != null && (sessionId == null
+                        || sessionRepository.existsByIdAndUserIdAndRevokedAtIsNullAndExpiresAtAfter(
+                                sessionId, userId, LocalDateTime.now()));
 
-                    CurrentUser principal = new CurrentUser(userId, email, role);
+                if (userId != null && StringUtils.hasText(email) && StringUtils.hasText(role) && activeSession) {
+                    CurrentUser principal = new CurrentUser(userId, email, role, sessionId);
 
                     UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                             principal,
@@ -55,8 +60,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
             }
-        } catch (Exception ex) {
-            log.debug("Cannot set user authentication: {}", ex.getMessage());
         }
 
         filterChain.doFilter(request, response);

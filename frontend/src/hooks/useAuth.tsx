@@ -2,17 +2,20 @@ import { createContext, useCallback, useContext, useEffect, useState, ReactNode 
 import { authApi, AuthResponse, GoogleLoginRequest, LoginRequest, RegisterRequest, UserInfo } from '../api/auth';
 import { useAuthStore } from '../store/auth';
 
+export type ThemePreference = 'light' | 'dark' | 'system';
 type Theme = 'light' | 'dark';
 
 interface AuthContextValue {
   user: UserInfo | null;
   loading: boolean;
   theme: Theme;
+  themePreference: ThemePreference;
   login: (data: LoginRequest) => Promise<UserInfo>;
   register: (data: RegisterRequest) => Promise<UserInfo>;
   googleLogin: (data: GoogleLoginRequest) => Promise<UserInfo>;
   logout: () => void;
   toggleTheme: () => void;
+  setThemePreference: (preference: ThemePreference) => void;
   updateUser: (user: UserInfo) => void;
 }
 
@@ -28,9 +31,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState<Theme>(() => {
-    return (localStorage.getItem('theme') as Theme) || 'light';
+  const [themePreference, setThemePreference] = useState<ThemePreference>(() => {
+    const stored = localStorage.getItem('theme');
+    return stored === 'dark' || stored === 'system' ? stored : 'light';
   });
+  const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const theme: Theme = themePreference === 'system'
+    ? (systemDark ? 'dark' : 'light')
+    : themePreference;
 
   // Load user on mount
   useEffect(() => {
@@ -76,11 +84,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [setUser]);
 
-  // Apply theme
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const updateSystemTheme = (event: MediaQueryListEvent) => setSystemDark(event.matches);
+    setSystemDark(mediaQuery.matches);
+    mediaQuery.addEventListener('change', updateSystemTheme);
+    return () => mediaQuery.removeEventListener('change', updateSystemTheme);
+  }, []);
+
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    localStorage.setItem('theme', themePreference);
+  }, [theme, themePreference]);
 
   const login = useCallback(async (data: LoginRequest) => {
     const res: AuthResponse = await authApi.login(data);
@@ -110,6 +125,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [setUser]);
 
   const logout = useCallback(() => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (accessToken) {
+      void authApi.logout(accessToken).catch((error: unknown) => {
+        console.error('Không thể thu hồi phiên đăng nhập trên máy chủ:', error instanceof Error ? error.message : error);
+      });
+    }
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
@@ -122,11 +143,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [setUser]);
 
   const toggleTheme = useCallback(() => {
-    setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
-  }, []);
+    setThemePreference(theme === 'dark' ? 'light' : 'dark');
+  }, [theme]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, theme, login, register, googleLogin, logout, toggleTheme, updateUser }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      theme,
+      themePreference,
+      login,
+      register,
+      googleLogin,
+      logout,
+      toggleTheme,
+      setThemePreference,
+      updateUser,
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -15,6 +15,11 @@ public class CurrentUser {
     private final Long id;
     private final String email;
     private final String role;
+    private final String sessionId;
+
+    public CurrentUser(Long id, String email, String role) {
+        this(id, email, role, null);
+    }
 
     public boolean isTeacher() {
         return "TEACHER".equals(role) || "ADMIN".equals(role);

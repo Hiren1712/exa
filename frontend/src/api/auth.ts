@@ -20,6 +20,24 @@ export interface AuthResponse {
   user: UserInfo;
 }
 
+export interface AuthSessionInfo {
+  id: string;
+  deviceLabel?: string;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+  current: boolean;
+}
+
+export interface AuthSessionList {
+  currentSessionTracked: boolean;
+  sessions: AuthSessionInfo[];
+}
+
+export interface RevokeSessionsResponse {
+  revokedCount: number;
+}
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -62,5 +80,25 @@ export const authApi = {
   refresh: async (refreshToken: string): Promise<AuthResponse> => {
     const res = await apiClient.post<ApiResponse<AuthResponse>>('/v1/auth/refresh', { refreshToken });
     return res.data.data;
+  },
+
+  sessions: async (): Promise<AuthSessionList> => {
+    const res = await apiClient.get<ApiResponse<AuthSessionList>>('/v1/auth/sessions');
+    return res.data.data;
+  },
+
+  revokeSession: async (sessionId: string): Promise<void> => {
+    await apiClient.delete(`/v1/auth/sessions/${encodeURIComponent(sessionId)}`);
+  },
+
+  revokeOtherSessions: async (): Promise<RevokeSessionsResponse> => {
+    const res = await apiClient.post<ApiResponse<RevokeSessionsResponse>>('/v1/auth/sessions/revoke-others');
+    return res.data.data;
+  },
+
+  logout: async (accessToken: string): Promise<void> => {
+    await apiClient.post('/v1/auth/logout', {}, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
   },
 };
